@@ -14,3 +14,71 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Takes lesson text and generates a formatted worksheet using AI
+ * @summary Generate a worksheet from lesson content
+ */
+export const GenerateWorksheetBody = zod.object({
+  lessonText: zod
+    .string()
+    .describe("The lesson content to convert into a worksheet"),
+  gradeLevel: zod
+    .string()
+    .optional()
+    .describe("Optional grade level for the worksheet"),
+  worksheetType: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank)",
+    ),
+});
+
+export const GenerateWorksheetResponse = zod.object({
+  title: zod.string().describe("The worksheet title"),
+  subject: zod.string().describe("The subject area"),
+  gradeLevel: zod.string().describe("The target grade level"),
+  sections: zod.array(
+    zod.object({
+      type: zod.enum([
+        "instructions",
+        "multiple_choice",
+        "short_answer",
+        "fill_in_blank",
+        "true_false",
+        "matching",
+        "essay",
+      ]),
+      title: zod.string().describe("Section heading"),
+      instructions: zod
+        .string()
+        .optional()
+        .describe("Instructions for this section"),
+      questions: zod.array(
+        zod.object({
+          number: zod.number().describe("Question number"),
+          text: zod.string().describe("The question text"),
+          options: zod
+            .array(zod.string())
+            .optional()
+            .describe("Answer choices for multiple choice questions"),
+          answer: zod
+            .string()
+            .optional()
+            .describe("The correct answer (optional, for answer key)"),
+          lines: zod
+            .number()
+            .optional()
+            .describe("Number of lines for written response"),
+        }),
+      ),
+      points: zod.number().optional().describe("Points for this section"),
+    }),
+  ),
+  studentName: zod
+    .string()
+    .optional()
+    .describe("Placeholder for student name field"),
+  date: zod.string().optional().describe("Placeholder for date field"),
+});

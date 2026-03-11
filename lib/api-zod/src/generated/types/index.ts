@@ -6,4 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./errorResponse";
+export * from "./generateWorksheetRequest";
+export * from "./generateWorksheetResponse";
 export * from "./healthStatus";
+export * from "./worksheetQuestion";
+export * from "./worksheetSection";
+export * from "./worksheetSectionType";

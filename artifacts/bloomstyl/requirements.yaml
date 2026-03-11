@@ -1,0 +1,16 @@
+packages:
+  "framer-motion": "Animations for page transitions and loading states"
+  "react-dropzone": "Beautiful drag and drop file uploads for PDF/DOCX"
+  "zustand": "Simple global state to pass worksheet data between pages"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to merge tailwind classes"
+
+images:
+  - path: "artifacts/bloomstyl/public/images/bg-pattern.png"
+    description: "Soft, very subtle warm cream and pale purple abstract background pattern, seamless, elegant, teacher-friendly, extremely low contrast so text is easily readable on top"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using generated Orval hooks from @workspace/api-client-react
+  - Simulating text extraction file upload endpoint at POST /api/upload
+  - Using Zustand to persist the generated worksheet between the Home and Result pages without complex URL serialization

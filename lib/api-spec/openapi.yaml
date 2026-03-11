@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: worksheet
+    description: Worksheet generation operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /worksheet/generate:
+    post:
+      operationId: generateWorksheet
+      tags: [worksheet]
+      summary: Generate a worksheet from lesson content
+      description: Takes lesson text and generates a formatted worksheet using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateWorksheetRequest"
+      responses:
+        "200":
+          description: Generated worksheet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateWorksheetResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +66,100 @@ components:
           type: string
       required:
         - status
-
+    GenerateWorksheetRequest:
+      type: object
+      properties:
+        lessonText:
+          type: string
+          description: The lesson content to convert into a worksheet
+        gradeLevel:
+          type: string
+          description: Optional grade level for the worksheet
+        worksheetType:
+          type: string
+          description: Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank)
+      required:
+        - lessonText
+    GenerateWorksheetResponse:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The worksheet title
+        subject:
+          type: string
+          description: The subject area
+        gradeLevel:
+          type: string
+          description: The target grade level
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorksheetSection"
+        studentName:
+          type: string
+          description: Placeholder for student name field
+        date:
+          type: string
+          description: Placeholder for date field
+      required:
+        - title
+        - subject
+        - gradeLevel
+        - sections
+    WorksheetSection:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [instructions, multiple_choice, short_answer, fill_in_blank, true_false, matching, essay]
+        title:
+          type: string
+          description: Section heading
+        instructions:
+          type: string
+          description: Instructions for this section
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorksheetQuestion"
+        points:
+          type: number
+          description: Points for this section
+      required:
+        - type
+        - title
+        - questions
+    WorksheetQuestion:
+      type: object
+      properties:
+        number:
+          type: integer
+          description: Question number
+        text:
+          type: string
+          description: The question text
+        options:
+          type: array
+          items:
+            type: string
+          description: Answer choices for multiple choice questions
+        answer:
+          type: string
+          description: The correct answer (optional, for answer key)
+        lines:
+          type: integer
+          description: Number of lines for written response
+      required:
+        - number
+        - text
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message

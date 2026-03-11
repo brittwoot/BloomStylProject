@@ -8,3 +8,68 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface GenerateWorksheetRequest {
+  /** The lesson content to convert into a worksheet */
+  lessonText: string;
+  /** Optional grade level for the worksheet */
+  gradeLevel?: string;
+  /** Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank) */
+  worksheetType?: string;
+}
+
+export type WorksheetSectionType =
+  (typeof WorksheetSectionType)[keyof typeof WorksheetSectionType];
+
+export const WorksheetSectionType = {
+  instructions: "instructions",
+  multiple_choice: "multiple_choice",
+  short_answer: "short_answer",
+  fill_in_blank: "fill_in_blank",
+  true_false: "true_false",
+  matching: "matching",
+  essay: "essay",
+} as const;
+
+export interface WorksheetQuestion {
+  /** Question number */
+  number: number;
+  /** The question text */
+  text: string;
+  /** Answer choices for multiple choice questions */
+  options?: string[];
+  /** The correct answer (optional, for answer key) */
+  answer?: string;
+  /** Number of lines for written response */
+  lines?: number;
+}
+
+export interface WorksheetSection {
+  type: WorksheetSectionType;
+  /** Section heading */
+  title: string;
+  /** Instructions for this section */
+  instructions?: string;
+  questions: WorksheetQuestion[];
+  /** Points for this section */
+  points?: number;
+}
+
+export interface GenerateWorksheetResponse {
+  /** The worksheet title */
+  title: string;
+  /** The subject area */
+  subject: string;
+  /** The target grade level */
+  gradeLevel: string;
+  sections: WorksheetSection[];
+  /** Placeholder for student name field */
+  studentName?: string;
+  /** Placeholder for date field */
+  date?: string;
+}
+
+export interface ErrorResponse {
+  error: string;
+  message: string;
+}
