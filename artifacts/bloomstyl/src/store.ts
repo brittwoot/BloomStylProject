@@ -89,7 +89,7 @@ export const DEFAULT_TYPOGRAPHY: GlobalTypography = {
   letterSpacing: 0,
 };
 
-// ── Layout Variations (AI Prompt mode) ────────────────────────────────────────
+// ── Layout Variations (AI Prompt mode — legacy) ───────────────────────────────
 
 export type LayoutVariation = {
   id: string;
@@ -98,6 +98,33 @@ export type LayoutVariation = {
   description: string;
   accentColor: string;
   worksheet: any;
+};
+
+// ── Activity Type Selection (new prompt flow) ──────────────────────────────────
+
+export type ActivitySuggestion = {
+  typeId: string;
+  typeName: string;
+  isPrimary: boolean;
+  reason: string;
+  previewDescription: string;
+  suggestedTitle: string;
+  suggestedOptions: Record<string, any>;
+};
+
+export type CustomizeOptions = {
+  // Common
+  title: string;
+  gradeLevel: string;
+  orientation: "portrait" | "landscape";
+  includeName: boolean;
+  includeDate: boolean;
+  fontStyle: string;
+  borderStyle: string;
+  colorScheme: string;
+  teacherInfo: string;
+  // Type-specific (dynamic)
+  [key: string]: any;
 };
 
 export const DEFAULT_TEXT_STYLE: TextStyle = {
@@ -170,9 +197,21 @@ type BloomStore = {
   removeClipart: (sectionId: string, itemId: string) => void;
   getSectionStyle: (sectionId: string) => SectionStyle;
 
-  // Layout variations (AI prompt mode)
+  // Layout variations (AI prompt mode — legacy)
   layoutVariations: LayoutVariation[] | null;
   setLayoutVariations: (v: LayoutVariation[] | null) => void;
+
+  // Activity type selection (new prompt flow)
+  activitySuggestions: ActivitySuggestion[] | null;
+  chosenActivityType: string | null;
+  customizeOptions: CustomizeOptions;
+  parsedPromptData: any;
+  originalPrompt: string;
+  setActivitySuggestions: (s: ActivitySuggestion[] | null) => void;
+  setChosenActivityType: (typeId: string | null) => void;
+  setCustomizeOptions: (opts: Partial<CustomizeOptions>) => void;
+  setParsedPromptData: (data: any) => void;
+  setOriginalPrompt: (p: string) => void;
 
   // Reset
   reset: () => void;
@@ -331,6 +370,29 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
   layoutVariations: null,
   setLayoutVariations: (layoutVariations) => set({ layoutVariations }),
 
+  // Activity type selection
+  activitySuggestions: null,
+  chosenActivityType: null,
+  customizeOptions: {
+    title: "",
+    gradeLevel: "General",
+    orientation: "portrait",
+    includeName: true,
+    includeDate: true,
+    fontStyle: "clean",
+    borderStyle: "none",
+    colorScheme: "black & white",
+    teacherInfo: "",
+  },
+  parsedPromptData: null,
+  originalPrompt: "",
+  setActivitySuggestions: (activitySuggestions) => set({ activitySuggestions }),
+  setChosenActivityType: (chosenActivityType) => set({ chosenActivityType }),
+  setCustomizeOptions: (opts) =>
+    set((state) => ({ customizeOptions: { ...state.customizeOptions, ...opts } })),
+  setParsedPromptData: (parsedPromptData) => set({ parsedPromptData }),
+  setOriginalPrompt: (originalPrompt) => set({ originalPrompt }),
+
   reset: () =>
     set({
       lessonText: "",
@@ -347,6 +409,21 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
       worksheetPageStyle: DEFAULT_PAGE_STYLE,
       globalTypography: DEFAULT_TYPOGRAPHY,
       layoutVariations: null,
+      activitySuggestions: null,
+      chosenActivityType: null,
+      customizeOptions: {
+        title: "",
+        gradeLevel: "General",
+        orientation: "portrait",
+        includeName: true,
+        includeDate: true,
+        fontStyle: "clean",
+        borderStyle: "none",
+        colorScheme: "black & white",
+        teacherInfo: "",
+      },
+      parsedPromptData: null,
+      originalPrompt: "",
     }),
 }));
 

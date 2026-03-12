@@ -16,6 +16,36 @@ import {
   ColoringActivitySection,
   TracingSection,
 } from "../components/editor/ActivitySections";
+import {
+  MindMapSection,
+  VennDiagramSection,
+  KWLChartSection,
+  SequenceChartSection,
+  FrayerModelSection,
+  StoryMapSection,
+  AcrosticSection,
+  MiniBookSection,
+  WritingPromptHeader,
+  WordBankSection,
+  SentenceFramesSection,
+  NumberBondSection,
+  TenFrameSection,
+  ClockPracticeSection,
+  LabelDiagramSection,
+  ObservationSheetSection,
+  TimelineSection,
+  LineMatchingSection,
+  CutAndSortSection,
+  BingoCardSection,
+  FullWordSearchSection,
+  SpinnerSection,
+  DiceActivitySection,
+  GraphPageSection,
+  ColoringPageSection,
+  ColorByCodeSection,
+  PictureSortSection,
+  CrosswordSection,
+} from "../components/editor/NewSections";
 
 // ── Typography helpers ─────────────────────────────────────────────────────────
 
@@ -328,6 +358,104 @@ function SectionBlock({
             section={section}
             onUpdate={(updates) => updateSection(section.id, updates)}
           />
+        )}
+
+        {/* ── Graphic Organizers ── */}
+        {section.type === "mind_map" && (
+          <MindMapSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "venn_diagram" && (
+          <VennDiagramSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "kwl_chart" && (
+          <KWLChartSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "sequence_chart" && (
+          <SequenceChartSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "frayer_model" && (
+          <FrayerModelSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "story_map" && (
+          <StoryMapSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+
+        {/* ── Writing ── */}
+        {section.type === "acrostic" && (
+          <AcrosticSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "mini_book" && (
+          <MiniBookSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "writing_prompt_header" && (
+          <WritingPromptHeader section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "word_bank" && (
+          <WordBankSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "sentence_frames" && (
+          <SentenceFramesSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+
+        {/* ── Math ── */}
+        {section.type === "number_bond" && (
+          <NumberBondSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "ten_frame" && (
+          <TenFrameSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "clock_practice" && (
+          <ClockPracticeSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "graph_page" && (
+          <GraphPageSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+
+        {/* ── Science / Social Studies ── */}
+        {section.type === "label_diagram" && (
+          <LabelDiagramSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "observation_sheet" && (
+          <ObservationSheetSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "timeline" && (
+          <TimelineSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+
+        {/* ── Matching / Sorting ── */}
+        {section.type === "line_matching" && (
+          <LineMatchingSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "cut_and_sort" && (
+          <CutAndSortSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "picture_sort" && (
+          <PictureSortSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+
+        {/* ── Games ── */}
+        {section.type === "bingo_card" && (
+          <BingoCardSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "word_search_full" && (
+          <FullWordSearchSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "crossword" && (
+          <CrosswordSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "spinner" && (
+          <SpinnerSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "dice_activity" && (
+          <DiceActivitySection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+
+        {/* ── Coloring ── */}
+        {section.type === "coloring_page" && (
+          <ColoringPageSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+        )}
+        {section.type === "color_by_code" && (
+          <ColorByCodeSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
         )}
       </div>
 

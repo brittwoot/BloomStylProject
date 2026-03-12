@@ -9,6 +9,9 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { Result } from "./pages/Result";
 import { PromptPage } from "./pages/PromptPage";
 import { LayoutPickerPage } from "./pages/LayoutPickerPage";
+import { ActivitySuggestionPage } from "./pages/ActivitySuggestionPage";
+import { WorksheetTypeBrowserPage } from "./pages/WorksheetTypeBrowserPage";
+import { CustomizePage } from "./pages/CustomizePage";
 import NotFound from "./pages/not-found";
 
 const queryClient = new QueryClient({
@@ -20,12 +23,21 @@ const queryClient = new QueryClient({
 function Router() {
   return (
     <Switch>
+      {/* Document upload flow */}
       <Route path="/" component={UploadPage} />
-      <Route path="/prompt" component={PromptPage} />
-      <Route path="/pick-layout" component={LayoutPickerPage} />
       <Route path="/detect" component={DetectPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/result" component={Result} />
+
+      {/* AI prompt flow */}
+      <Route path="/prompt" component={PromptPage} />
+      <Route path="/suggest" component={ActivitySuggestionPage} />
+      <Route path="/types" component={WorksheetTypeBrowserPage} />
+      <Route path="/customize" component={CustomizePage} />
+
+      {/* Legacy */}
+      <Route path="/pick-layout" component={LayoutPickerPage} />
+
       <Route component={NotFound} />
     </Switch>
   );

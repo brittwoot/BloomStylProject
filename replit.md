@@ -20,7 +20,20 @@ BloomStyl is an AI-powered educational content transformation platform that conv
 ## Entry Modes
 
 1. **From Document** (`/`) — Paste lesson text or upload PDF/DOCX → AI detects sections → Settings → Preview
-2. **From Prompt** (`/prompt`) — Type a natural language description → AI generates 3 layout variations → pick one → Preview
+2. **From Prompt** (`/prompt`) — Type a natural language description → AI analyzes → suggests 3 activity types with reasoning → Customization panel → Generate worksheet
+
+## Routes
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | UploadPage | Document upload / paste mode |
+| `/detect` | DetectPage | AI section detection |
+| `/settings` | SettingsPage | Template settings |
+| `/result` | Result | Worksheet editor + export |
+| `/prompt` | PromptPage | AI prompt entry (new flow) |
+| `/suggest` | ActivitySuggestionPage | AI-recommended type cards with reasons |
+| `/types` | WorksheetTypeBrowserPage | Browsable grid of all 30 types |
+| `/customize` | CustomizePage | Left-panel settings + right-panel preview |
 
 ## 4-Page Workflow (Document Mode)
 
@@ -29,18 +42,33 @@ BloomStyl is an AI-powered educational content transformation platform that conv
 3. **Settings** (`/settings`) — Configure template type (Reading/Practice/Vocabulary), theme (Clean/Classroom/Fun), and layout options.
 4. **Preview & Export** (`/result`) — Full worksheet editor with inline text editing, typography system, styling, clipart, and PDF export.
 
-## Prompt Mode Flow
+## Prompt Flow (New — Step-by-Step)
 
-1. **Prompt** (`/prompt`) — Text area with 8 example prompts as chips
-2. **Layout Picker** (`/pick-layout`) — 3 AI-generated layout variation cards (structural thumbnail + color badge)
-3. Teacher picks one → goes straight to `/result` editor
+1. **PromptPage** — Teacher types prompt → calls `analyze-prompt` API → shows clarifying question if vague, or navigates to `/suggest`
+2. **ActivitySuggestionPage** — 3 AI-recommended worksheet type cards (1 primary + 2 alternatives) with reasons, parsedPromptData chips, "Browse all 30 types" button
+3. **WorksheetTypeBrowserPage** — Searchable grid of all 30 types organized by 7 categories with filters, preview rows, grade ranges
+4. **CustomizePage** — Left panel: common options (title, grade, orientation, name/date, font, border, color scheme, teacher info) + type-specific options; Right panel: live preview; Bottom: "Create Worksheet" button → calls `customize-generate` API → navigates to `/result`
+
+## Worksheet Type Registry
+
+**30 types across 7 categories** — defined in `artifacts/bloomstyl/src/types/worksheetTypes.ts`:
+
+- 🎨 **Coloring & Visual** (3): Coloring Page, Color by Code, Trace and Color
+- ↔️ **Matching & Sorting** (3): Cut and Sort, Draw a Line Matching, Picture Sort
+- ✏️ **Writing & Response** (4): Writing Prompt, Sentence Frames, Mini Book, Acrostic Poem
+- 🗂️ **Graphic Organizers** (6): Mind Map, Venn Diagram, Story Map, KWL Chart, Sequence Chart, Frayer Model
+- 🔢 **Math Activities** (5): Number Bond, Ten Frame, Graph/Data Page, Clock/Time, Measurement
+- 🔬 **Science & Social Studies** (4): Label the Diagram, Observation Sheet, Timeline, Map Activity
+- 🎮 **Games & Interactive** (5): Bingo Card, Word Search, Crossword, Spinner, Dice/Roll Activity
 
 ## API Routes
 
 - `POST /api/worksheet/extract-text` — PDF/DOCX text extraction (multer)
 - `POST /api/worksheet/detect` — AI content block detection + safety check
 - `POST /api/worksheet/generate` — Full worksheet generation from blocks
-- `POST /api/worksheet/generate-layouts` — Generate 3 distinct layout variations from a prompt
+- `POST /api/worksheet/generate-layouts` — Generate 3 distinct layout variations from a prompt (legacy)
+- `POST /api/worksheet/analyze-prompt` — Analyze teacher prompt, return 3 type suggestions with reasons or clarifying question
+- `POST /api/worksheet/customize-generate` — Generate full worksheet JSON from chosen type + options
 
 ## Worksheet Editor (Step 4)
 

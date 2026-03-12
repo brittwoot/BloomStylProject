@@ -3,6 +3,8 @@ import multer from "multer";
 import detectRouter from "./detect";
 import generateRouter from "./generate";
 import generateLayoutsRouter from "./generate-layouts";
+import analyzePromptRouter from "./analyze-prompt";
+import customizeGenerateRouter from "./customize-generate";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -40,5 +42,7 @@ router.post("/extract-text", upload.single("file"), async (req: Request, res: Re
 router.use("/detect", detectRouter);
 router.use("/generate", generateRouter);
 router.use("/generate-layouts", generateLayoutsRouter);
+router.use("/analyze-prompt", analyzePromptRouter);
+router.use("/customize-generate", customizeGenerateRouter);
 
 export default router;
