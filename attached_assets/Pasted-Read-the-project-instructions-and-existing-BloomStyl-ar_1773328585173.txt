@@ -1,0 +1,388 @@
+Read the project instructions and existing BloomStyl architecture first. Use them as the source of truth.
+
+Now take BloomStyl to the next level and evolve it from a basic worksheet generator into a highly customizable AI-powered worksheet and handout design platform.
+
+IMPORTANT PRODUCT DIRECTION
+
+BloomStyl should no longer feel like only a plain worksheet formatter. It should feel like a teacher-friendly design tool that helps users turn ordinary documents into beautiful, engaging, editable classroom handouts and worksheets.
+
+The current system is already organizing information well and generating a good variety of questions. Keep that strength.
+
+The next phase must focus heavily on:
+- customization
+- typography
+- design flexibility
+- AI-driven visual styling
+- teacher-friendly creative editing
+- more visually engaging outputs
+- handout / flyer / classroom-material feel, not just plain worksheet feel
+
+USE ANY UPLOADED INSPIRATION FILES
+If image or design inspiration files are uploaded in the project or chat context, study them and use them to influence:
+- layout
+- style direction
+- typography
+- spacing
+- border treatment
+- section presentation
+- decorative style
+Do not copy exactly. Use them as design inspiration.
+
+BRAND UPDATE
+Update the BloomStyl logo so the wordmark includes a small crooked purple heart at the end of the logo.
+Requirements:
+- keep it subtle
+- hand-drawn / slightly imperfect / charming
+- purple tone
+- should feel warm, playful, and memorable
+- do not make it too large
+- the logo should still feel clean and modern
+
+PRIMARY GOAL
+Transform BloomStyl’s preview/editor into a powerful but simple teacher-friendly design workspace where users can:
+- fully customize fonts
+- use decorative heading styles including cursive
+- move and edit content freely
+- apply themes and design styles
+- add borders, backgrounds, bullet styles, and clipart
+- let AI automatically style the worksheet based on different prompts or selected style directions
+
+BUILD THE FOLLOWING FEATURES
+
+1. ADVANCED TYPOGRAPHY SYSTEM
+Upgrade the font system significantly.
+
+Teachers must be able to control:
+- title font
+- heading font
+- body font
+- question font
+- vocabulary font
+- font size
+- font color
+- bold
+- italic
+- underline
+- alignment
+- line spacing
+- letter spacing
+- text shadow if subtle
+- outline / stroke effect for decorative headings if practical
+- bullet list style
+- numbered list style
+
+Include a much stronger font library with both practical and decorative options.
+
+Add categories such as:
+- clean
+- classroom
+- modern
+- playful
+- handwriting
+- cursive
+- bold display
+
+Include fonts similar to:
+- Poppins
+- Nunito
+- Inter
+- Open Sans
+- Roboto
+- Quicksand
+- Fredoka
+- Baloo
+- Pacifico
+- Sacramento
+- Great Vibes
+- Caveat
+- Patrick Hand
+- Gloria Hallelujah
+
+Important:
+Teachers especially want cursive headings and more visually appealing title styles.
+Make title and heading font selection especially strong.
+
+2. AI DESIGN STYLING SYSTEM
+Add an AI-assisted design system that can style worksheets and handouts automatically based on user prompts or style choices.
+
+Users should be able to choose or prompt styles like:
+- fun elementary
+- cute classroom
+- clean and modern
+- colorful but printable
+- bold teacher handout
+- playful lower-grade
+- elegant and soft
+- minimalist
+- notebook style
+- pastel classroom
+- worksheet with cute headings
+- flyer style
+- announcement style
+- visual support style
+- primary grade style
+- upper elementary academic style
+
+Build an “AI Style” or “Design With AI” panel where the user can:
+- choose a style preset
+- optionally type a design prompt like:
+  “make this feel playful and colorful for 2nd grade”
+  “make this look elegant with cursive section headings”
+  “make this a fun science handout”
+  “make this a student-friendly classroom worksheet with soft colors”
+
+The AI styling system should automatically suggest and apply:
+- font pairings
+- title style
+- heading style
+- border style
+- spacing
+- section background treatment
+- clipart/visual suggestions
+- color palette
+- visual hierarchy
+
+For now, this can use deterministic logic plus mock AI behavior if needed, but structure it so real AI styling can be connected later.
+
+3. RICHER PAGE / SECTION CUSTOMIZATION
+Expand design controls for the page and sections.
+
+Teachers should be able to control:
+- full page background color
+- section background color
+- section transparency if practical
+- border type
+- border color
+- border thickness
+- border radius
+- decorative borders
+- dashed borders
+- double borders
+- notebook / worksheet line style if possible
+- divider styles between sections
+- section padding
+- section spacing
+- heading banner styles
+
+Support styles for:
+- whole page
+- each major section
+- text containers
+- passage boxes
+- question areas
+
+4. HANDOUT / FLYER / ANNOUNCEMENT FEEL
+Expand BloomStyl from only worksheet layouts to “handout-quality” layouts.
+
+Without breaking the MVP structure, make the preview/editor capable of producing more visually polished materials that feel like:
+- classroom handouts
+- reading activities
+- vocabulary pages
+- practice sheets
+- announcements
+- student-friendly flyers
+- themed classroom pages
+
+Keep current core templates, but enhance their design possibilities so they can feel more styled and less rigid.
+
+5. MOVABLE CONTENT / LAYOUT FLEXIBILITY
+Improve layout flexibility.
+
+Teachers should be able to:
+- reorder sections
+- move content blocks
+- drag sections vertically
+- reposition decorative elements
+- move text areas more flexibly where practical
+- adjust answer space
+- move clipart placement
+- rearrange title, directions, and other elements
+
+At minimum, make major sections and text blocks clearly movable and preserve those positions in state.
+
+6. PERSISTENT EDITING
+All edits must save in state and persist while the user works.
+
+Persist changes for:
+- text edits
+- font selections
+- font colors
+- section positions
+- borders/backgrounds
+- AI styling choices
+- clipart placement
+- section visibility
+- question order
+- vocabulary formatting
+
+Do not allow edits to disappear when the user:
+- changes themes
+- navigates between steps
+- regenerates layout lightly
+- updates styling
+
+7. CLIPART SYSTEM
+Build a better clipart system.
+
+Teachers should be able to:
+- browse clipart categories
+- add clipart to the page
+- place clipart near titles or sections
+- remove clipart
+- reposition clipart
+- resize clipart if practical
+
+Clipart categories should include:
+- school
+- books
+- pencils
+- reading
+- writing
+- math
+- science
+- weather
+- animals
+- plants
+- holidays
+- classroom items
+- stars / hearts / shapes
+- decorative accents
+
+8. AI KEYWORD-BASED CLIPART SUGGESTIONS
+Add a “Suggested Clipart” panel.
+
+Use worksheet keywords to suggest matching visuals.
+Examples:
+- water cycle → cloud, rain, sun, water drop
+- fractions → pizza, math symbols, circles
+- plants → leaves, flower, pot, garden
+- reading → books, glasses, pencil, bookmark
+- opinion writing → speech bubble, pencil, notebook
+- science → beaker, atom, magnifying glass
+- social studies → map, globe, flag
+
+For now use keyword-based mock logic in code, but build the system cleanly so real AI suggestions can plug in later.
+
+9. DECORATIVE HEADING SYSTEM
+Build special heading styles because this is a huge teacher need.
+
+Teachers should be able to choose heading treatments like:
+- cursive heading
+- outlined heading
+- shadow heading
+- bubble heading
+- banner heading
+- cute underlined heading
+- pastel label heading
+- notebook tab heading
+- playful title badge
+
+Make the title and section-heading experience much more expressive.
+
+10. TEACHER TOOLS PANEL
+Create a more powerful but organized right-side teacher tools panel.
+
+Organize controls into sections:
+- Typography
+- Page Design
+- Section Design
+- AI Style
+- Clipart
+- Suggested Clipart
+- Layout
+- Answer Key / Advanced Controls
+
+Keep the preview canvas centered and visually important.
+
+11. KEEP CURRENT CORE SYSTEMS INTACT
+Do not break the existing BloomStyl architecture.
+
+Continue using:
+- content block structure
+- worksheet schema
+- settings system
+- template engine direction
+- preview editing flow
+
+Enhance the current experience rather than replacing it with something disconnected.
+
+12. SUPPORT FUTURE FEATURES ALREADY PLANNED
+Structure all changes so they remain compatible with planned features such as:
+- bilingual support
+- AI suggestions panel
+- differentiated versions
+- multiple choice option count control
+- answer keys
+- digital worksheets
+- teacher template library
+- remix system
+- safety screening
+- image suggestions
+
+13. UX REQUIREMENTS
+The editor should feel:
+- warm
+- modern
+- teacher-friendly
+- creative
+- not overwhelming
+- easy to understand
+
+It should feel like:
+“Canva for teacher worksheets and handouts”
+but simpler and more classroom-specific.
+
+14. IMPLEMENTATION REQUIREMENTS
+Use local state and the current front-end structure first, but build the state model so these properties can later persist into the worksheet schema/backend.
+
+Each editable section should be able to store:
+- text content
+- typography settings
+- alignment
+- list formatting
+- colors
+- background settings
+- border settings
+- position/order
+- clipart items
+- AI style tags or style mode metadata
+
+15. COMPONENTS TO CREATE OR UPGRADE
+Create or improve reusable components such as:
+- EditableTextBlock
+- AdvancedTextToolbar
+- FontPicker
+- DecorativeHeadingControls
+- SectionStylePanel
+- PageStylePanel
+- AIStylePanel
+- ClipartPanel
+- SuggestedClipartPanel
+- DraggableSection
+- MovableClipart
+- TeacherToolsSidebar
+- LogoWordmark with crooked purple heart
+
+16. OUTPUT EXPECTATION
+Upgrade the current BloomStyl editor so it clearly demonstrates:
+- deeper customization
+- stronger typography
+- richer worksheet styling
+- AI-driven design direction
+- teacher-loved cursive and decorative heading options
+- clipart additions and suggestions
+- saved editable design state
+
+IMPORTANT
+Do not build this as a generic design app.
+This must remain focused on BloomStyl’s purpose:
+turning lesson content into beautiful, customizable, classroom-safe worksheets and handouts.
+
+After building, explain:
+1. what new components were created
+2. how typography customization works
+3. how AI style logic works
+4. how edits persist in state
+5. how clipart suggestions are generated
+6. how the logo was updated with the crooked purple heart
+7. what would be needed next to persist everything to the backend
