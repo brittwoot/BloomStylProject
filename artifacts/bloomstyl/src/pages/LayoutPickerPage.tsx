@@ -27,6 +27,12 @@ function SectionPreview({ type, title }: { type: string; title: string }) {
     vocabulary: "#fce7f3",
     activity: "#dbeafe",
     title: "#f3e8ff",
+    word_practice: "#fce7f3",
+    word_sight_row: "#dbeafe",
+    fill_blanks: "#fef9c3",
+    sentence_practice: "#dcfce7",
+    coloring_activity: "#fff7ed",
+    tracing: "#f0fdf4",
   };
   const color = colors[type] || "#f1f5f9";
   return (

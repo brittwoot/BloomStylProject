@@ -6,14 +6,16 @@ import { useBloomStore } from "../store";
 import { StepIndicator } from "./UploadPage";
 
 const EXAMPLE_PROMPTS = [
-  "Color by beginning sound worksheet for kindergarten",
-  "All About Me graphic organizer, fun style",
-  "Letter G find and circle worksheet",
-  "Handwriting practice — uppercase letters",
-  "Sight words matching game for first grade",
+  "Sight word practice worksheet for the word 'pretty' — kindergarten",
+  "Sight word worksheet for 'because' — 1st grade (read, color, trace, write)",
+  "Color by beginning sound worksheet — kindergarten",
+  "Handwriting tracing practice for the word 'elephant' — 1st grade",
+  "Color by sight word activity — pre-K and kindergarten",
   "Reading comprehension — main idea and details for 3rd grade",
   "Vocabulary worksheet: synonyms and antonyms for 4th grade",
   "Math word problems — addition and subtraction for 2nd grade",
+  "Spelling activity for the word 'friend' — 2nd grade",
+  "All About Me graphic organizer — fun style",
 ];
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");

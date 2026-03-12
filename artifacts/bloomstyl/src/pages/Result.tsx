@@ -8,6 +8,14 @@ import { EditorSidebar } from "../components/editor/EditorSidebar";
 import { EditableTextBlock } from "../components/editor/EditableTextBlock";
 import { ExportModal } from "../components/ExportModal";
 import { getHeadingCSS } from "../components/editor/fontData";
+import {
+  WordPracticeSection,
+  WordSightRow,
+  FillBlanksSection,
+  SentencePracticeSection,
+  ColoringActivitySection,
+  TracingSection,
+} from "../components/editor/ActivitySections";
 
 // ── Typography helpers ─────────────────────────────────────────────────────────
 
@@ -108,8 +116,8 @@ function QuestionItem({
       <div className="flex gap-2 text-sm" style={bodyFontStyle(globalTypo)}>
         <span className="font-bold shrink-0">{number}.</span>
         <EditableTextBlock
-          value={q.text}
-          onChange={(v) => updateQuestion(sectionId, q.id, { text: v })}
+          value={q.text ?? q.prompt ?? ""}
+          onChange={(v) => updateQuestion(sectionId, q.id, { text: v, prompt: v })}
           multiline
           textStyle={textStyle}
           className="flex-1"
@@ -276,6 +284,50 @@ function SectionBlock({
               />
             ))}
           </div>
+        )}
+
+        {/* ── Activity-specific section renderers ── */}
+
+        {section.type === "word_practice" && (
+          <WordPracticeSection
+            section={section}
+            onUpdate={(updates) => updateSection(section.id, updates)}
+          />
+        )}
+
+        {section.type === "word_sight_row" && (
+          <WordSightRow
+            section={section}
+            onUpdate={(updates) => updateSection(section.id, updates)}
+          />
+        )}
+
+        {section.type === "fill_blanks" && (
+          <FillBlanksSection
+            section={section}
+            onUpdate={(updates) => updateSection(section.id, updates)}
+          />
+        )}
+
+        {section.type === "sentence_practice" && (
+          <SentencePracticeSection
+            section={section}
+            onUpdate={(updates) => updateSection(section.id, updates)}
+          />
+        )}
+
+        {section.type === "coloring_activity" && (
+          <ColoringActivitySection
+            section={section}
+            onUpdate={(updates) => updateSection(section.id, updates)}
+          />
+        )}
+
+        {section.type === "tracing" && (
+          <TracingSection
+            section={section}
+            onUpdate={(updates) => updateSection(section.id, updates)}
+          />
         )}
       </div>
 
