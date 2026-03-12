@@ -32,7 +32,7 @@ export function Header() {
                 style={{
                   display: "inline-block",
                   position: "relative",
-                  top: "4px",
+                  top: "1px",
                   marginLeft: "1px",
                   transform: "rotate(-20deg)",
                   flexShrink: 0,
