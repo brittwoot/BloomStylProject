@@ -37,12 +37,13 @@ export function EditableTextBlock({
   onFocus,
   onClick,
 }: EditableTextBlockProps) {
+  const safeValue = value ?? "";
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(safeValue);
   const ref = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
 
   useEffect(() => {
-    setDraft(value);
+    setDraft(value ?? "");
   }, [value]);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export function EditableTextBlock({
 
   const listStyle = textStyle?.listStyle;
   const wrapList = listStyle && listStyle !== "none";
-  const lines = value.split("\n").filter(Boolean);
+  const lines = safeValue.split("\n").filter(Boolean);
 
   if (editing) {
     if (multiline) {
@@ -100,8 +101,8 @@ export function EditableTextBlock({
       tabIndex={0}
       style={css}
       className={`group relative inline cursor-pointer rounded px-0.5 -mx-0.5 hover:bg-primary/8 transition-colors ${className}`}
-      onClick={() => { onClick?.(); onFocus?.(); setDraft(value); setEditing(true); }}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setDraft(value); setEditing(true); } }}
+      onClick={() => { onClick?.(); onFocus?.(); setDraft(safeValue); setEditing(true); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setDraft(safeValue); setEditing(true); } }}
       title="Click to edit"
     >
       {wrapList ? (
@@ -115,7 +116,7 @@ export function EditableTextBlock({
           </ol>
         )
       ) : (
-        value || <span className="text-muted-foreground/40 italic text-sm">{placeholder}</span>
+        safeValue || <span className="text-muted-foreground/40 italic text-sm">{placeholder}</span>
       )}
       <Pencil className="inline w-3 h-3 ml-1 text-primary/30 group-hover:text-primary/60 transition-colors align-middle" />
     </span>
