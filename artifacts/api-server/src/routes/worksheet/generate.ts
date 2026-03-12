@@ -106,7 +106,7 @@ ${contentSummary}
 Return ONLY valid JSON.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
+      model: "gpt-4o",
       max_completion_tokens: 4096,
       messages: [
         { role: "system", content: systemPrompt },
