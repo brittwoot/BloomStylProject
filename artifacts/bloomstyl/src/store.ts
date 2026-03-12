@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
+import type { DecorativeHeadingStyle } from "./components/editor/fontData";
 
 export type ContentBlock = {
   id: string;
@@ -54,6 +55,49 @@ export type WorksheetPageStyle = {
   bgColor: string;
   titleFont: string;
   bodyFont: string;
+};
+
+// ── Global Typography ──────────────────────────────────────────────────────────
+
+export type GlobalTypography = {
+  titleFont: string;
+  titleHeadingStyle: DecorativeHeadingStyle;
+  titleColor: string;
+  headingFont: string;
+  headingColor: string;
+  bodyFont: string;
+  questionFont: string;
+  vocabFont: string;
+  accentColor: string;
+  lineHeight: number;
+  baseSize: number;
+  letterSpacing: number;
+};
+
+export const DEFAULT_TYPOGRAPHY: GlobalTypography = {
+  titleFont: "Outfit",
+  titleHeadingStyle: "plain",
+  titleColor: "#1a1a2e",
+  headingFont: "DM Sans",
+  headingColor: "#1a1a2e",
+  bodyFont: "DM Sans",
+  questionFont: "DM Sans",
+  vocabFont: "DM Sans",
+  accentColor: "#7c3aed",
+  lineHeight: 1.7,
+  baseSize: 1,
+  letterSpacing: 0,
+};
+
+// ── Layout Variations (AI Prompt mode) ────────────────────────────────────────
+
+export type LayoutVariation = {
+  id: string;
+  label: string;
+  layoutStyle: string;
+  description: string;
+  accentColor: string;
+  worksheet: any;
 };
 
 export const DEFAULT_TEXT_STYLE: TextStyle = {
@@ -115,13 +159,20 @@ type BloomStore = {
   sectionStyles: Record<string, SectionStyle>;
   sectionClipart: Record<string, ClipartItem[]>;
   worksheetPageStyle: WorksheetPageStyle;
+  globalTypography: GlobalTypography;
   setActiveSection: (id: string | null) => void;
   setSectionStyle: (sectionId: string, updates: Partial<SectionStyle>) => void;
   setTextStyle: (sectionId: string, updates: Partial<TextStyle>) => void;
   setWorksheetPageStyle: (updates: Partial<WorksheetPageStyle>) => void;
+  setGlobalTypography: (updates: Partial<GlobalTypography>) => void;
+  applyGlobalTypography: (typo: Partial<GlobalTypography>) => void;
   addClipart: (sectionId: string, item: Omit<ClipartItem, "id">) => void;
   removeClipart: (sectionId: string, itemId: string) => void;
   getSectionStyle: (sectionId: string) => SectionStyle;
+
+  // Layout variations (AI prompt mode)
+  layoutVariations: LayoutVariation[] | null;
+  setLayoutVariations: (v: LayoutVariation[] | null) => void;
 
   // Reset
   reset: () => void;
@@ -198,6 +249,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
   sectionStyles: {},
   sectionClipart: {},
   worksheetPageStyle: DEFAULT_PAGE_STYLE,
+  globalTypography: DEFAULT_TYPOGRAPHY,
 
   setActiveSection: (id) => set({ activeSectionId: id }),
 
@@ -236,6 +288,25 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
       worksheetPageStyle: { ...state.worksheetPageStyle, ...updates },
     })),
 
+  setGlobalTypography: (updates) =>
+    set((state) => ({
+      globalTypography: { ...state.globalTypography, ...updates },
+    })),
+
+  applyGlobalTypography: (typo) =>
+    set((state) => {
+      const merged: GlobalTypography = { ...state.globalTypography, ...typo };
+      return {
+        globalTypography: merged,
+        worksheetPageStyle: {
+          ...state.worksheetPageStyle,
+          titleFont: merged.titleFont,
+          bodyFont: merged.bodyFont,
+          bgColor: state.worksheetPageStyle.bgColor,
+        },
+      };
+    }),
+
   addClipart: (sectionId, item) =>
     set((state) => ({
       sectionClipart: {
@@ -257,6 +328,9 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
       },
     })),
 
+  layoutVariations: null,
+  setLayoutVariations: (layoutVariations) => set({ layoutVariations }),
+
   reset: () =>
     set({
       lessonText: "",
@@ -271,6 +345,8 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
       sectionStyles: {},
       sectionClipart: {},
       worksheetPageStyle: DEFAULT_PAGE_STYLE,
+      globalTypography: DEFAULT_TYPOGRAPHY,
+      layoutVariations: null,
     }),
 }));
 

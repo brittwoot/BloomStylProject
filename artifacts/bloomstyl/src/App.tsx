@@ -7,6 +7,8 @@ import { UploadPage } from "./pages/UploadPage";
 import { DetectPage } from "./pages/DetectPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { Result } from "./pages/Result";
+import { PromptPage } from "./pages/PromptPage";
+import { LayoutPickerPage } from "./pages/LayoutPickerPage";
 import NotFound from "./pages/not-found";
 
 const queryClient = new QueryClient({
@@ -19,6 +21,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={UploadPage} />
+      <Route path="/prompt" component={PromptPage} />
+      <Route path="/pick-layout" component={LayoutPickerPage} />
       <Route path="/detect" component={DetectPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/result" component={Result} />

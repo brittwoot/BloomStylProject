@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useBloomStore } from "../store";
 import { FileDropzone } from "../components/Dropzone";
-import { Sparkles, FileText, ChevronRight, Loader2, Globe } from "lucide-react";
+import { Sparkles, FileText, ChevronRight, Loader2, Globe, Wand2 } from "lucide-react";
 import { useDetectContent } from "@workspace/api-client-react";
 
 const LANGUAGES = [
@@ -14,10 +14,13 @@ const LANGUAGES = [
   { value: "French", label: "French" },
 ];
 
+type Mode = "upload" | "prompt";
+
 export function UploadPage() {
-  const [_, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { lessonText, language, setLessonText, setLanguage, setDetectionResult } = useBloomStore();
   const [isExtracting, setIsExtracting] = useState(false);
+  const [mode, setMode] = useState<Mode>("upload");
 
   const { mutate: detect, isPending } = useDetectContent({
     mutation: {
@@ -55,8 +58,35 @@ export function UploadPage() {
   return (
     <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-8">
 
-      {/* Step indicator */}
       <StepIndicator current={1} />
+
+      {/* Mode toggle */}
+      <div className="flex items-center bg-muted/50 rounded-2xl p-1 max-w-sm mx-auto border border-border">
+        <button
+          type="button"
+          onClick={() => setMode("upload")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            mode === "upload"
+              ? "bg-white text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          From Document
+        </button>
+        <button
+          type="button"
+          onClick={() => setLocation("/prompt")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            mode === "prompt"
+              ? "bg-white text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Wand2 className="w-4 h-4" />
+          From Prompt
+        </button>
+      </div>
 
       {/* Hero */}
       <motion.div
@@ -165,6 +195,27 @@ export function UploadPage() {
           </button>
         </div>
       </motion.form>
+
+      {/* Prompt mode shortcut card */}
+      <motion.button
+        type="button"
+        onClick={() => setLocation("/prompt")}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        className="w-full flex items-center gap-4 p-4 rounded-2xl border border-dashed border-primary/30 bg-primary/3 hover:border-primary/60 hover:bg-primary/6 transition-all text-left group"
+      >
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+          <Wand2 className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <p className="font-bold text-sm text-foreground">Or generate from a prompt</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Describe what you want — the AI creates 3 layout options to pick from.
+          </p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary ml-auto shrink-0 transition-colors" />
+      </motion.button>
     </div>
   );
 }

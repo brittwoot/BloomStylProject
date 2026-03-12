@@ -1,11 +1,41 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Printer, ArrowLeft, ChevronDown, ChevronUp, PanelRight, Check, RotateCcw, Pencil } from "lucide-react";
-import { useBloomStore, DEFAULT_SECTION_STYLE, type SectionStyle } from "../store";
+import { Download, ArrowLeft, ChevronDown, ChevronUp, PanelRight, Check, RotateCcw, Pencil } from "lucide-react";
+import { useBloomStore, DEFAULT_SECTION_STYLE, type SectionStyle, type GlobalTypography } from "../store";
 import { StepIndicator } from "./UploadPage";
 import { EditorSidebar } from "../components/editor/EditorSidebar";
 import { EditableTextBlock } from "../components/editor/EditableTextBlock";
+import { ExportModal } from "../components/ExportModal";
+import { getHeadingCSS } from "../components/editor/fontData";
+
+// ── Typography helpers ─────────────────────────────────────────────────────────
+
+function titleStyle(t: GlobalTypography): React.CSSProperties {
+  const { containerStyle, textStyle } = getHeadingCSS(t.titleHeadingStyle, t.accentColor);
+  return {
+    fontFamily: `'${t.titleFont}', sans-serif`,
+    color: t.titleColor,
+    lineHeight: t.lineHeight,
+    ...containerStyle,
+    ...textStyle,
+  };
+}
+
+function headingStyle(t: GlobalTypography): React.CSSProperties {
+  return {
+    fontFamily: `'${t.headingFont}', sans-serif`,
+    color: t.headingColor,
+  };
+}
+
+function bodyFontStyle(t: GlobalTypography): React.CSSProperties {
+  return {
+    fontFamily: `'${t.bodyFont}', sans-serif`,
+    lineHeight: t.lineHeight,
+    fontSize: `${14 * t.baseSize}px`,
+  };
+}
 
 // ── CSS helpers ───────────────────────────────────────────────────────────────
 
@@ -48,11 +78,15 @@ function ClipartRow({ sectionId }: { sectionId: string }) {
 
 // ── WritingLines ──────────────────────────────────────────────────────────────
 
-function WritingLines({ count = 3 }: { count: number }) {
+function WritingLines({ count = 3, accentColor }: { count: number; accentColor?: string }) {
   return (
     <div className="mt-2 space-y-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="border-b border-foreground/20 h-6" />
+        <div
+          key={i}
+          className="border-b h-7"
+          style={{ borderColor: accentColor ? `${accentColor}40` : "rgba(0,0,0,0.15)" }}
+        />
       ))}
     </div>
   );
@@ -61,9 +95,9 @@ function WritingLines({ count = 3 }: { count: number }) {
 // ── QuestionItem ──────────────────────────────────────────────────────────────
 
 function QuestionItem({
-  q, number, sectionId, textStyle,
+  q, number, sectionId, textStyle, globalTypo,
 }: {
-  q: any; number: number; sectionId: string; textStyle: any;
+  q: any; number: number; sectionId: string; textStyle: any; globalTypo: GlobalTypography;
 }) {
   const { updateQuestion } = useBloomStore();
   const type = q.question_type || q.type || "short_answer";
@@ -71,7 +105,7 @@ function QuestionItem({
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2 text-sm">
+      <div className="flex gap-2 text-sm" style={bodyFontStyle(globalTypo)}>
         <span className="font-bold shrink-0">{number}.</span>
         <EditableTextBlock
           value={q.text}
@@ -84,25 +118,31 @@ function QuestionItem({
       {type === "multiple_choice" && Array.isArray(q.options) && q.options.length > 0 && (
         <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-1 mt-2">
           {q.options.map((opt: string, i: number) => (
-            <div key={i} className="flex items-start gap-2 text-sm">
-              <div className="w-4 h-4 rounded-full border border-foreground/40 shrink-0 mt-0.5" />
+            <div key={i} className="flex items-start gap-2 text-sm" style={bodyFontStyle(globalTypo)}>
+              <div
+                className="w-4 h-4 rounded-full border shrink-0 mt-0.5"
+                style={{ borderColor: `${globalTypo.accentColor}60` }}
+              />
               <span>{opt}</span>
             </div>
           ))}
         </div>
       )}
       {type === "true_false" && (
-        <div className="ml-5 flex gap-6 text-sm mt-1">
+        <div className="ml-5 flex gap-6 text-sm mt-1" style={bodyFontStyle(globalTypo)}>
           {["True", "False"].map((opt) => (
             <div key={opt} className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full border border-foreground/40" />
+              <div
+                className="w-4 h-4 rounded-full border"
+                style={{ borderColor: `${globalTypo.accentColor}60` }}
+              />
               <span>{opt}</span>
             </div>
           ))}
         </div>
       )}
       {(type === "short_answer" || type === "fill_in_blank" || type === "essay") && (
-        <WritingLines count={lines} />
+        <WritingLines count={lines} accentColor={globalTypo.accentColor} />
       )}
     </div>
   );
@@ -111,11 +151,12 @@ function QuestionItem({
 // ── SectionBlock ──────────────────────────────────────────────────────────────
 
 function SectionBlock({
-  section, index, total, isActive, onSelect, onMoveUp, onMoveDown,
+  section, index, total, isActive, onSelect, onMoveUp, onMoveDown, globalTypo,
 }: {
   section: any; index: number; total: number;
   isActive: boolean; onSelect: () => void;
   onMoveUp: () => void; onMoveDown: () => void;
+  globalTypo: GlobalTypography;
 }) {
   const { updateSection, updateQuestion, sectionStyles } = useBloomStore();
   const style: SectionStyle = sectionStyles[section.id] ?? DEFAULT_SECTION_STYLE;
@@ -138,18 +179,18 @@ function SectionBlock({
         <div className="flex items-start justify-between gap-3">
           <h2
             className="text-lg font-bold"
-            style={{ fontFamily: `'${ts.fontFamily}', sans-serif`, color: ts.fontColor }}
+            style={{ ...headingStyle(globalTypo), fontFamily: `'${ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont}', sans-serif`, color: ts.fontColor !== "#1a1a2e" ? ts.fontColor : globalTypo.headingColor }}
           >
             <EditableTextBlock
               value={section.title}
               onChange={(v) => updateSection(section.id, { title: v })}
               onFocus={onSelect}
               onClick={onSelect}
-              textStyle={{ ...ts, bold: true }}
+              textStyle={{ ...ts, bold: true, fontFamily: ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont }}
             />
           </h2>
 
-          {/* Section reorder (print hidden) */}
+          {/* Reorder controls (print hidden) */}
           <div className="print:hidden flex gap-1 shrink-0">
             <button
               type="button"
@@ -172,7 +213,7 @@ function SectionBlock({
 
         {/* Instructions */}
         {section.instructions && (
-          <p className="text-sm italic text-foreground/70">
+          <p className="text-sm italic text-foreground/70" style={bodyFontStyle(globalTypo)}>
             <EditableTextBlock
               value={section.instructions}
               onChange={(v) => updateSection(section.id, { instructions: v })}
@@ -187,12 +228,10 @@ function SectionBlock({
         {/* Passage */}
         {section.type === "passage" && section.passage && (
           <div
-            className="rounded-xl p-4 text-sm leading-7 border border-border"
+            className="rounded-xl p-4 text-sm border border-border"
             style={{
               backgroundColor: style.bgColor !== "transparent" ? "rgba(255,255,255,0.5)" : "#f9f9f9",
-              fontFamily: `'${ts.fontFamily}', sans-serif`,
-              fontSize: `${ts.fontSize}px`,
-              color: ts.fontColor,
+              ...bodyFontStyle(globalTypo),
             }}
           >
             <EditableTextBlock
@@ -210,9 +249,13 @@ function SectionBlock({
         {Array.isArray(section.vocabulary) && section.vocabulary.length > 0 && (
           <div className="space-y-2">
             {section.vocabulary.map((item: any, i: number) => (
-              <div key={item.id || i} className="flex gap-2 text-sm" style={{ fontFamily: `'${ts.fontFamily}', sans-serif`, fontSize: `${ts.fontSize}px`, color: ts.fontColor }}>
+              <div
+                key={item.id || i}
+                className="flex gap-2 text-sm"
+                style={{ fontFamily: `'${globalTypo.vocabFont}', sans-serif`, fontSize: `${14 * globalTypo.baseSize}px`, color: ts.fontColor }}
+              >
                 <span className="font-bold shrink-0">{i + 1}.</span>
-                <span className="font-semibold">{item.word}</span>
+                <span className="font-semibold" style={{ color: globalTypo.headingColor }}>{item.word}</span>
                 <span className="text-foreground/70">— {item.definition}</span>
               </div>
             ))}
@@ -228,7 +271,8 @@ function SectionBlock({
                 q={q}
                 number={qi + 1}
                 sectionId={section.id}
-                textStyle={ts}
+                textStyle={{ ...ts, fontFamily: ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.questionFont }}
+                globalTypo={globalTypo}
               />
             ))}
           </div>
@@ -249,11 +293,12 @@ function SectionBlock({
 // ── Result page ───────────────────────────────────────────────────────────────
 
 export function Result() {
-  const [_, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const {
-    worksheet, settings, worksheetPageStyle,
+    worksheet, settings, worksheetPageStyle, globalTypography,
     activeSectionId, setActiveSection,
     updateSection, reset,
   } = useBloomStore();
@@ -265,6 +310,7 @@ export function Result() {
   if (!worksheet) return null;
 
   const sections: any[] = worksheet.sections ?? [];
+  const typo = globalTypography;
 
   const moveSection = (idx: number, dir: -1 | 1) => {
     const target = idx + dir;
@@ -275,6 +321,9 @@ export function Result() {
       worksheet: { ...s.worksheet, sections: newSections },
     }));
   };
+
+  // Title wrapper for decorative heading style
+  const { containerClass, containerStyle, textStyle: titleTextStyle } = getHeadingCSS(typo.titleHeadingStyle, typo.accentColor);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -319,10 +368,10 @@ export function Result() {
                 {sidebarOpen ? "Hide Editor" : "Open Editor"}
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={() => setExportOpen(true)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all text-sm"
               >
-                <Printer className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5" />
                 Export PDF
               </button>
             </div>
@@ -336,6 +385,7 @@ export function Result() {
 
         {/* ── Worksheet paper ── */}
         <div
+          id="worksheet-paper"
           className="max-w-[860px] mx-auto sm:my-4 bg-white sm:rounded-2xl sm:shadow-xl overflow-hidden print:shadow-none print:rounded-none print:my-0"
           style={{ backgroundColor: worksheetPageStyle.bgColor }}
           onClick={() => setActiveSection(null)}
@@ -346,36 +396,61 @@ export function Result() {
             <div className="flex gap-8 justify-end mb-4">
               {settings.includeName && (
                 <div className="flex-1 max-w-[260px]">
-                  <p className="text-xs font-bold text-foreground/50 uppercase tracking-widest mb-1">Name</p>
-                  <div className="border-b border-foreground/40 h-6" />
+                  <p
+                    className="text-xs font-bold text-foreground/50 uppercase tracking-widest mb-1"
+                    style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
+                  >
+                    Name
+                  </p>
+                  <div
+                    className="border-b h-6"
+                    style={{ borderColor: `${typo.accentColor}50` }}
+                  />
                 </div>
               )}
               {settings.includeDate && (
                 <div className="w-36">
-                  <p className="text-xs font-bold text-foreground/50 uppercase tracking-widest mb-1">Date</p>
-                  <div className="border-b border-foreground/40 h-6" />
+                  <p
+                    className="text-xs font-bold text-foreground/50 uppercase tracking-widest mb-1"
+                    style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
+                  >
+                    Date
+                  </p>
+                  <div
+                    className="border-b h-6"
+                    style={{ borderColor: `${typo.accentColor}50` }}
+                  />
                 </div>
               )}
             </div>
 
-            {/* Worksheet title */}
-            <div className="border-b-2 border-foreground pb-5 mb-8 text-center">
-              <h1
-                className="text-3xl font-bold"
-                style={{ fontFamily: `'${worksheetPageStyle.titleFont}', sans-serif` }}
-              >
-                <EditableTextBlock
-                  value={worksheet.title}
-                  onChange={(v) =>
-                    useBloomStore.setState((s) => ({
-                      worksheet: { ...s.worksheet, title: v },
-                    }))
-                  }
-                  textStyle={{ bold: true, fontFamily: worksheetPageStyle.titleFont, fontSize: 28, fontColor: "#1a1a2e", alignment: "center", italic: false, underline: false, listStyle: "none" }}
-                />
-              </h1>
+            {/* Worksheet title with decorative heading style */}
+            <div className="pb-5 mb-8 text-center border-b-2" style={{ borderColor: `${typo.accentColor}40` }}>
+              <div className={`${containerClass} inline-block w-full`} style={containerStyle}>
+                <h1
+                  className="text-3xl font-bold"
+                  style={{
+                    fontFamily: `'${typo.titleFont}', sans-serif`,
+                    color: typo.titleColor,
+                    ...titleTextStyle,
+                  }}
+                >
+                  <EditableTextBlock
+                    value={worksheet.title}
+                    onChange={(v) =>
+                      useBloomStore.setState((s) => ({
+                        worksheet: { ...s.worksheet, title: v },
+                      }))
+                    }
+                    textStyle={{ bold: true, fontFamily: typo.titleFont, fontSize: 28, fontColor: typo.titleColor, alignment: "center", italic: false, underline: false, listStyle: "none" }}
+                  />
+                </h1>
+              </div>
               {(worksheet.subject || worksheet.gradeLevel) && (
-                <p className="text-base text-foreground/60 font-medium mt-1">
+                <p
+                  className="text-base text-foreground/60 font-medium mt-2"
+                  style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
+                >
                   {[worksheet.subject, worksheet.gradeLevel].filter(Boolean).join(" · ")}
                 </p>
               )}
@@ -396,6 +471,7 @@ export function Result() {
                     onSelect={() => setActiveSection(section.id)}
                     onMoveUp={() => moveSection(i, -1)}
                     onMoveDown={() => moveSection(i, 1)}
+                    globalTypo={typo}
                   />
                 </motion.div>
               ))}
@@ -404,11 +480,14 @@ export function Result() {
             {/* Answer Key */}
             {settings.generateAnswerKey && worksheet.answer_key && Object.keys(worksheet.answer_key).length > 0 && (
               <div className="mt-14 pt-8 border-t-2 border-dashed border-foreground/30 space-y-4">
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <h2
+                  className="text-xl font-bold text-foreground flex items-center gap-2"
+                  style={{ fontFamily: `'${typo.headingFont}', sans-serif`, color: typo.headingColor }}
+                >
                   <Check className="w-5 h-5 text-green-600" />
                   Answer Key
                 </h2>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm" style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}>
                   {Object.entries(worksheet.answer_key).map(([k, v]) => (
                     <div key={k} className="flex gap-2">
                       <span className="font-semibold w-8">{k}.</span>
@@ -424,6 +503,14 @@ export function Result() {
 
       {/* ── Editor sidebar ── */}
       <EditorSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* ── Export modal ── */}
+      {exportOpen && (
+        <ExportModal
+          onClose={() => setExportOpen(false)}
+          worksheetTitle={worksheet.title}
+        />
+      )}
     </div>
   );
 }
