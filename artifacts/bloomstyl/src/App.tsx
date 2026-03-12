@@ -8,7 +8,6 @@ import { DetectPage } from "./pages/DetectPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { Result } from "./pages/Result";
 import { QuickGenPage } from "./pages/QuickGenPage";
-import { GenerationViewPage } from "./pages/GenerationViewPage";
 import { LayoutPickerPage } from "./pages/LayoutPickerPage";
 import { ActivitySuggestionPage } from "./pages/ActivitySuggestionPage";
 import { WorksheetTypeBrowserPage } from "./pages/WorksheetTypeBrowserPage";
@@ -47,7 +46,6 @@ function AppLayout() {
 
           {/* AI prompt flow */}
           <Route path="/prompt" component={QuickGenPage} />
-          <Route path="/generating" component={GenerationViewPage} />
           <Route path="/suggest" component={ActivitySuggestionPage} />
           <Route path="/types" component={WorksheetTypeBrowserPage} />
           <Route path="/customize" component={CustomizePage} />

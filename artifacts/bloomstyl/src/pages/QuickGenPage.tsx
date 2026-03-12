@@ -1,434 +1,998 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles, Check, RefreshCw, ArrowRight } from "lucide-react";
 import { useBloomStore } from "../store";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-// ── Subject data ───────────────────────────────────────────────────────────────
+// ── Subjects (12) ─────────────────────────────────────────────────────────────
 
-const SUBJECTS = [
-  { id: "reading", label: "Reading / ELA", icon: "📚" },
-  { id: "math",    label: "Math",          icon: "🔢" },
-  { id: "science", label: "Science",       icon: "🔬" },
-  { id: "social",  label: "Social Studies",icon: "🌍" },
-  { id: "art",     label: "Art",           icon: "🎨" },
-  { id: "music",   label: "Music",         icon: "🎵" },
-  { id: "sel",     label: "SEL / Health",  icon: "💪" },
-  { id: "ell",     label: "ELL / Language",icon: "🗣️" },
-  { id: "other",   label: "Other",         icon: "✨" },
-] as const;
+type SubjectId =
+  | "reading" | "writing" | "math" | "science"
+  | "social" | "phonics" | "art" | "sel"
+  | "ell" | "holiday" | "general" | "custom";
 
-type SubjectId = (typeof SUBJECTS)[number]["id"];
+const SUBJECTS: { id: SubjectId; label: string; icon: string; color: string; placeholder: string }[] = [
+  { id: "reading",  label: "Reading",        icon: "📖", color: "#3b82f6",
+    placeholder: "e.g. Main idea, Charlotte's Web, nonfiction text features..." },
+  { id: "writing",  label: "Writing",        icon: "✏️", color: "#8b5cf6",
+    placeholder: "e.g. Narrative writing, opinion paragraph, descriptive essay..." },
+  { id: "math",     label: "Math",           icon: "🔢", color: "#f59e0b",
+    placeholder: "e.g. Adding fractions, place value to 1000, word problems..." },
+  { id: "science",  label: "Science",        icon: "🔬", color: "#10b981",
+    placeholder: "e.g. Water cycle, animal adaptations, states of matter..." },
+  { id: "social",   label: "Social Studies", icon: "🌍", color: "#ef4444",
+    placeholder: "e.g. Community helpers, the American Revolution, map skills..." },
+  { id: "phonics",  label: "Phonics",        icon: "🔤", color: "#06b6d4",
+    placeholder: "e.g. Long vowel sounds, digraphs sh/ch/th, CVC words..." },
+  { id: "art",      label: "Art",            icon: "🎨", color: "#ec4899",
+    placeholder: "e.g. Color theory, famous artists, elements of art..." },
+  { id: "sel",      label: "SEL",            icon: "💬", color: "#f97316",
+    placeholder: "e.g. Managing emotions, growth mindset, conflict resolution..." },
+  { id: "ell",      label: "ELL / ESL",      icon: "🌐", color: "#84cc16",
+    placeholder: "e.g. Vocabulary building, sentence frames, basic conversation..." },
+  { id: "holiday",  label: "Holiday",        icon: "🎉", color: "#f43f5e",
+    placeholder: "e.g. Halloween, Thanksgiving, end of year, Valentine's Day..." },
+  { id: "general",  label: "General",        icon: "📋", color: "#6b7280",
+    placeholder: "e.g. Study skills, research project, classroom activity..." },
+  { id: "custom",   label: "Custom",         icon: "⚡", color: "#7c3aed",
+    placeholder: "Describe exactly what you need..." },
+];
 
-// ── Topic chips per subject ────────────────────────────────────────────────────
+// ── Activity chips per subject ─────────────────────────────────────────────────
 
-const TOPIC_CHIPS: Record<SubjectId, string[]> = {
-  reading: ["Main Idea","Characters","Sequencing","Phonics","Sight Words","Rhyming","Summarizing","Inference","Figurative Language","Author's Purpose"],
-  math:    ["Addition","Subtraction","Multiplication","Division","Fractions","Place Value","Geometry","Time","Measurement","Word Problems"],
-  science: ["Life Cycles","Plants","Animals","Weather","Solar System","Human Body","Matter","Forces","Ecosystems","Scientific Method"],
-  social:  ["Community","Maps","History","Government","Economics","Cultures","Geography","Citizenship","Timelines","Leaders"],
-  art:     ["Color Theory","Famous Artists","Art Elements","Observation Drawing","Art History","Sculpture"],
-  music:   ["Rhythm","Notes","Instruments","Composers","Music History","Singing"],
-  sel:     ["Emotions","Kindness","Conflict Resolution","Self-Regulation","Growth Mindset","Healthy Habits"],
-  ell:     ["Vocabulary","Sentence Frames","Grammar","Reading Fluency","Writing","Conversation"],
-  other:   ["Critical Thinking","Research Skills","Organization","Collaboration","Creativity","Problem Solving"],
-};
-
-// ── Activity types per subject ─────────────────────────────────────────────────
-
-type ActivityCard = { typeId: string; label: string; icon: string };
-
-const ACTIVITY_TYPES: Record<SubjectId, ActivityCard[]> = {
-  reading: [
-    { typeId: "coloring_page",   label: "Coloring Page",    icon: "🖍️" },
-    { typeId: "writing_prompt",  label: "Writing Prompt",   icon: "📝" },
-    { typeId: "word_search",     label: "Word Search",      icon: "🔎" },
-    { typeId: "story_map",       label: "Story Map",        icon: "📖" },
-    { typeId: "line_matching",   label: "Vocab Match",      icon: "↔️" },
-    { typeId: "mini_book",       label: "Mini Book",        icon: "📚" },
-    { typeId: "frayer_model",    label: "Frayer Model",     icon: "⊞" },
-    { typeId: "sentence_frames", label: "Sentence Frames",  icon: "🔤" },
-    { typeId: "mind_map",        label: "Graphic Organizer",icon: "🕸️" },
+const ACTIVITY_CHIPS: Partial<Record<SubjectId, { typeId: string; label: string }[]>> = {
+  reading:  [
+    { typeId: "story_map",     label: "Comprehension"     },
+    { typeId: "frayer_model",  label: "Vocabulary"        },
+    { typeId: "mind_map",      label: "Graphic Organizer" },
+    { typeId: "writing_prompt",label: "Writing Response"  },
+    { typeId: "coloring_page", label: "Coloring Activity" },
+  ],
+  writing:  [
+    { typeId: "writing_prompt",  label: "Writing Prompt"   },
+    { typeId: "sentence_frames", label: "Story Starter"    },
+    { typeId: "sentence_frames", label: "Sentence Frames"  },
+    { typeId: "mini_book",       label: "Mini Book"        },
+    { typeId: "acrostic",        label: "Acrostic Poem"    },
   ],
   math: [
-    { typeId: "coloring_page",  label: "Coloring Page",   icon: "🖍️" },
-    { typeId: "number_bond",    label: "Number Bonds",     icon: "🔵" },
-    { typeId: "ten_frame",      label: "Ten Frame",        icon: "🟦" },
-    { typeId: "graph_page",     label: "Graph / Chart",    icon: "📈" },
-    { typeId: "clock_practice", label: "Clock Practice",   icon: "🕐" },
-    { typeId: "measurement",    label: "Measurement",      icon: "📏" },
-    { typeId: "writing_prompt", label: "Word Problems",    icon: "📝" },
-    { typeId: "dice_activity",  label: "Dice Activity",    icon: "🎲" },
-    { typeId: "frayer_model",   label: "Vocabulary",       icon: "⊞" },
+    { typeId: "writing_prompt", label: "Practice Problems" },
+    { typeId: "writing_prompt", label: "Word Problems"     },
+    { typeId: "number_bond",    label: "Number Bonds"      },
+    { typeId: "graph_page",     label: "Graphing"          },
+    { typeId: "measurement",    label: "Measurement"       },
+    { typeId: "dice_activity",  label: "Game / Activity"   },
   ],
   science: [
-    { typeId: "coloring_page",      label: "Coloring Page",   icon: "🖍️" },
-    { typeId: "label_diagram",      label: "Label Diagram",   icon: "🔍" },
-    { typeId: "sequence_chart",     label: "Sequence / Cycle",icon: "➡️" },
-    { typeId: "kwl_chart",          label: "KWL Chart",       icon: "📊" },
-    { typeId: "observation_sheet",  label: "Observation Sheet",icon: "🔬" },
-    { typeId: "mind_map",           label: "Mind Map",        icon: "🕸️" },
-    { typeId: "venn_diagram",       label: "Venn Diagram",    icon: "⭕" },
-    { typeId: "mini_book",          label: "Mini Book",       icon: "📚" },
-    { typeId: "writing_prompt",     label: "Writing Prompt",  icon: "📝" },
+    { typeId: "label_diagram",     label: "Diagram to Label"   },
+    { typeId: "sequence_chart",    label: "Sequence / Cycle"   },
+    { typeId: "observation_sheet", label: "Observation Sheet"  },
+    { typeId: "story_map",         label: "Reading + Questions"},
+    { typeId: "coloring_page",     label: "Coloring Page"      },
   ],
-  social: [
-    { typeId: "timeline",       label: "Timeline",          icon: "📅" },
-    { typeId: "map_activity",   label: "Map Activity",      icon: "🗺️" },
-    { typeId: "kwl_chart",      label: "KWL Chart",         icon: "📊" },
-    { typeId: "venn_diagram",   label: "Venn Diagram",      icon: "⭕" },
-    { typeId: "mind_map",       label: "Graphic Organizer", icon: "🕸️" },
-    { typeId: "frayer_model",   label: "Frayer Model",      icon: "⊞" },
-    { typeId: "writing_prompt", label: "Writing Prompt",    icon: "📝" },
-    { typeId: "sequence_chart", label: "Sequence Chart",    icon: "➡️" },
-    { typeId: "coloring_page",  label: "Coloring Page",     icon: "🖍️" },
+  phonics: [
+    { typeId: "color_by_code",  label: "Color by Sound" },
+    { typeId: "trace_and_color",label: "Tracing"        },
+    { typeId: "cut_and_sort",   label: "Sort Activity"  },
+    { typeId: "word_search",    label: "Letter Find"    },
+    { typeId: "line_matching",  label: "Word Families"  },
   ],
   art: [
-    { typeId: "coloring_page",      label: "Coloring Page",        icon: "🖍️" },
-    { typeId: "color_by_code",      label: "Color by Code",        icon: "🎨" },
-    { typeId: "trace_and_color",    label: "Trace & Color",        icon: "✏️" },
-    { typeId: "observation_sheet",  label: "Observation Sheet",    icon: "🔬" },
-    { typeId: "writing_prompt",     label: "Artist Response",      icon: "📝" },
-    { typeId: "mind_map",           label: "Idea Web",             icon: "🕸️" },
+    { typeId: "coloring_page",  label: "Coloring Page"      },
+    { typeId: "writing_prompt", label: "Craft Instructions" },
+    { typeId: "writing_prompt", label: "Writing Prompt"     },
+    { typeId: "line_matching",  label: "Matching"           },
+    { typeId: "bingo_card",     label: "Bingo"              },
   ],
-  music: [
-    { typeId: "writing_prompt",  label: "Writing Prompt", icon: "📝" },
-    { typeId: "sequence_chart",  label: "Sequence Chart", icon: "➡️" },
-    { typeId: "mind_map",        label: "Mind Map",       icon: "🕸️" },
-    { typeId: "spinner",         label: "Spinner",        icon: "🌀" },
-    { typeId: "dice_activity",   label: "Dice Activity",  icon: "🎲" },
-    { typeId: "coloring_page",   label: "Coloring Page",  icon: "🖍️" },
+  holiday: [
+    { typeId: "coloring_page",  label: "Coloring Page"      },
+    { typeId: "writing_prompt", label: "Writing Prompt"     },
+    { typeId: "word_search",    label: "Word Search"        },
+    { typeId: "line_matching",  label: "Matching"           },
+    { typeId: "bingo_card",     label: "Bingo"              },
   ],
   sel: [
-    { typeId: "writing_prompt",  label: "Writing Prompt",       icon: "📝" },
-    { typeId: "mind_map",        label: "Mind Map",             icon: "🕸️" },
-    { typeId: "sequence_chart",  label: "Sequence Chart",       icon: "➡️" },
-    { typeId: "story_map",       label: "Story Map",            icon: "📖" },
-    { typeId: "venn_diagram",    label: "Venn Diagram",         icon: "⭕" },
-    { typeId: "sentence_frames", label: "Sentence Frames",      icon: "🔤" },
+    { typeId: "writing_prompt",  label: "Journal Prompt"       },
+    { typeId: "mind_map",        label: "Mind Map"             },
+    { typeId: "sentence_frames", label: "Sentence Frames"      },
+    { typeId: "story_map",       label: "Story / Scenario"     },
+    { typeId: "venn_diagram",    label: "Compare Feelings"     },
   ],
   ell: [
-    { typeId: "sentence_frames", label: "Sentence Frames",  icon: "🔤" },
-    { typeId: "line_matching",   label: "Vocab Match",       icon: "↔️" },
-    { typeId: "word_search",     label: "Word Search",       icon: "🔎" },
-    { typeId: "frayer_model",    label: "Frayer Model",      icon: "⊞" },
-    { typeId: "writing_prompt",  label: "Writing Prompt",    icon: "📝" },
-    { typeId: "mini_book",       label: "Mini Book",         icon: "📚" },
-  ],
-  other: [
-    { typeId: "writing_prompt", label: "Writing Prompt",    icon: "📝" },
-    { typeId: "mind_map",       label: "Mind Map",          icon: "🕸️" },
-    { typeId: "venn_diagram",   label: "Venn Diagram",      icon: "⭕" },
-    { typeId: "kwl_chart",      label: "KWL Chart",         icon: "📊" },
-    { typeId: "frayer_model",   label: "Frayer Model",      icon: "⊞" },
-    { typeId: "sequence_chart", label: "Sequence Chart",    icon: "➡️" },
-    { typeId: "coloring_page",  label: "Coloring Page",     icon: "🖍️" },
-    { typeId: "word_search",    label: "Word Search",       icon: "🔎" },
-    { typeId: "story_map",      label: "Story Map",         icon: "📖" },
+    { typeId: "sentence_frames", label: "Sentence Frames"  },
+    { typeId: "line_matching",   label: "Vocab Match"       },
+    { typeId: "frayer_model",    label: "Frayer Model"      },
+    { typeId: "word_search",     label: "Word Search"       },
+    { typeId: "mini_book",       label: "Mini Book"         },
   ],
 };
 
 const GRADES = ["Pre-K","K","1","2","3","4","5","6","7","8"];
 
-// ── Progress dots ──────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-function ProgressDots({ step }: { step: number }) {
+type Phase = "input" | "generating" | "done";
+type LayoutStatus = "pending" | "loading" | "done" | "error";
+
+type Layout = {
+  id: "A" | "B" | "C";
+  status: LayoutStatus;
+  data: any | null;
+  error: string | null;
+};
+
+// ── safeParseJSON ──────────────────────────────────────────────────────────────
+
+function safeParseJSON(str: string): any | null {
+  try {
+    return JSON.parse(
+      str.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim()
+    );
+  } catch {
+    return null;
+  }
+}
+
+// ── Shimmer button ─────────────────────────────────────────────────────────────
+
+function GenerateButton({
+  loading,
+  disabled,
+  onClick,
+}: {
+  loading: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {[1,2,3].map((s) => (
-        <div
-          key={s}
-          className={`rounded-full transition-all duration-300 ${
-            s === step
-              ? "w-6 h-2.5 bg-primary"
-              : s < step
-              ? "w-2.5 h-2.5 bg-primary/40"
-              : "w-2.5 h-2.5 bg-border"
-          }`}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={`relative w-full rounded-xl px-6 py-4 text-base font-bold text-white overflow-hidden transition-all
+        ${disabled ? "bg-primary/40 cursor-not-allowed" : "bg-primary hover:opacity-95 active:scale-[0.99]"}
+        shadow-lg shadow-primary/20`}
+    >
+      {loading && (
+        <span
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+            animation: "shimmerSlide 1.4s infinite linear",
+          }}
         />
-      ))}
-    </div>
+      )}
+      <span className="relative flex items-center justify-center gap-2">
+        <Sparkles className="w-5 h-5" />
+        {loading ? "Creating..." : "Create Worksheet ✦"}
+      </span>
+    </button>
   );
 }
 
-// ── Slide transition ───────────────────────────────────────────────────────────
+// ── Skeleton card ──────────────────────────────────────────────────────────────
 
-const slideVariants = {
-  enter: { x: 60, opacity: 0 },
-  center: { x: 0, opacity: 1 },
-  exit: { x: -60, opacity: 0 },
+function SkeletonCard({ delay }: { delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay }}
+      className="rounded-xl border-2 border-border bg-white p-4 space-y-3 will-change-transform"
+      style={{ animation: delay === 0 ? undefined : undefined }}
+    >
+      <div className="h-3 w-16 bg-muted rounded-full animate-pulse" />
+      <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+      <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+      <div className="mt-3 space-y-2">
+        {[80, 95, 65, 88, 55].map((w, i) => (
+          <div key={i} className="h-2.5 bg-muted rounded animate-pulse" style={{ width: `${w}%`, animationDelay: `${i * 80}ms` }} />
+        ))}
+      </div>
+      <div className="mt-3 space-y-1.5">
+        {[1,2,3].map((i) => (
+          <div key={i} className="h-6 bg-muted/50 rounded animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Layout result card ─────────────────────────────────────────────────────────
+
+function LayoutCard({
+  layout,
+  label,
+  selected,
+  onSelect,
+}: {
+  layout: Layout;
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const ws = layout.data?.worksheet ?? layout.data;
+  const sections: any[] = ws?.sections ?? [];
+
+  if (layout.status === "error") {
+    return (
+      <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4">
+        <p className="text-xs font-bold text-red-600 mb-1">{label} failed</p>
+        <p className="text-xs text-red-500 mb-3 line-clamp-2">{layout.error}</p>
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-800"
+        >
+          <RefreshCw className="w-3 h-3" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={`w-full text-left rounded-xl border-2 p-4 transition-all will-change-transform
+        ${selected
+          ? "border-primary bg-primary/5 shadow-lg shadow-primary/12 scale-[1.02]"
+          : "border-border bg-white hover:border-primary/40 hover:shadow-md"
+        }`}
+      style={{ cursor: "pointer" }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </span>
+        {selected && (
+          <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+            <Check className="w-3 h-3 text-white" />
+          </span>
+        )}
+      </div>
+
+      {ws?.title ? (
+        <p className="text-sm font-bold text-foreground mb-2 truncate">{ws.title}</p>
+      ) : (
+        <div className="h-4 bg-muted rounded w-3/4 mb-2 animate-pulse" />
+      )}
+
+      <div className="space-y-1.5">
+        {sections.slice(0, 5).map((s: any, i: number) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0.3 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15, delay: i * 0.04 }}
+            className="flex items-center gap-1.5"
+          >
+            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${selected ? "bg-primary" : "bg-muted-foreground/40"}`} />
+            <p className="text-[11px] text-muted-foreground truncate">
+              {s.title ?? s.type ?? `Section ${i + 1}`}
+            </p>
+          </motion.div>
+        ))}
+        {sections.length > 5 && (
+          <p className="text-[10px] text-muted-foreground/50 pl-3">+{sections.length - 5} more sections</p>
+        )}
+      </div>
+
+      {ws?.gradeLevel && (
+        <p className="mt-2 text-[10px] font-semibold text-muted-foreground">Grade {ws.gradeLevel}</p>
+      )}
+
+      {selected && layout.status === "done" && (
+        <div className="mt-3 flex items-center gap-1 text-xs font-bold text-primary">
+          Open in Editor <ArrowRight className="w-3 h-3" />
+        </div>
+      )}
+    </motion.button>
+  );
+}
+
+// ── Customization panel ────────────────────────────────────────────────────────
+
+type Customization = {
+  colorTheme: string;
+  fontStyle: string;
+  border: string;
+  nameLine: boolean;
+  dateLine: boolean;
+  grade: string;
+  answerSpace: string;
+  wordBank: boolean;
+  directions: boolean;
 };
+
+const COLOR_OPTS = [
+  { id: "black & white", label: "B&W",    dot: "#1a1a2e" },
+  { id: "soft blue",     label: "Blue",   dot: "#3b82f6" },
+  { id: "warm yellow",   label: "Yellow", dot: "#f59e0b" },
+  { id: "soft green",    label: "Green",  dot: "#10b981" },
+  { id: "soft purple",   label: "Purple", dot: "#7c3aed" },
+  { id: "light pastel",  label: "Pastel", dot: "#ec4899" },
+];
+const FONT_OPTS  = ["Playful","Clean","Handwritten","Bold"];
+const BORDER_OPTS = ["None","Simple","Decorative","Heavy"];
+
+function CustomizationPanel({
+  value,
+  onChange,
+}: {
+  value: Customization;
+  onChange: (k: keyof Customization, v: any) => void;
+}) {
+  const [contentOpen, setContentOpen] = useState(false);
+  const [formatOpen,  setFormatOpen]  = useState(false);
+
+  return (
+    <div className="bg-white rounded-xl border border-border overflow-hidden text-sm">
+      <div className="px-4 py-3 border-b border-border bg-muted/30">
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Customize</p>
+      </div>
+
+      <div className="divide-y divide-border">
+        {/* Section 1 — LOOK (always open) */}
+        <div className="p-4 space-y-4">
+          <p className="text-xs font-bold text-foreground">Look</p>
+
+          {/* Font */}
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Font Style</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {FONT_OPTS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => onChange("fontStyle", f.toLowerCase())}
+                  className={`rounded-lg border py-2 text-xs font-semibold transition-all ${
+                    value.fontStyle === f.toLowerCase()
+                      ? "border-primary bg-primary/8 text-primary"
+                      : "border-border text-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {f === "Playful" ? "Aa Playful" : f === "Clean" ? "Aa Clean" : f === "Handwritten" ? "Aa Script" : "Aa Bold"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color */}
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Color Theme</p>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_OPTS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  title={c.label}
+                  onClick={() => onChange("colorTheme", c.id)}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${
+                    value.colorTheme === c.id ? "border-primary scale-110" : "border-transparent hover:border-border"
+                  }`}
+                  style={{ backgroundColor: c.dot }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Border */}
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Border</p>
+            <div className="flex gap-1.5">
+              {BORDER_OPTS.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => onChange("border", b.toLowerCase())}
+                  className={`flex-1 rounded-lg border py-1.5 text-[10px] font-semibold transition-all ${
+                    value.border === b.toLowerCase()
+                      ? "border-primary bg-primary/8 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Name / Date lines */}
+          <div className="space-y-2">
+            {(["nameLine","dateLine"] as const).map((key) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-xs text-foreground">{key === "nameLine" ? "Name line" : "Date line"}</span>
+                <button
+                  type="button"
+                  onClick={() => onChange(key, !value[key])}
+                  className={`w-9 h-5 rounded-full transition-colors relative ${value[key] ? "bg-primary" : "bg-muted"}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value[key] ? "translate-x-4" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 2 — CONTENT */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setContentOpen(!contentOpen)}
+            className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-foreground hover:bg-muted/20 transition-colors"
+          >
+            Content
+            <span className={`transition-transform duration-150 ${contentOpen ? "rotate-180" : ""}`}>▾</span>
+          </button>
+          <AnimatePresence>
+            {contentOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-3">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">Answer Space</p>
+                    <div className="flex gap-1.5">
+                      {["Compact","Standard","Spacious"].map((a) => (
+                        <button key={a} type="button"
+                          onClick={() => onChange("answerSpace", a.toLowerCase())}
+                          className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg border transition-all ${
+                            value.answerSpace === a.toLowerCase()
+                              ? "border-primary bg-primary/8 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >{a}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {(["wordBank","directions"] as const).map((key) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-xs text-foreground">{key === "wordBank" ? "Word bank" : "Directions"}</span>
+                      <button type="button"
+                        onClick={() => onChange(key, !value[key])}
+                        className={`w-9 h-5 rounded-full transition-colors relative ${value[key] ? "bg-primary" : "bg-muted"}`}
+                      >
+                        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value[key] ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Section 3 — FORMAT */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setFormatOpen(!formatOpen)}
+            className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-foreground hover:bg-muted/20 transition-colors"
+          >
+            Format
+            <span className={`transition-transform duration-150 ${formatOpen ? "rotate-180" : ""}`}>▾</span>
+          </button>
+          <AnimatePresence>
+            {formatOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-3">
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">Orientation</p>
+                    <div className="flex gap-2">
+                      {["Portrait","Landscape"].map((o) => (
+                        <button key={o} type="button"
+                          className="flex-1 text-[10px] font-semibold py-1.5 rounded-lg border border-border text-muted-foreground hover:border-primary/40 transition-colors"
+                        >{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function QuickGenPage() {
   const [, setLocation] = useLocation();
-  const { setQuickGen } = useBloomStore();
+  const { setWorksheet } = useBloomStore();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // ── Form state ─────────────────────────────────────────────────────────────
   const [subject, setSubject] = useState<SubjectId | "">("");
   const [topic, setTopic] = useState("");
-  const [grade, setGrade] = useState("3");
-  const [activityType, setActivityType] = useState("");
-  const [activityTypeName, setActivityTypeName] = useState("");
-  const [details, setDetails] = useState("");
+  const [grade, setGrade] = useState("");
+  const [activityTypeId, setActivityTypeId] = useState("");
+  const [activityTypeLabel, setActivityTypeLabel] = useState("");
+
+  // ── Generation state ───────────────────────────────────────────────────────
+  const [phase, setPhase] = useState<Phase>("input");
+  const [layouts, setLayouts] = useState<Layout[]>([
+    { id: "A", status: "pending", data: null, error: null },
+    { id: "B", status: "pending", data: null, error: null },
+    { id: "C", status: "pending", data: null, error: null },
+  ]);
+  const [selectedLayout, setSelectedLayout] = useState<"A" | "B" | "C">("A");
+  const [error, setError] = useState("");
+
+  // ── Customization state ────────────────────────────────────────────────────
+  const [custom, setCustom] = useState<Customization>({
+    colorTheme: "black & white",
+    fontStyle: "clean",
+    border: "none",
+    nameLine: true,
+    dateLine: true,
+    grade: "3",
+    answerSpace: "standard",
+    wordBank: false,
+    directions: true,
+  });
 
   const topicRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (step === 2 && topicRef.current) {
-      setTimeout(() => topicRef.current?.focus(), 350);
-    }
-  }, [step]);
+  const abortRefs = useRef<Record<string, AbortController>>({});
+  const genKey = useRef(0);
 
   const subjectObj = SUBJECTS.find((s) => s.id === subject);
-  const chips = subject ? TOPIC_CHIPS[subject as SubjectId] : [];
-  const activityCards = subject ? ACTIVITY_TYPES[subject as SubjectId] : [];
+  const chips = subject ? (ACTIVITY_CHIPS[subject as SubjectId] ?? []) : [];
+  const canGenerate = subject !== "" && topic.trim().length >= 3;
 
-  const defaultActivity = activityCards[0];
-
+  // Auto-focus topic when subject selected
   useEffect(() => {
-    if (activityCards.length > 0 && !activityType) {
-      setActivityType(activityCards[0].typeId);
-      setActivityTypeName(activityCards[0].label);
+    if (subject && topicRef.current) {
+      setTimeout(() => topicRef.current?.focus(), 200);
     }
   }, [subject]);
 
-  const handleSubjectClick = (s: SubjectId) => {
-    setSubject(s);
-    setActivityType(ACTIVITY_TYPES[s][0]?.typeId ?? "");
-    setActivityTypeName(ACTIVITY_TYPES[s][0]?.label ?? "");
-    setStep(2);
+  // ── Update layout ──────────────────────────────────────────────────────────
+  const updateLayout = useCallback((id: "A" | "B" | "C", updates: Partial<Layout>) => {
+    setLayouts((prev) => prev.map((l) => l.id === id ? { ...l, ...updates } : l));
+  }, []);
+
+  // ── Single layout fetch ────────────────────────────────────────────────────
+  const fetchLayout = useCallback(
+    async (id: "A" | "B" | "C", key: number) => {
+      const controller = new AbortController();
+      abortRefs.current[id] = controller;
+      const timer = setTimeout(() => controller.abort(), 30000);
+
+      updateLayout(id, { status: "loading", data: null, error: null });
+      console.log(`[GEN] Layout ${id}: Calling API...`);
+
+      try {
+        const res = await fetch(`${BASE}/api/worksheet/customize-generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            activityType: activityTypeId || "writing_prompt",
+            originalPrompt: topic.trim(),
+            parsedPromptData: {
+              topic: topic.trim(),
+              gradeLevel: grade || "General",
+              skillFocus: subjectObj?.label ?? subject,
+            },
+            options: {
+              title: `${topic.trim()} — ${activityTypeLabel || subjectObj?.label || "Worksheet"}`,
+              gradeLevel: grade || "General",
+              includeName: custom.nameLine,
+              includeDate: custom.dateLine,
+              colorScheme: custom.colorTheme,
+              fontStyle: custom.fontStyle,
+              borderStyle: custom.border,
+            },
+            layoutVariant: id,
+            subject: subjectObj?.label ?? subject,
+            details: "",
+          }),
+        });
+
+        clearTimeout(timer);
+        if (controller.signal.aborted || genKey.current !== key) return;
+
+        console.log(`[GEN] Layout ${id}: Response ${res.status}`);
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || `Error ${res.status}`);
+        }
+
+        const text = await res.text();
+        const data = JSON.parse(text) ?? safeParseJSON(text);
+        if (!data) throw new Error("Invalid response");
+
+        if (genKey.current !== key) return;
+        console.log(`[GEN] Layout ${id}: Done ✓`);
+        updateLayout(id, { status: "done", data });
+      } catch (err: any) {
+        clearTimeout(timer);
+        if (controller.signal.aborted || err?.name === "AbortError") {
+          console.log(`[GEN] Layout ${id}: Aborted`);
+          return;
+        }
+        if (genKey.current !== key) return;
+        console.error(`[GEN] Layout ${id}: Error`, err);
+        updateLayout(id, { status: "error", error: err?.message ?? "Failed" });
+      }
+    },
+    [topic, grade, subject, subjectObj, activityTypeId, activityTypeLabel, custom, updateLayout]
+  );
+
+  // ── Start generation ───────────────────────────────────────────────────────
+  const startGeneration = useCallback(() => {
+    if (!canGenerate) return;
+
+    const key = ++genKey.current;
+    Object.values(abortRefs.current).forEach((c) => c.abort());
+    abortRefs.current = {};
+
+    console.log("[GEN] === Starting parallel generation ===");
+    console.log("[GEN] Subject:", subject, "| Topic:", topic, "| Grade:", grade);
+
+    setLayouts([
+      { id: "A", status: "pending", data: null, error: null },
+      { id: "B", status: "pending", data: null, error: null },
+      { id: "C", status: "pending", data: null, error: null },
+    ]);
+    setError("");
+    setPhase("generating");
+
+    // Fire all 3 in parallel
+    fetchLayout("A", key);
+    fetchLayout("B", key);
+    fetchLayout("C", key);
+  }, [canGenerate, subject, topic, grade, fetchLayout]);
+
+  // Watch for all done → switch to done phase
+  useEffect(() => {
+    if (phase === "generating") {
+      const allSettled = layouts.every((l) => l.status === "done" || l.status === "error");
+      const anyDone    = layouts.some((l)  => l.status === "done");
+      if (allSettled && anyDone) {
+        setPhase("done");
+      }
+    }
+  }, [layouts, phase]);
+
+  // ── Handle card click ──────────────────────────────────────────────────────
+  const handleCardClick = (id: "A" | "B" | "C") => {
+    const layout = layouts.find((l) => l.id === id);
+    if (layout?.status !== "done") return;
+
+    if (selectedLayout === id && phase === "done") {
+      // Second click: open editor
+      const ws = layout.data?.worksheet ?? layout.data;
+      if (ws) setWorksheet(ws);
+      setLocation(`${BASE}/canvas`);
+      return;
+    }
+    setSelectedLayout(id);
   };
 
-  const handleGenerate = () => {
-    if (!topic.trim()) return;
-    setQuickGen({
-      subject: subjectObj?.label ?? subject,
-      topic: topic.trim(),
-      grade,
-      activityType,
-      activityTypeName,
-      details: details.trim(),
-      colorTheme: "black & white",
-      fontStyle: "clean",
-      border: "none",
-      nameLine: true,
-      dateLine: true,
-    });
-    setLocation(`${BASE}/generating`);
+  // ── Handle customization change ────────────────────────────────────────────
+  const handleCustomChange = (k: keyof Customization, v: any) => {
+    setCustom((prev) => ({ ...prev, [k]: v }));
   };
+
+  // ── Retry single layout ────────────────────────────────────────────────────
+  const retryLayout = (id: "A" | "B" | "C") => {
+    fetchLayout(id, genKey.current);
+  };
+
+  const allDone    = layouts.every((l) => l.status === "done" || l.status === "error");
+  const anyLoading = layouts.some((l) => l.status === "loading" || l.status === "pending");
+
+  // ── RENDER ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-      <ProgressDots step={step} />
+    <>
+      {/* CSS for shimmer animation */}
+      <style>{`
+        @keyframes shimmerSlide {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
 
-      <AnimatePresence mode="wait">
-        {/* ── STEP 1: SUBJECT ── */}
-        {step === 1 && (
-          <motion.div
-            key="step1"
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-          >
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                AI Worksheet Generator
-              </div>
-              <h1 className="text-3xl font-bold text-foreground">What subject?</h1>
-              <p className="text-muted-foreground mt-2">Choose to continue.</p>
-            </div>
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
 
-            <div className="grid grid-cols-3 gap-3">
-              {SUBJECTS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => handleSubjectClick(s.id as SubjectId)}
-                  className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-border bg-white px-3 py-5 text-center transition-all hover:-translate-y-1 hover:border-primary/60 hover:shadow-lg active:scale-95"
-                >
-                  <span className="text-3xl">{s.icon}</span>
-                  <span className="text-xs font-bold text-foreground leading-tight">{s.label}</span>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        {/* ── FORM AREA ── */}
+        <div className={`transition-all duration-300 ${phase !== "input" ? "mb-6" : "mb-0"}`}>
 
-        {/* ── STEP 2: TOPIC ── */}
-        {step === 2 && (
-          <motion.div
-            key="step2"
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="space-y-6"
-          >
-            <div>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xl">{subjectObj?.icon}</span>
-                <span className="text-sm font-semibold text-primary">{subjectObj?.label}</span>
-              </div>
-              <h1 className="text-3xl font-bold text-foreground">What are you teaching?</h1>
-            </div>
-
-            <div>
-              <input
-                ref={topicRef}
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && topic.trim()) setStep(3); }}
-                placeholder={`e.g. ${chips[0]?.toLowerCase() ?? "your topic"}...`}
-                className="w-full rounded-xl border-2 border-border bg-white px-4 py-3.5 text-base font-medium placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none transition-colors"
-              />
-            </div>
-
-            {chips.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {chips.map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => setTopic(chip)}
-                    className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${
-                      topic === chip
-                        ? "bg-primary text-white border-primary"
-                        : "border-border bg-white hover:border-primary/50 text-foreground"
-                    }`}
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">Grade Level</p>
-              <div className="flex flex-wrap gap-2">
-                {GRADES.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGrade(g)}
-                    className={`px-3 py-1.5 rounded-lg border text-sm font-semibold transition-all ${
-                      grade === g
-                        ? "bg-primary text-white border-primary"
-                        : "border-border bg-white hover:border-primary/50 text-foreground"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => { if (topic.trim()) setStep(3); }}
-              disabled={!topic.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-bold text-white transition-all hover:opacity-90 active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed"
+          {/* Compact summary bar shown during/after generation */}
+          {phase !== "input" && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 mb-6 px-4 py-2.5 bg-primary/5 border border-primary/15 rounded-xl"
             >
-              Next <ArrowRight className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-
-        {/* ── STEP 3: ACTIVITY TYPE ── */}
-        {step === 3 && (
-          <motion.div
-            key="step3"
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="space-y-6"
-          >
-            <div>
+              <span className="text-lg">{subjectObj?.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-foreground truncate">{topic}</p>
+                <p className="text-xs text-muted-foreground">{subjectObj?.label}{grade ? ` · Grade ${grade}` : ""}</p>
+              </div>
               <button
                 type="button"
-                onClick={() => setStep(2)}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+                onClick={() => { setPhase("input"); Object.values(abortRefs.current).forEach((c) => c.abort()); }}
+                className="text-xs font-semibold text-primary hover:text-primary/80 shrink-0"
               >
-                <ArrowLeft className="w-4 h-4" /> Back
+                ← Edit
               </button>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-semibold text-primary">{subjectObj?.label}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-sm text-foreground font-medium">{topic}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-sm text-muted-foreground">Grade {grade}</span>
-              </div>
-              <h1 className="text-3xl font-bold text-foreground">What kind of activity?</h1>
-            </div>
+            </motion.div>
+          )}
 
-            <div className="grid grid-cols-3 gap-2.5">
-              {activityCards.map((card, i) => (
-                <button
-                  key={card.typeId}
-                  type="button"
-                  onClick={() => {
-                    setActivityType(card.typeId);
-                    setActivityTypeName(card.label);
-                  }}
-                  className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3.5 text-center transition-all ${
-                    activityType === card.typeId
-                      ? "border-primary bg-primary/8 shadow-md shadow-primary/10"
-                      : "border-border bg-white hover:border-primary/50 hover:shadow-sm"
-                  } ${i === 0 && activityType === card.typeId ? "ring-2 ring-primary/30" : ""}`}
-                >
-                  <span className="text-xl">{card.icon}</span>
-                  <span className={`text-[11px] font-bold leading-tight ${
-                    activityType === card.typeId ? "text-primary" : "text-foreground"
-                  }`}>{card.label}</span>
-                  {i === 0 && (
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-amber-500">AI Pick</span>
+          {/* Full form — shown only in input phase */}
+          <AnimatePresence>
+            {phase === "input" && (
+              <motion.div
+                key="form"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
+                className="space-y-8"
+              >
+                {/* Header */}
+                <div className="text-center space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    AI Worksheet Generator
+                  </div>
+                  <h1 className="text-3xl font-bold text-foreground">What subject?</h1>
+                  <p className="text-muted-foreground text-sm">Pick a subject to get started.</p>
+                </div>
+
+                {/* ── Subject grid (12 buttons, 3 col) ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-w-2xl mx-auto">
+                  {SUBJECTS.map((s) => {
+                    const isSelected = subject === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => {
+                          setSubject(s.id);
+                          setActivityTypeId("");
+                          setActivityTypeLabel("");
+                        }}
+                        className="relative flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all will-change-transform"
+                        style={{
+                          borderColor: isSelected ? s.color : undefined,
+                          backgroundColor: isSelected ? `${s.color}14` : undefined,
+                          transform: isSelected ? "scale(1.03)" : "scale(1)",
+                          transition: "transform 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
+                        }}
+                      >
+                        <span className="text-xl shrink-0">{s.icon}</span>
+                        <span className={`text-sm font-bold leading-tight ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
+                          {s.label}
+                        </span>
+                        {isSelected && (
+                          <span
+                            className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: s.color }}
+                          >
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* ── Step 2: Topic input (slides in when subject selected) ── */}
+                <AnimatePresence>
+                  {subject && (
+                    <motion.div
+                      key="step2"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="max-w-2xl mx-auto space-y-5"
+                    >
+                      {/* Topic input */}
+                      <div>
+                        <label className="block text-sm font-bold text-foreground mb-2">
+                          What are you teaching?
+                        </label>
+                        <input
+                          ref={topicRef}
+                          type="text"
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter" && canGenerate) startGeneration(); }}
+                          placeholder={subjectObj?.placeholder ?? "e.g. topic or concept..."}
+                          className="w-full rounded-xl border-2 border-border bg-white px-4 py-3.5 text-base font-medium placeholder:text-muted-foreground/55 focus:border-primary focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      {/* Grade pills */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Grade Level <span className="normal-case font-normal tracking-normal">(optional)</span></p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {GRADES.map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => setGrade(grade === g ? "" : g)}
+                              className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                                grade === g
+                                  ? "bg-primary text-white border-primary"
+                                  : "border-border text-foreground hover:border-primary/50"
+                              }`}
+                            >
+                              {g}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Activity type chips */}
+                      {chips.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Activity Type <span className="normal-case font-normal tracking-normal">(optional)</span></p>
+                          <div className="flex flex-wrap gap-2">
+                            {chips.map((c, i) => (
+                              <button
+                                key={`${c.typeId}-${i}`}
+                                type="button"
+                                onClick={() => {
+                                  if (activityTypeId === c.typeId && activityTypeLabel === c.label) {
+                                    setActivityTypeId("");
+                                    setActivityTypeLabel("");
+                                  } else {
+                                    setActivityTypeId(c.typeId);
+                                    setActivityTypeLabel(c.label);
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                                  activityTypeId === c.typeId && activityTypeLabel === c.label
+                                    ? "bg-primary/10 text-primary border-primary/40"
+                                    : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                                }`}
+                              >
+                                {c.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Inline error */}
+                      {error && (
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3"
+                        >
+                          {error} <button type="button" onClick={startGeneration} className="font-bold underline ml-1">Try Again</button>
+                        </motion.p>
+                      )}
+
+                      {/* Generate button */}
+                      <GenerateButton
+                        loading={false}
+                        disabled={!canGenerate}
+                        onClick={startGeneration}
+                      />
+                    </motion.div>
                   )}
-                </button>
-              ))}
-            </div>
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
-                Anything specific to add? <span className="font-normal normal-case tracking-normal">(optional)</span>
-              </label>
-              <textarea
-                value={details}
-                onChange={(e) => setDetails(e.target.value)}
-                placeholder='e.g. "include a word bank" · "make it Halloween themed" · "only 3 questions"'
-                rows={2}
-                className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none transition-colors resize-none"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={!topic.trim() || !activityType}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-base font-bold text-white transition-all hover:opacity-90 active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
+        {/* ── GENERATION AREA ── */}
+        <AnimatePresence>
+          {phase !== "input" && (
+            <motion.div
+              key="generation"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22 }}
+              className="flex flex-col lg:flex-row gap-6"
             >
-              <Sparkles className="w-5 h-5" />
-              Generate ✦
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+              {/* Left: cards */}
+              <div className="flex-1">
+                {/* Progress shimmer bar (while loading) */}
+                {anyLoading && (
+                  <div className="mb-4 rounded-xl overflow-hidden h-10 relative bg-primary/10">
+                    <div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+                      style={{ animation: "shimmerSlide 1.4s infinite linear" }}
+                    />
+                    <div className="absolute inset-0 flex items-center px-4">
+                      <Sparkles className="w-4 h-4 text-primary mr-2 animate-pulse" />
+                      <span className="text-xs font-semibold text-primary">
+                        Creating {layouts.filter((l) => l.status !== "done" && l.status !== "error").length} layout{layouts.filter((l) => l.status !== "done" && l.status !== "error").length !== 1 ? "s" : ""}...
+                      </span>
+                      <div className="ml-auto flex gap-4">
+                        {layouts.map((l) => (
+                          <span key={l.id} className={`text-xs font-semibold ${l.status === "done" ? "text-green-600" : l.status === "error" ? "text-red-500" : "text-primary"}`}>
+                            {l.id} {l.status === "done" ? "✓" : l.status === "error" ? "✕" : "⏳"}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {layouts.map((layout, i) => (
+                    <div key={layout.id}>
+                      {(layout.status === "pending" || layout.status === "loading") ? (
+                        <SkeletonCard delay={i * 0.04} />
+                      ) : (
+                        <LayoutCard
+                          layout={layout}
+                          label={`Layout ${layout.id}`}
+                          selected={selectedLayout === layout.id}
+                          onSelect={() => layout.status === "error" ? retryLayout(layout.id) : handleCardClick(layout.id)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Done CTA */}
+                {allDone && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-5 flex items-center gap-3"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chosen = layouts.find((l) => l.id === selectedLayout && l.status === "done");
+                        if (chosen?.data) setWorksheet(chosen.data?.worksheet ?? chosen.data);
+                        setLocation(`${BASE}/canvas`);
+                      }}
+                      disabled={!layouts.some((l) => l.status === "done")}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-40 shadow-lg shadow-primary/20"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Open Layout {selectedLayout} in Editor →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startGeneration}
+                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Regenerate
+                    </button>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Right: customization panel */}
+              <div className="lg:w-64 shrink-0">
+                <CustomizationPanel value={custom} onChange={handleCustomChange} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   );
 }

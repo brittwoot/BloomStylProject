@@ -1,0 +1,725 @@
+═══════════════════════════════════════════════════════════════
+BLOOMSTYL — GENERATION FLOW REDESIGN
+Fast, clean, subject-first UI + parallel job architecture
+═══════════════════════════════════════════════════════════════
+
+DO NOT REBUILD THE EXISTING APP.
+Target these specific problems:
+1. Generation loop/freeze bug — fix first, nothing else matters
+2. Cluttered "Try one of these" UI — strip it down completely  
+3. Laggy transitions — replace with instant skeleton rendering
+4. Sequential blocking jobs — move to parallel job pipeline
+5. Too many steps before results — compress to 2 taps max
+
+═══════════════════════════════════════════════════════════════
+CRITICAL BUG FIX — GENERATION LOOP (DO THIS FIRST)
+═══════════════════════════════════════════════════════════════
+
+The generate button triggers a loop and freezes.
+Fix before touching any UI or feature work.
+
+LIKELY CAUSES TO INVESTIGATE:
+1. Async function called without await — promise never 
+   resolves, retry logic fires repeatedly
+2. State mutation inside render cycle — state change 
+   triggers re-render which triggers generation again
+3. Missing error boundary on AI call — failed fetch 
+   silently retries in a loop
+4. Event listener attached multiple times — button click 
+   fires N times because listener added on every render
+
+FIX REQUIREMENTS:
+
+Add a generation lock:
+  let isGenerating = false
+  
+  async function handleGenerate() {
+    if (isGenerating) return  // hard stop on double-fire
+    isGenerating = true
+    try {
+      await generateWorksheet()
+    } catch (err) {
+      console.error('Generation failed:', err)
+      showErrorState(err.message)
+    } finally {
+      isGenerating = false  // always release lock
+    }
+  }
+
+Wrap ALL AI calls in try/catch/finally.
+Never let a failed fetch leave isGenerating = true.
+
+Add a generation timeout:
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+  
+  fetch(apiUrl, { signal: controller.signal, ...options })
+    .finally(() => clearTimeout(timeout))
+
+If generation takes > 30 seconds, abort and show:
+  "Taking longer than expected. [Try Again] [Simplify Request]"
+
+Remove all retry-on-failure auto-logic.
+Failed = show error state. Teacher clicks retry manually.
+
+Audit all useEffect / event listeners.
+Every listener must have a cleanup function.
+No listener should be added inside a render loop.
+
+═══════════════════════════════════════════════════════════════
+PART 1 — NEW GENERATION UI (2-TAP FLOW)
+═══════════════════════════════════════════════════════════════
+
+REPLACE the current generation form entirely.
+The new flow has exactly two steps:
+  Step 1 — Pick a subject (one tap)
+  Step 2 — Describe the topic (one text input)
+  Then generate. That is it.
+
+Everything else is optional and available but never required.
+
+── STEP 1 — SUBJECT SELECTOR ─────────────────────────────────
+
+Large, visually distinct subject buttons arranged in a grid.
+Each button has an icon + label. Nothing else.
+
+Row 1:
+  [📖 Reading]     [✏️ Writing]     [🔢 Math]
+
+Row 2:
+  [🔬 Science]     [🌍 Social Studies]  [🔤 Phonics]
+
+Row 3:
+  [🎨 Art]         [💬 SEL]         [🌐 ELL/ESL]
+
+Row 4:
+  [🎉 Holiday]     [📋 General]     [⚡ Custom]
+
+Clicking a subject:
+  - Highlights that button (filled color, check mark)
+  - Immediately reveals Step 2 below with a smooth 
+    slide-down animation (180ms ease-out)
+  - Does not navigate away, does not reload anything
+
+Only one subject selected at a time.
+Tapping a different subject switches selection instantly.
+
+VISUAL SPEC:
+  Button size: tall enough to tap easily on tablet (min 56px)
+  Grid: 3 columns on desktop, 2 columns on mobile
+  Selected state: filled with subject accent color, 
+    white icon and text, subtle scale(1.03) transform
+  Unselected: light border, icon + text in muted color
+  Hover: slight background tint, no delay
+  No dropdowns. No nested menus. Just tap.
+
+── STEP 2 — TOPIC INPUT ──────────────────────────────────────
+
+A single prominent text input appears after subject selection.
+
+Placeholder text changes based on subject:
+  Reading → "e.g. Main idea, Charlotte's Web, nonfiction text features..."
+  Math → "e.g. Adding fractions, place value to 1000, word problems..."
+  Science → "e.g. Water cycle, animal adaptations, states of matter..."
+  Phonics → "e.g. Long vowel sounds, digraphs sh/ch/th, CVC words..."
+  Holiday → "e.g. Halloween, Thanksgiving, end of year, Valentine's Day..."
+  Custom → "Describe exactly what you need..."
+
+Below the input, a GRADE SELECTOR:
+  Horizontal pill row — tap to select:
+  [PreK] [K] [1] [2] [3] [4] [5] [6] [7] [8]
+  
+  Default: no selection (AI chooses based on content)
+  One tap to select a grade
+  One tap on selected grade to deselect
+
+Below grade, an ACTIVITY TYPE ROW (optional, dismissable):
+  Small chips — tap any to pre-select activity type:
+  
+  For Reading subject:
+  [Comprehension] [Vocabulary] [Graphic Organizer] 
+  [Writing Response] [Coloring Activity]
+  
+  For Math:
+  [Practice Problems] [Word Problems] [Number Bonds]
+  [Graphing] [Measurement] [Game/Activity]
+  
+  For Science:
+  [Diagram to Label] [Sequence/Cycle] [Observation Sheet]
+  [Reading + Questions] [Coloring Page]
+  
+  For Phonics:
+  [Color by Sound] [Tracing] [Sort Activity]
+  [Letter Find] [Word Families]
+  
+  For Holiday/Art:
+  [Coloring Page] [Craft Instructions] [Writing Prompt]
+  [Matching] [Bingo]
+
+  If teacher does not tap any chip → AI decides the best 
+  activity type automatically.
+  
+  These chips are secondary — visually smaller than the 
+  subject buttons. They speed up results but are never 
+  required.
+
+── GENERATE BUTTON ───────────────────────────────────────────
+
+One large generate button below the input.
+
+  [✦ Create Worksheet]
+
+Rules:
+  - Disabled (grayed) until subject is selected 
+    AND topic has at least 3 characters
+  - On click: button transforms into progress state 
+    immediately (< 16ms — next frame)
+  - Button does not disappear — it becomes a progress bar
+
+Progress state:
+  Button text changes to "Creating..." with a subtle 
+  animated shimmer across the button background.
+  No spinner. No separate loading screen.
+  The canvas area below begins showing skeleton layouts
+  before the AI response arrives.
+
+── REMOVING "TRY ONE OF THESE" CLUTTER ───────────────────────
+
+DELETE the current "Try one of these" suggestion section.
+Delete all pre-written example prompt chips.
+Delete all instructional copy explaining how to use it.
+
+The subject buttons replace all of that.
+They are faster, clearer, and require no reading.
+
+═══════════════════════════════════════════════════════════════
+PART 2 — PARALLEL JOB ARCHITECTURE
+═══════════════════════════════════════════════════════════════
+
+The core performance problem: everything is sequential.
+AI call finishes → layout renders → customization unlocks.
+This makes everything feel slow and blocked.
+
+Replace with a parallel job pipeline where multiple 
+things happen simultaneously.
+
+── THE JOB QUEUE ─────────────────────────────────────────────
+
+When teacher clicks "Create Worksheet," fire these 
+jobs in parallel immediately:
+
+JOB A — LAYOUT SKELETON (fires instantly, 0ms delay)
+  Do not wait for AI.
+  Immediately render 3 layout skeleton cards on screen.
+  These are shimmer placeholder previews showing the
+  structural shape of 3 different layout types.
+  The teacher sees something appear before the AI responds.
+  Layout skeleton renders in < 100ms.
+
+JOB B — AI CONTENT GENERATION (fires immediately)
+  Call Claude with the topic + subject + grade.
+  Request structured JSON: title, passage, questions, vocab.
+  Stream the response.
+  As each field arrives, fill it into the skeleton cards.
+  Title appears first (arrives fast).
+  Then directions. Then passage. Then questions.
+  Each field fades in as it arrives.
+
+JOB C — LAYOUT VARIATION ANALYSIS (fires immediately, 
+  separate from Job B)
+  Separate lightweight AI call (or local logic):
+  Determine the 3 best layout patterns for this content type.
+  Returns in < 2 seconds typically.
+  Skeleton cards update to show actual layout structure 
+  when this arrives.
+
+JOB D — CUSTOMIZATION PANEL POPULATION (fires immediately)
+  While Jobs B and C are running, the customization panel
+  on the right side of the screen is already visible and
+  usable. It is pre-populated with smart defaults based
+  on the subject and grade selected.
+  Teacher can start adjusting font, colors, layout 
+  preferences NOW — before generation completes.
+  Changes queue up and apply when the canvas renders.
+
+JOB E — ASSET PRELOADING (fires immediately, lowest priority)
+  Begin loading fonts, clipart suggestions, and shape 
+  assets relevant to the topic in the background.
+  These will be ready by the time teacher opens the editor.
+
+── JOB COORDINATOR ───────────────────────────────────────────
+
+Implement a simple job coordinator:
+
+  const jobs = {
+    skeleton:       { status: 'pending', result: null },
+    content:        { status: 'pending', result: null },
+    layouts:        { status: 'pending', result: null },
+    customization:  { status: 'pending', result: null },
+    assets:         { status: 'pending', result: null }
+  }
+
+  function updateJob(name, status, result = null) {
+    jobs[name] = { status, result }
+    reconcileCanvas()  // called after every job update
+  }
+
+  function reconcileCanvas() {
+    // Rules for what to show based on job states:
+    
+    // Skeleton always shows immediately
+    if (jobs.skeleton.status === 'complete') {
+      renderSkeletonCards(jobs.skeleton.result)
+    }
+    
+    // Fill content into existing skeletons as it arrives
+    if (jobs.content.status === 'streaming') {
+      fillStreamingContent(jobs.content.result)
+    }
+    
+    // Update layout shapes when layout analysis arrives
+    if (jobs.layouts.status === 'complete') {
+      updateSkeletonStructures(jobs.layouts.result)
+    }
+    
+    // Customization panel always available immediately
+    if (jobs.customization.status === 'complete') {
+      activateCustomizationPanel(jobs.customization.result)
+    }
+  }
+
+── STREAMING CONTENT FILL ────────────────────────────────────
+
+Use streaming API responses (stream: true).
+Do not wait for full response before showing anything.
+
+Request Claude to output JSON in a predictable field order:
+  1. title (arrives in first ~100 tokens)
+  2. grade_level
+  3. directions
+  4. vocabulary (array)
+  5. passage (array of paragraphs)
+  6. questions (array)
+  7. layout_suggestion
+
+Parse the stream incrementally:
+  - When title field closes → render title in all 3 cards
+  - When directions closes → render directions
+  - When each vocabulary word arrives → add to vocab list
+  - When each paragraph arrives → add to passage
+  - When each question arrives → add to question list
+
+Use a streaming JSON parser (or simple buffer approach):
+  Accumulate tokens in a buffer.
+  On each token, attempt to extract any newly completed 
+  JSON field using regex or incremental JSON parse.
+  Apply completed fields to canvas immediately.
+
+Visual effect:
+  Each section of the worksheet fades in 
+  as its content arrives (150ms fade, ease-in).
+  The worksheet literally builds itself in front of 
+  the teacher in real time.
+  This makes a 4-second AI response feel like 
+  < 1 second because something is always happening.
+
+── AI CALL OPTIMIZATION ──────────────────────────────────────
+
+Reduce token count to cut latency:
+
+SYSTEM PROMPT (< 100 tokens):
+"Expert curriculum designer. Return JSON only.
+No markdown. No explanation. Structured worksheet content."
+
+USER PROMPT (lean version):
+"Subject: [subject]
+Topic: [topic]
+Grade: [grade or 'choose appropriate']
+Type: [activity type or 'choose best']
+
+Return this exact JSON structure:
+{
+  title: string,
+  grade: string,
+  directions: string,
+  vocab: string[],
+  passage: string[],
+  questions: string[],
+  layout: 'grid'|'stacked'|'sidebar'|'centered'|'scattered',
+  activity_type: string
+}"
+
+Max tokens: 800 (enough for a complete worksheet, 
+keeps response fast).
+
+Use temperature: 0.7 for content variety.
+Use top_p: 0.9.
+
+CACHING:
+  Cache responses keyed by: 
+  hash(subject + topic + grade + activityType)
+  TTL: 48 hours
+  Cache hit → skip API call entirely → instant results
+  Show "From recent worksheets ✓" badge on cached results
+
+═══════════════════════════════════════════════════════════════
+PART 3 — LAYOUT VARIATION CARDS
+═══════════════════════════════════════════════════════════════
+
+After generation, teacher sees exactly 3 layout cards.
+Not 5. Not 7. Three.
+
+Remove all extra suggestion cards.
+Three is the right number — enough choice, not overwhelming.
+
+── CARD DESIGN ───────────────────────────────────────────────
+
+Each card:
+  Width: fills 1/3 of available space with gap between
+  Height: approximate paper ratio (shorter than full page)
+  
+  TOP: Layout name in small caps
+    e.g. "GRID LAYOUT" / "STACKED LAYOUT" / "FULL BLEED"
+  
+  MIDDLE: Live mini-preview of the actual worksheet
+    Not a static thumbnail — an actual scaled-down 
+    render of the generated content in that layout.
+    Scaling: CSS transform: scale() on a full-size canvas
+    This way the preview is pixel-accurate.
+  
+  BOTTOM: Two-line description
+    Line 1: Activity type
+    Line 2: One key characteristic
+    e.g. "Color by Sight Word"
+         "Grid with 6 coloring regions + color key"
+
+  Selected state:
+    Soft colored border (brand purple)
+    Subtle background tint
+    Checkmark badge top-right
+    scale(1.02) transform — feels "clicked in"
+
+  Hover state:
+    Slight elevation shadow
+    Cursor: pointer
+    No delay — instant
+
+── CARD INTERACTION ──────────────────────────────────────────
+
+Single click on a card:
+  - Selects it (visual state change)
+  - Immediately opens that layout in the full canvas editor
+  - No intermediate confirmation step
+  - No "Are you sure?" dialog
+  
+  Transition: the selected card expands to fill the 
+  canvas area with a smooth scale + fade animation.
+  Duration: 220ms. Ease: cubic-bezier(0.34, 1.2, 0.64, 1)
+  
+  This single animation IS the transition to the editor.
+  No loading screen. No "Opening editor..." state.
+  The card becomes the canvas.
+
+"Regenerate layouts" small button below the 3 cards:
+  Generates 3 new variations while keeping the content.
+  Only regenerates layout arrangement, not content.
+  Near-instant (layout logic only, no content AI call).
+
+═══════════════════════════════════════════════════════════════
+PART 4 — CUSTOMIZATION WHILE GENERATING
+═══════════════════════════════════════════════════════════════
+
+The customization panel is available BEFORE generation 
+completes. It is not locked behind the finished result.
+
+── PANEL POSITION ────────────────────────────────────────────
+
+During generation: panel appears on right side.
+It is pre-populated with smart defaults immediately.
+Teacher can adjust settings while cards are still loading.
+
+When teacher changes a setting during generation:
+  Changes are queued.
+  When the layout card renders, it renders with those 
+  settings already applied.
+  No extra step to "apply customizations."
+
+── CUSTOMIZATION PANEL CONTENT ───────────────────────────────
+
+Keep it minimal. Three collapsible sections:
+
+SECTION 1 — LOOK (always expanded by default)
+  Font Style:
+    4 large visual sample buttons (not a dropdown):
+    [Aa Playful]  [Aa Clean]  [Aa Handwritten]  [Aa Bold]
+    Clicking instantly previews on the live card thumbnails.
+  
+  Color:
+    6 color swatches — one tap to select:
+    ○ Black & White
+    ○ Soft Blue (classic school)
+    ○ Warm Yellow (playful)
+    ○ Soft Green (nature/science)
+    ○ Soft Purple (creative)
+    ○ Custom (opens color picker)
+
+  Border:
+    4 small border preview icons (not a dropdown):
+    [none] [simple] [decorative] [heavy]
+
+SECTION 2 — CONTENT (collapsed by default, tap to expand)
+  Grade Level: pill selector [PreK][K][1][2][3][4][5][6+]
+  Answer Space: [compact] [standard] [spacious]
+  Include word bank: toggle
+  Include directions: toggle
+  Number of questions: - [3] +
+
+SECTION 3 — FORMAT (collapsed by default)
+  Orientation: [Portrait] [Landscape]
+  Text size: slider (S → M → L → XL)
+  Language: [English] [Spanish] [Bilingual]
+
+Total visible controls when fully collapsed: 6
+Total controls when all expanded: ~18
+Never show more than 18 controls at once.
+
+── LIVE PREVIEW SYNC ─────────────────────────────────────────
+
+Every customization change must update the layout card 
+previews within 200ms.
+
+For changes that do not require AI (font, color, border, 
+layout, answer space, text size):
+  Apply directly to the canvas render.
+  No API call needed.
+  Should be < 50ms.
+
+For changes that require AI (grade level change, 
+language change, question count change):
+  Show shimmer on affected sections only.
+  Fire a targeted AI call for only the changed sections.
+  Rest of worksheet remains visible and unchanged.
+  Do not re-render the entire worksheet.
+
+═══════════════════════════════════════════════════════════════
+PART 5 — TRANSITIONS AND ANIMATION SPEC
+═══════════════════════════════════════════════════════════════
+
+All current transitions are laggy because they are likely:
+  - Triggering full re-renders instead of CSS transitions
+  - Using setTimeout instead of requestAnimationFrame
+  - Not using GPU-accelerated properties
+  - Missing will-change hints
+
+RULES FOR EVERY TRANSITION:
+
+USE ONLY GPU-ACCELERATED CSS PROPERTIES:
+  ✓ transform (translate, scale, rotate)
+  ✓ opacity
+  ✗ Never animate: width, height, top, left, margin, 
+    padding, border-width, background-color directly
+    (use transform: scale() instead of width changes)
+    (use opacity instead of visibility/display)
+
+ALL DURATIONS:
+  Instant feedback (button press, tap): 0–50ms
+  Element appearance (fade in): 150ms
+  Panel slide: 180ms
+  Card selection expand: 220ms
+  Page-level transitions: 280ms max
+  Nothing should ever take > 300ms to start responding
+
+EASING:
+  Elements entering: ease-out (starts fast, decelerates)
+  Elements leaving: ease-in (starts slow, accelerates out)
+  Elastic/bounce effects: cubic-bezier(0.34, 1.2, 0.64, 1)
+    — use only for card selection, nothing else
+
+SUBJECT BUTTON SELECT:
+  transform: scale(1.03)
+  transition: transform 80ms ease-out, 
+              background-color 80ms ease-out
+  No layout shift. No reflow.
+
+STEP 2 REVEAL (topic input appearing):
+  Initial state: opacity: 0, transform: translateY(-8px)
+  Final state: opacity: 1, transform: translateY(0)
+  Transition: 180ms ease-out
+  Trigger: add class 'visible' via JS — CSS does the rest
+
+CARD SKELETON APPEARANCE:
+  Cards render at opacity: 0 immediately on generate click.
+  Stagger their appearance: card 1 at 0ms, 2 at 40ms, 3 at 80ms
+  Each fades from opacity 0 → 1 over 200ms
+  Cards are in the DOM instantly. CSS handles the fade.
+
+CONTENT FILL-IN:
+  Each content section (title, directions, questions) has:
+  initial: opacity: 0.3 (shimmer state)
+  filled: opacity: 1, transition: opacity 150ms ease-in
+  No layout shift when content arrives.
+  Reserve space for content using min-height on containers.
+
+CARD → EDITOR TRANSITION:
+  Selected card gets class 'expanding'
+  CSS: transform: scale(1) → scale(20) over 220ms
+  Simultaneously: editor canvas fades in at opacity 0 → 1
+  At transition midpoint: swap card DOM for canvas DOM
+  Result: seamless visual continuity, no white flash
+
+NO TRANSITIONS ON:
+  Hover color changes (just use CSS :hover, no JS)
+  Toggle switches (immediate)
+  Text input changes (immediate)
+  Dropdown changes (immediate)
+
+WILL-CHANGE DECLARATIONS:
+  Add will-change: transform, opacity to:
+    .layout-card
+    .subject-button
+    .panel-slide
+    .skeleton-card
+  Remove will-change after transition completes to 
+  free GPU memory.
+
+=══════════════════════════════════════════════════════════════
+PART 6 — CANVAS PERFORMANCE
+═══════════════════════════════════════════════════════════════
+
+VIRTUALIZE THE CANVAS:
+  Only render canvas elements that are in the viewport.
+  Off-screen elements are tracked in data but not in DOM.
+  On scroll or pan, swap elements in/out of DOM.
+
+DEBOUNCE EXPENSIVE OPERATIONS:
+  Canvas re-render on element drag: 
+    Use requestAnimationFrame, not setInterval or setTimeout
+  
+  Right panel property updates on element select:
+    Debounce 16ms (one frame)
+  
+  Auto-save:
+    Debounce 2000ms after last change
+
+AVOID LAYOUT THRASH:
+  Never read and write DOM properties in the same frame.
+  Batch all DOM reads together, then all writes.
+  Use documentFragment for multi-element inserts.
+
+IMAGE LOADING:
+  Lazy load all images (loading="lazy" or IntersectionObserver)
+  Pre-generate low-res placeholder (4px blur-up technique)
+  WebP format for all raster images
+  Cache all images in browser Cache API
+
+FONT LOADING:
+  All Google Fonts preloaded in <head> with 
+  <link rel="preload" as="font">
+  Use font-display: swap — never block render on fonts
+  Subset fonts to characters needed (A-Z, a-z, 0-9, punctuation)
+
+═══════════════════════════════════════════════════════════════
+PART 7 — ERROR STATES AND FALLBACKS
+═══════════════════════════════════════════════════════════════
+
+EVERY POSSIBLE FAILURE NEEDS A CLEAN STATE:
+
+AI call fails:
+  Show inline error below the generate button.
+  "Couldn't connect to AI. [Try Again]"
+  Do NOT show a modal. Do NOT clear the form.
+  Keep all teacher input exactly as entered.
+
+AI call times out (> 30s):
+  "Taking longer than usual. 
+   [Try Again with Simpler Request] [Wait Longer]"
+
+AI returns malformed JSON:
+  Fall back to a default content structure.
+  Fill in topic and grade from what teacher entered.
+  Show: "Generated a starter layout — customize as needed."
+  Never show a raw JSON error to the teacher.
+
+No internet connection:
+  Detect offline state.
+  Show: "You're offline. Connect to generate new worksheets.
+  You can still edit saved worksheets."
+  Load cached content if available.
+
+Rate limited:
+  "You've created a lot today! 
+   Try again in a few minutes. ☕"
+
+═══════════════════════════════════════════════════════════════
+BUILD ORDER — STRICT SEQUENCE
+═══════════════════════════════════════════════════════════════
+
+STOP everything else. Do these in order.
+Do not start a step until the previous one is verified working.
+
+STEP 1 — FIX THE GENERATION LOOP BUG
+  Add isGenerating lock.
+  Add try/catch/finally to all AI calls.
+  Add 30-second timeout with abort.
+  Test: click generate 10 times rapidly. Should not loop.
+  Test: disconnect internet and click generate. 
+    Should show error state, not freeze.
+  ✓ VERIFIED BEFORE MOVING ON
+
+STEP 2 — REPLACE GENERATION UI
+  Delete current form and "Try one of these" section.
+  Build subject button grid (12 buttons, 3 columns).
+  Build topic text input with dynamic placeholder.
+  Build grade pill selector.
+  Build activity type chips (per subject).
+  Build generate button with progress state.
+  Test: all 12 subject buttons selectable.
+  Test: generate button disabled until topic entered.
+  ✓ VERIFIED BEFORE MOVING ON
+
+STEP 3 — PARALLEL JOB ARCHITECTURE  
+  Implement job coordinator object.
+  Job A (skeleton): fires at 0ms, renders in < 100ms.
+  Job B (content): streaming AI call, fills skeleton.
+  Job D (customization): panel available immediately.
+  Test: generation shows skeleton within 100ms of click.
+  Test: content streams into skeleton fields progressively.
+  ✓ VERIFIED BEFORE MOVING ON
+
+STEP 4 — FIX ALL TRANSITIONS
+  Audit every transition in the app.
+  Replace any width/height/top/left animations 
+    with transform equivalents.
+  Add will-change to transitioning elements.
+  Implement staggered card appearance.
+  Implement card → editor expand animation.
+  Test: subject button tap feels instant.
+  Test: step 2 reveals smoothly at 180ms.
+  Test: layout cards appear with stagger.
+  Test: no jank on any interaction (use Chrome 
+    Performance tab to verify 60fps).
+  ✓ VERIFIED BEFORE MOVING ON
+
+STEP 5 — THREE LAYOUT CARDS
+  Show exactly 3 cards after generation.
+  Live mini-preview in each card (scaled canvas render).
+  Single-click opens editor with expand animation.
+  Regenerate layouts button.
+  ✓ VERIFIED BEFORE MOVING ON
+
+STEP 6 — CUSTOMIZATION PANEL
+  Panel available during generation.
+  Font style, color, border as visual buttons not dropdowns.
+  Collapsed content and format sections.
+  Changes apply to previews within 200ms.
+  ✓ VERIFIED BEFORE MOVING ON
+
+STEP 7 — ERROR STATES
+  All error conditions show clean inline states.
+  No modals. No crashes. No freezes.
+  ✓ VERIFIED BEFORE MOVING ON
+
+Do not proceed to any other feature work until
+all 7 steps are verified. These are the foundation.
+Everything else built on top of a buggy, laggy 
+foundation will also be buggy and laggy.
