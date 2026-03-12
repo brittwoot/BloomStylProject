@@ -1,0 +1,470 @@
+═══════════════════════════════════════════════════════════════
+BLOOMSTYL — WORKSHEET FORMAT EXPANSION + CUSTOMIZATION SYSTEM
+═══════════════════════════════════════════════════════════════
+
+The existing app generates worksheets but is too rigid — it 
+defaults to vocabulary/multiple choice/free response structures 
+every time. This update breaks that pattern entirely.
+
+The goal: a teacher describes what they want (or just a topic), 
+and the system suggests the RIGHT activity type for that content, 
+lets them customize the format before anything is finalized, and 
+only then produces the worksheet.
+
+DO NOT REBUILD THE EXISTING APP.
+Add and improve. Preserve what already works.
+
+═══════════════════════════════════════════════════════════════
+PART 1 — WORKSHEET TYPE LIBRARY
+═══════════════════════════════════════════════════════════════
+Expand the available worksheet formats far beyond 
+vocabulary/multiple choice. Support all of the following types.
+Each type has its own layout logic and is not interchangeable 
+with the others.
+
+── COLORING & VISUAL ACTIVITIES ──────────────────────────────
+
+1. COLORING PAGE — THEMED ILLUSTRATION
+   A full or half-page line art illustration the student colors.
+   No text required. Pure activity.
+   
+   Illustration theme categories (teacher selects one):
+   
+   ANIMALS:
+   - Farm animals (cow, pig, horse, chicken, sheep, goat)
+   - Ocean animals (whale, octopus, crab, seahorse, clownfish)
+   - Jungle animals (lion, elephant, giraffe, parrot, monkey)
+   - Forest animals (deer, fox, owl, bear, rabbit, squirrel)
+   - Insects (butterfly, ladybug, bee, dragonfly, caterpillar)
+   - Reptiles (turtle, frog, gecko, chameleon, snake)
+   - Arctic animals (penguin, polar bear, walrus, arctic fox)
+   - Pets (dog, cat, hamster, goldfish, parrot, bunny)
+   
+   HOLIDAYS & SEASONS:
+   - Fall / Autumn (pumpkin, scarecrow, leaves, acorn, haystack)
+   - Halloween (friendly ghost, jack-o-lantern, black cat, bat)
+   - Thanksgiving (turkey, cornucopia, pilgrim hat, pie)
+   - Winter / Christmas (snowman, ornament, reindeer, stocking)
+   - Hanukkah (menorah, dreidel, Star of David, gelt)
+   - Valentine's Day (heart, roses, mailbox, cupid arrow)
+   - St. Patrick's Day (shamrock, rainbow, pot of gold, leprechaun)
+   - Spring / Easter (chick, egg, bunny, flowers, basket)
+   - Earth Day (globe, tree, recycling symbol, sun, watering can)
+   - End of Year / Summer (sun, beach, sunflower, ice cream, backpack)
+   - 100th Day of School (100 dots, trophy, crown, balloons)
+   - Back to School (pencil, apple, ruler, bus, backpack)
+   
+   PLANTS & NATURE:
+   - Flower life cycle (seed → sprout → bud → bloom)
+   - Parts of a plant (roots, stem, leaves, flower, fruit)
+   - Trees by season (bare, budding, full, colorful fall)
+   - Garden scene (vegetables, soil, sun, watering can, worms)
+   - Rainforest layers (canopy, understory, forest floor)
+   - Desert plants (cactus, succulent, tumbleweed, aloe)
+   - Underwater plants (seaweed, kelp, coral reef, sea grass)
+   - Single botanical illustrations (rose, sunflower, tulip, daisy)
+   
+   COMMUNITY & EMERGENCY RESPONSE:
+   - Fire safety symbols (stop drop roll, fire extinguisher, exit sign)
+   - Emergency vehicles (fire truck, ambulance, police car, helicopter)
+   - Community helpers (firefighter, paramedic, police officer, doctor)
+   - First aid symbols (red cross, bandage, thermometer, kit)
+   - Natural disaster preparedness (emergency bag, flashlight, radio)
+   - Safety signs (stop, warning, caution, no entry, danger)
+   - Road safety (crosswalk, traffic light, school zone, bicycle lane)
+   - Weather emergency symbols (tornado, flood, lightning, hurricane)
+   
+   EDUCATIONAL THEMES:
+   - Solar system (planets, moon, stars, rocket, astronaut)
+   - Human body systems (skeleton, heart, lungs, brain outline)
+   - Maps and geography (compass rose, map key, continents globe)
+   - Historical symbols (Liberty Bell, pyramids, Colosseum, castle)
+   - Music (instruments: guitar, piano, drums, violin, trumpet)
+   - Sports (soccer, basketball, baseball, swimming, gymnastics)
+
+2. COLOR BY CODE — SIGHT WORD / NUMBER / LETTER / PHONICS
+   Central illustration with regions labeled by a code.
+   Color key at bottom maps code → color.
+   
+   Code types:
+   - Sight words (color regions labeled with: "the" "and" "can" etc.)
+   - CVC words or word families (-at, -an, -og)
+   - Letters (uppercase/lowercase matching)
+   - Numbers 1–20
+   - Skip counting (2s, 5s, 10s)
+   - Addition or subtraction answers
+   - Parts of speech (noun=blue, verb=red, adjective=yellow)
+   - Phonics patterns (short vowel, long vowel, digraph)
+
+3. TRACE AND COLOR
+   Line art with dashed outline paths for tracing.
+   After tracing, student colors the image.
+   Good for fine motor + content connection.
+
+── MATCHING & SORTING ────────────────────────────────────────
+
+4. CUT AND SORT
+   Items in boxes at the bottom to cut out.
+   Category headers at top.
+   Student cuts and pastes items into correct category.
+   
+   Sort types: living/nonliving, vowel/consonant, 
+   odd/even, same/different beginning sound, season sort,
+   plant/animal, needs/wants, solid/liquid/gas
+
+5. DRAW A LINE MATCHING
+   Two columns. Student draws lines connecting matches.
+   Pairs: word → picture, word → definition, 
+   cause → effect, vocabulary → meaning,
+   number → quantity, country → capital, animal → habitat
+
+6. PICTURE SORT / CATEGORY SORT
+   Image cards sorted into labeled columns.
+   Used for: phonics sorts, science classification,
+   math concept groups, social studies categories
+
+── WRITING & RESPONSE ────────────────────────────────────────
+
+7. JOURNAL / WRITING PROMPT PAGE
+   Large decorative prompt at top.
+   Lined writing area below (wide ruled or college ruled).
+   Optional: illustration box for drawing response.
+   Optional: word bank in sidebar.
+   
+   Prompt styles: narrative, opinion, informational,
+   creative story starter, sentence stems, 
+   "I wonder...", "If I could..."
+
+8. SENTENCE FRAMES / STEM COMPLETION
+   Partially written sentences with blanks.
+   Student completes using content knowledge.
+   NOT the same as fill-in-the-blank vocabulary.
+   Used for: science explanations, social emotional learning,
+   reading response, math reasoning.
+
+9. MY BOOK / MINI BOOK FORMAT
+   Multiple panels on one page that fold into a small book.
+   Each panel: illustration space + writing line.
+   Used for: sequencing, life cycles, story retelling,
+   counting books, alphabet books
+
+10. ACROSTIC / WORD ACTIVITY
+    A word written vertically down the page.
+    Student writes a word or phrase for each letter.
+    Used for: vocabulary review, name activities,
+    character traits, topic summaries
+
+── GRAPHIC ORGANIZERS ────────────────────────────────────────
+
+11. MIND MAP / WEB ORGANIZER
+    Central concept bubble with connecting branches.
+    Student fills in related ideas.
+    Customizable: 3-branch, 4-branch, 6-branch versions.
+
+12. VENN DIAGRAM
+    Two or three overlapping circles.
+    Labels editable (compare two characters, concepts, etc.)
+    Full page or half page versions.
+
+13. STORY MAP
+    Sequential boxes for: characters, setting, problem, 
+    events (3), solution, theme.
+    Linear or circular layout options.
+
+14. KWL / KWHL CHART
+    Three or four columns: Know / Want to Know / Learned
+    (/ How to Find Out)
+    Header row labeled. Student fills in rows.
+
+15. SEQUENCE / FLOW CHART
+    Numbered boxes with arrows.
+    Used for: scientific method, life cycles, story events,
+    procedural writing, historical timelines.
+    Options: 3-step, 4-step, 5-step, 6-step.
+
+16. FOUR SQUARE / FRAYER MODEL
+    Page divided into 4 labeled quadrants around a center term.
+    Labels: definition, example, non-example, picture.
+    Or customize labels for any concept.
+
+── MATH-SPECIFIC ─────────────────────────────────────────────
+
+17. NUMBER BOND PAGE
+    Circles connected by lines showing part-part-whole.
+    Multiple number bonds on one page.
+    Options: addition focus or subtraction focus.
+
+18. TEN FRAME ACTIVITY
+    Empty ten frame grids with counters to draw or numbers to fill.
+    Options: one frame, two frames, five frames per page.
+
+19. GRAPH / DATA PAGE
+    Empty bar graph or pictograph with labeled axes.
+    Data provided in word problem format.
+    Student creates the graph.
+
+20. CLOCK / TIME PRACTICE
+    Analog clock faces (empty or with hands to draw).
+    Digital time shown, student draws hands — or reverse.
+    Options: to the hour, half hour, quarter hour, minute.
+
+21. MEASUREMENT ACTIVITY
+    Ruler images or objects to measure.
+    Inches or centimeters.
+    Draw your own or measure given images.
+
+── SCIENCE / SOCIAL STUDIES SPECIFIC ─────────────────────────
+
+22. LABEL THE DIAGRAM
+    Illustration with numbered blank lines pointing to parts.
+    Word bank provided (or not — teacher's choice).
+    Used for: body parts, plant parts, map features,
+    animal anatomy, landforms, weather tools.
+
+23. OBSERVATION RECORDING SHEET
+    My Hypothesis / What I Observed / What I Learned sections.
+    Space for drawing observation.
+    Used for: science experiments, nature walks, 
+    classroom investigations.
+
+24. TIMELINE
+    Horizontal or vertical line with evenly spaced event boxes.
+    Dates or sequence numbers on the line.
+    Student fills in events or cuts/pastes provided events.
+
+25. MAP ACTIVITY
+    Blank or partially labeled map.
+    Compass rose, map key, title area.
+    Used for: classroom, school, community, state, country, world.
+
+── GAMES & INTERACTIVE ───────────────────────────────────────
+
+26. BINGO CARD
+    5x5 or 4x4 grid with FREE space.
+    Teacher provides word/image bank.
+    AI fills grid with random placement from bank.
+    Used for: vocabulary review, sight words, math facts,
+    science terms, letter recognition.
+
+27. WORD SEARCH
+    Letter grid with hidden words.
+    Word list below with boxes to check off when found.
+    AI generates the grid from the word list.
+    Options: horizontal only (easier) or all directions (harder)
+
+28. CROSSWORD PUZZLE (simplified)
+    Numbered grid.
+    Across and Down clues below.
+    AI generates from vocabulary list + definitions.
+
+29. SPINNER ACTIVITY
+    Circle divided into sections with a center dot.
+    Student uses a pencil and paper clip as a spinner.
+    Used for: probability, sight word practice, math fact review,
+    decision-making activities.
+
+30. DICE ACTIVITY / ROLL AND ___
+    Large dice faces to roll (or images of dice).
+    Response chart below based on what they roll.
+    Used for: math practice, writing prompts, 
+    reading response choices.
+
+═══════════════════════════════════════════════════════════════
+PART 2 — CUSTOMIZATION FLOW (BEFORE FINAL GENERATION)
+═══════════════════════════════════════════════════════════════
+The teacher should NEVER go straight from prompt to final 
+worksheet. There must always be a customization step in between.
+
+STEP 1 — TEACHER INPUTS A PROMPT
+Examples:
+  "Butterfly life cycle for 2nd grade"
+  "Halloween coloring page"
+  "Sight words: the, and, can, up, go"
+  "Firefighter community helpers"
+  "Fractions 1/2 and 1/4 for first grade"
+
+STEP 2 — AI ANALYZES AND SUGGESTS (see Part 3)
+  The AI reads the prompt and suggests the best activity type.
+  It also suggests 2 alternatives.
+  All three appear as clickable option cards with previews.
+
+STEP 3 — CUSTOMIZATION PANEL APPEARS
+Before generating, a side panel or modal opens with options
+specific to the chosen activity type.
+
+EVERY worksheet type shows:
+  □ Title text (pre-filled by AI, editable)
+  □ Grade level (K / 1 / 2 / 3 / 4 / 5 / 6+)
+  □ Page orientation (portrait / landscape)
+  □ Name line (yes / no)
+  □ Date line (yes / no)
+  □ Font style (playful / clean / cursive / bold / handwriting)
+  □ Border style (none / simple / decorative / heavy / dashed)
+  □ Color scheme (black & white / light pastel / full color)
+  □ Teacher name / class info line (optional)
+
+COLORING PAGE specific options:
+  □ Illustration theme (from the full category list in Part 1)
+  □ Illustration complexity (simple outline / medium detail / 
+    detailed/intricate)
+  □ Size (full page / half page / quarter page)
+  □ Add title text overlay on image (yes / no)
+  □ Add color instructions text (yes / no)
+  □ Add writing lines below image (yes / no, how many)
+  □ Add word bank sidebar (yes / no)
+  □ Background (plain white / light texture / grid dots)
+
+COLOR BY CODE specific options:
+  □ Code type (sight words / letters / numbers / math answers)
+  □ Number of color regions (4 / 6 / 8 / 10+)
+  □ Illustration theme (from category list)
+  □ Color key position (bottom / right side / left side)
+  □ Number of colors in key (3 / 4 / 5 / 6)
+  □ Difficulty (fewer regions = easier)
+
+GRAPHIC ORGANIZER specific options:
+  □ Organizer type (web / Venn / story map / KWL / Frayer / 
+    sequence / four square)
+  □ Number of branches/boxes (3 / 4 / 5 / 6)
+  □ Center term or concept (pre-filled, editable)
+  □ Section labels (pre-filled by AI, all editable)
+  □ Box style (rounded / square / cloud / star shape)
+  □ Lines inside boxes (yes / no, how many)
+  □ Illustration space (yes / no)
+
+WRITING PROMPT specific options:
+  □ Prompt text (AI generated, fully editable)
+  □ Prompt style (narrative / opinion / creative / informational)
+  □ Line style (wide rule / college rule / dotted / blank)
+  □ Number of lines (10 / 15 / 20 / 25 / 30)
+  □ Illustration box (yes / no / top / side)
+  □ Word bank sidebar (yes / no — AI suggests words if yes)
+  □ Sentence starters provided (yes / no)
+
+MATCHING specific options:
+  □ Number of pairs (4 / 5 / 6 / 8 / 10)
+  □ Match type (word-word / word-image / word-definition / 
+    image-image)
+  □ Layout (two columns / scattered with lines / numbered list)
+  □ Include answer key version (yes / no)
+
+WORD SEARCH specific options:
+  □ Word list (teacher enters or AI generates from topic)
+  □ Grid size (8x8 / 10x10 / 12x12 / 15x15)
+  □ Directions (horizontal only / horizontal+vertical / all)
+  □ Show word list below grid (yes / no)
+  □ Include answer key (yes / no)
+
+BINGO specific options:
+  □ Grid size (4x4 / 5x5)
+  □ Include FREE space (yes / no)
+  □ Word/image bank (teacher enters, AI fills grid)
+  □ Number of unique cards to generate (1 / 5 / 10 / 15 / 30)
+  □ Print all cards or download as set
+
+STEP 4 — LIVE PREVIEW UPDATES AS OPTIONS CHANGE
+Every change in the customization panel updates the 
+worksheet preview on the right side in real time.
+No need to click a separate "update" button.
+Changes feel instant (< 200ms for layout changes, 
+skeleton state for any AI content updates).
+
+STEP 5 — TEACHER CLICKS "CREATE WORKSHEET"
+Only after reviewing the live preview does the full 
+high-resolution version render and become available to edit 
+and export.
+
+═══════════════════════════════════════════════════════════════
+PART 3 — AI SUGGESTION SYSTEM
+═══════════════════════════════════════════════════════════════
+The AI should not just do what it is told. It should be 
+a thoughtful collaborator that notices gaps and better options.
+
+── ACTIVITY TYPE SUGGESTIONS ─────────────────────────────────
+
+When a teacher enters a prompt, the AI should:
+
+1. Identify the clearest matching activity type
+2. Explain WHY it chose that type (one sentence)
+3. Suggest 2 alternative activity types that would also work
+4. Show all 3 as cards the teacher can click
+
+Example:
+  Prompt: "Fire safety for kindergarten"
+  
+  PRIMARY SUGGESTION:
+  [Coloring Page — Emergency Vehicles]
+  "A coloring page with fire truck and firefighter is highly 
+  engaging for kindergarten and introduces fire safety visually."
+  
+  ALTERNATIVES:
+  [Color by Code — Safety Colors]
+  "Color regions labeled with fire safety words like STOP, 
+  DROP, ROLL using a simple illustration."
+  
+  [Label the Diagram — Fire Safety Symbols]
+  "Label a fire extinguisher, exit sign, and smoke detector 
+  with a word bank — good for older kindergarteners."
+
+Example:
+  Prompt: "Butterfly life cycle"
+  
+  PRIMARY: [Sequence Flow Chart — 4 Steps]
+  ALTERNATIVES: [Mini Book — My Book Format] 
+                [Label the Diagram — Butterfly anatomy]
+
+── GAP-FILL SUGGESTIONS ──────────────────────────────────────
+
+If the teacher's prompt is vague or missing information, 
+AI asks ONE clarifying question at a time (not a list of 5):
+
+  Prompt: "Animals worksheet"
+  AI: "What aspect of animals — sorting by habitat, 
+  coloring a specific animal, labeling body parts, 
+  or a writing prompt about a favorite animal?"
+
+  Prompt: "Math practice"  
+  AI: "What math skill — number bonds, ten frames, 
+  telling time, graphing, or measurement?"
+
+  Prompt: "Halloween"
+  AI: "Is this a coloring activity, a vocabulary sheet, 
+  a writing prompt, or a game like Bingo or word search?"
+
+After the clarifying answer, proceed directly to Step 2.
+Do not ask more than one follow-up question.
+
+── UPGRADE SUGGESTIONS ───────────────────────────────────────
+
+If the teacher is about to create something that has 
+a significantly better version available, show a non-blocking 
+suggestion banner:
+
+  "You chose a fill-in-the-blank worksheet for sight words. 
+  A Color by Sight Word activity is often more engaging for 
+  early readers — want to try that instead?" 
+  [Switch] [Keep My Choice]
+
+  "This topic works really well as a mini book for young 
+  students — want to see that option?" 
+  [Show Me] [No Thanks]
+
+  "You have 12 vocabulary words — that's a good size for 
+  a word search. Want to add one?" 
+  [Add Word Search] [Dismiss]
+
+Rules for upgrade suggestions:
+- Only show ONE suggestion at a time
+- Never block the teacher's workflow — always dismissable
+- Never repeat the same suggestion in the same session
+- Suggestions appear after activity type is selected, 
+  before customization is finalized
+
+── CONTENT GAP DETECTION ─────────────────────────────────────
+
+While the teacher is in the customization panel, the AI 
+monitors for missing content and offers to fill it:
+
+  Missing title → AI suggests: [Topic] + [Grade] + activity name
+  
+  Missing directions → AI suggests grade
