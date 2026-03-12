@@ -10,39 +10,42 @@ export function Header() {
             </svg>
           </div>
 
-          {/* Wordmark */}
-          <div className="flex items-center gap-0.5">
-            <span className="text-lg font-bold text-foreground tracking-tight leading-none" style={{ fontFamily: "var(--font-display)" }}>
-              BloomStyl
-            </span>
-            {/* Crooked purple heart — hand-drawn feel using SVG */}
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              aria-hidden
-              className="mb-2.5 ml-0.5"
-              style={{ transform: "rotate(-12deg)" }}
-            >
-              <path
-                d="M7 12C7 12 1.2 8.1 1.2 4.4a2.8 2.8 0 0 1 5.2-1.4A2.8 2.8 0 0 1 12.8 4.4C12.8 8.1 7 12 7 12z"
-                fill="#9333ea"
-                opacity="0.85"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {/* Tiny imperfection stroke to give hand-drawn feel */}
-              <path
-                d="M6.8 11.5 Q6.4 10.8 5.5 10"
-                stroke="#7c3aed"
-                strokeWidth="0.5"
-                strokeLinecap="round"
+          {/* Wordmark — heart is attached to the 'l' at letter height, like a ligature */}
+          <span
+            className="text-lg font-bold text-foreground tracking-tight leading-none"
+            style={{ fontFamily: "var(--font-display)", display: "inline-flex", alignItems: "center" }}
+          >
+            BloomSty
+            {/*
+              The 'l' and heart are wrapped together.
+              The heart sits at mid-letter height (x-height), right up against the 'l',
+              the same way 'e' would sit next to 'l' in a word.
+            */}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 0 }}>
+              l
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 14 14"
                 fill="none"
-                opacity="0.5"
-              />
-            </svg>
-          </div>
+                aria-hidden
+                style={{
+                  display: "inline-block",
+                  verticalAlign: "middle",
+                  marginLeft: "1px",
+                  marginBottom: "2px",
+                  transform: "rotate(-14deg)",
+                  flexShrink: 0,
+                }}
+              >
+                <path
+                  d="M7 12C7 12 1.5 8.2 1.5 4.8a2.8 2.8 0 0 1 5.2-1.5A2.8 2.8 0 0 1 12.5 4.8C12.5 8.2 7 12 7 12z"
+                  fill="#9333ea"
+                  opacity="0.9"
+                />
+              </svg>
+            </span>
+          </span>
         </div>
 
         <span className="text-xs text-muted-foreground font-medium px-3 py-1 rounded-full bg-primary/8 text-primary">
