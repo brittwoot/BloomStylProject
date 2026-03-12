@@ -213,6 +213,22 @@ type BloomStore = {
   setParsedPromptData: (data: any) => void;
   setOriginalPrompt: (p: string) => void;
 
+  // Quick gen (3-step flow)
+  quickGen: {
+    subject: string;
+    topic: string;
+    grade: string;
+    activityType: string;
+    activityTypeName: string;
+    details: string;
+    colorTheme: string;
+    fontStyle: string;
+    border: string;
+    nameLine: boolean;
+    dateLine: boolean;
+  } | null;
+  setQuickGen: (params: Partial<NonNullable<BloomStore["quickGen"]>>) => void;
+
   // Reset
   reset: () => void;
 };
@@ -393,6 +409,12 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
   setParsedPromptData: (parsedPromptData) => set({ parsedPromptData }),
   setOriginalPrompt: (originalPrompt) => set({ originalPrompt }),
 
+  quickGen: null,
+  setQuickGen: (params) =>
+    set((state) => ({
+      quickGen: state.quickGen ? { ...state.quickGen, ...params } : (params as NonNullable<BloomStore["quickGen"]>),
+    })),
+
   reset: () =>
     set({
       lessonText: "",
@@ -424,6 +446,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
       },
       parsedPromptData: null,
       originalPrompt: "",
+      quickGen: null,
     }),
 }));
 

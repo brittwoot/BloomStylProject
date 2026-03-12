@@ -1,0 +1,448 @@
+═══════════════════════════════════════════════════════════════
+BLOOMSTYL — GENERATION FLOW OVERHAUL
+Fix the freeze, kill the lag, simplify the UI,
+parallelize everything
+═══════════════════════════════════════════════════════════════
+
+DO NOT REBUILD THE EXISTING APP.
+This prompt targets three specific problems:
+1. The generation loop freeze — fix this first
+2. The cluttered prompt UI — replace it entirely  
+3. The laggy transitions — systematic performance pass
+
+═══════════════════════════════════════════════════════════════
+PART 1 — FIX THE GENERATION FREEZE (CRITICAL — DO FIRST)
+═══════════════════════════════════════════════════════════════
+
+The generate button currently loops and freezes.
+Find and fix all of the following likely causes:
+
+── DIAGNOSE AND FIX ──────────────────────────────────────────
+
+1. ASYNC/AWAIT DEADLOCK
+   Check every async function in the generation pipeline.
+   Ensure no await is called inside a non-async function.
+   Ensure no Promise is left unresolved or uncaught.
+   Add try/catch around every API call:
+
+   async function generateWorksheet(params) {
+     try {
+       const result = await callClaudeAPI(params);
+       return result;
+     } catch (error) {
+       console.error('Generation failed:', error);
+       setGenerationState('error');
+       showErrorMessage(error.message);
+       return null;
+     }
+   }
+
+2. INFINITE RENDER LOOP
+   Check all useEffect / reactive state watchers.
+   Any state update that triggers a re-render that 
+   triggers another state update causes infinite loop.
+   
+   Fix pattern: add proper dependency arrays.
+   Never update state inside a watcher that watches 
+   that same state.
+   
+   Add a generation lock:
+   let isGenerating = false;
+   
+   function handleGenerate() {
+     if (isGenerating) return;  // prevent double-fire
+     isGenerating = true;
+     generateWorksheet()
+       .finally(() => { isGenerating = false; });
+   }
+
+3. API CALL NEVER RESOLVING
+   Add a timeout to every Claude API call:
+   
+   const controller = new AbortController();
+   const timeout = setTimeout(() => {
+     controller.abort();
+   }, 30000); // 30 second max
+   
+   fetch(API_URL, { 
+     signal: controller.signal,
+     ...options 
+   }).finally(() => clearTimeout(timeout));
+   
+   If the call times out, show:
+   "Taking longer than expected — 
+   [Try Again] [Simplify Request]"
+
+4. JSON PARSE FAILURE CAUSING LOOP
+   If Claude returns malformed JSON, the parse fails,
+   the app retries, gets same bad JSON, loops forever.
+   
+   Fix: validate JSON before parsing.
+   If invalid, do NOT retry automatically.
+   Show error state with manual retry button.
+   
+   function safeParseJSON(str) {
+     try {
+       // Strip markdown code fences if present
+       const cleaned = str
+         .replace(/^```json\n?/, '')
+         .replace(/\n?```$/, '')
+         .trim();
+       return JSON.parse(cleaned);
+     } catch(e) {
+       console.error('JSON parse failed:', e);
+       return null;
+     }
+   }
+
+5. BUTTON NOT DISABLED DURING GENERATION
+   The generate button must be disabled immediately 
+   on click and re-enabled only when generation 
+   completes or errors.
+   
+   generateBtn.disabled = true;
+   generateBtn.textContent = 'Generating...';
+   try {
+     await generate();
+   } finally {
+     generateBtn.disabled = false;
+     generateBtn.textContent = 'Generate';
+   }
+
+6. STATE NOT RESETTING BETWEEN ATTEMPTS
+   If a previous failed generation left state dirty,
+   the next attempt breaks.
+   
+   Always reset generation state before starting:
+   function resetGenerationState() {
+     setLayouts([]);
+     setError(null);
+     setProgress(0);
+     setGenerationPhase('idle');
+   }
+
+After fixes are in place, add a console log at each
+major step of the generation pipeline so failures are 
+immediately visible:
+   console.log('[GEN] Step 1: Parsing prompt...');
+   console.log('[GEN] Step 2: Calling Claude API...');
+   console.log('[GEN] Step 3: Received response...');
+   console.log('[GEN] Step 4: Rendering layouts...');
+
+═══════════════════════════════════════════════════════════════
+PART 2 — REPLACE THE PROMPT UI ENTIRELY
+═══════════════════════════════════════════════════════════════
+
+The current AI suggestion box is too cluttered.
+Replace it with a clean 3-step flow that takes
+under 20 seconds to complete.
+
+── THE NEW FLOW ──────────────────────────────────────────────
+
+STEP 1 → STEP 2 → STEP 3 → GENERATING
+
+Each step is a single focused screen.
+No scrolling. No overwhelm.
+Progress dots at top show where they are.
+
+── STEP 1 — WHAT SUBJECT? ────────────────────────────────────
+
+Full screen with one question:
+
+  "What subject?"
+
+  Large subject buttons in a 3×3 grid:
+
+  ┌──────────┐  ┌──────────┐  ┌──────────┐
+  │    📚    │  │    🔢    │  │    🔬    │
+  │ Reading  │  │   Math   │  │ Science  │
+  │   ELA    │  │          │  │          │
+  └──────────┘  └──────────┘  └──────────┘
+
+  ┌──────────┐  ┌──────────┐  ┌──────────┐
+  │    🌍    │  │    🎨    │  │    🎵    │
+  │  Social  │  │   Art    │  │  Music   │
+  │ Studies  │  │          │  │          │
+  └──────────┘  └──────────┘  └──────────┘
+
+  ┌──────────┐  ┌──────────┐  ┌──────────┐
+  │    💪    │  │    🗣️    │  │    ✨    │
+  │   SEL /  │  │   ELL /  │  │  Other   │
+  │ Health   │  │ Language │  │          │
+  └──────────┘  └──────────┘  └──────────┘
+
+  Each button: 120×90px, rounded corners (16px),
+  icon at top (36px), subject name below (14px bold)
+  
+  Background: white
+  Default state: light gray border, white fill
+  Hover: slight lift (transform: translateY(-2px))
+  Selected: amber/brand color fill, white text,
+  no border needed
+
+  Selecting a subject immediately advances to Step 2.
+  No "Next" button needed.
+
+── STEP 2 — WHAT SPECIFICALLY? ───────────────────────────────
+
+Slide in from the right.
+
+  "What are you teaching?"
+
+  Top area: topic text input
+  Large, single-line, auto-focused:
+
+  ┌──────────────────────────────────────────┐
+  │  e.g. photosynthesis, addition to 20...  │
+  └──────────────────────────────────────────┘
+
+  Below: quick-tap topic chips relevant to the 
+  subject selected in Step 1.
+  These are single-word or short-phrase chips.
+  Max 10 chips shown. Scroll horizontally if more.
+
+  For READING/ELA:
+  [Main Idea] [Characters] [Sequencing] [Phonics]
+  [Sight Words] [Rhyming] [Summarizing] [Inference]
+  [Figurative Language] [Author's Purpose]
+
+  For MATH:
+  [Addition] [Subtraction] [Multiplication] [Division]
+  [Fractions] [Place Value] [Geometry] [Time]
+  [Measurement] [Word Problems]
+
+  For SCIENCE:
+  [Life Cycles] [Plants] [Animals] [Weather]
+  [Solar System] [Human Body] [Matter] [Forces]
+  [Ecosystems] [Scientific Method]
+
+  For SOCIAL STUDIES:
+  [Community] [Maps] [History] [Government]
+  [Economics] [Cultures] [Geography] [Citizenship]
+  [Timelines] [Leaders]
+
+  For ART:
+  [Color Theory] [Famous Artists] [Art Elements]
+  [Observation Drawing] [Art History] [Sculpture]
+
+  For SEL/HEALTH:
+  [Emotions] [Kindness] [Conflict Resolution]
+  [Self-Regulation] [Growth Mindset] [Healthy Habits]
+
+  For ELL/LANGUAGE:
+  [Vocabulary] [Sentence Frames] [Grammar]
+  [Reading Fluency] [Writing] [Conversation]
+
+  Tapping a chip fills the text input.
+  Teacher can also type freely — chip is not required.
+
+  Grade level selector — compact, horizontal pill row:
+  [Pre-K] [K] [1] [2] [3] [4] [5] [6] [7] [8]
+  
+  One grade selected at a time.
+  Pre-select based on teacher profile if available.
+
+  Bottom: large "Next →" button.
+  Active only when topic input has content.
+  Pressing Enter in text input also advances.
+
+── STEP 3 — WHAT KIND OF ACTIVITY? ──────────────────────────
+
+Slide in from the right.
+
+  "What kind of activity?"
+
+  Activity type grid — icon cards, 2×3 on mobile,
+  3×3 on desktop.
+
+  Show only the MOST RELEVANT activity types for the
+  selected subject. Not all 30 types. Maximum 9.
+
+  AI pre-selects the best match (highlighted).
+  Teacher can change if they want.
+
+  Activity type cards are smaller than subject buttons:
+  80×70px, icon + label only.
+
+  ALWAYS SHOW (universal):
+  [Worksheet] [Coloring Page] [Graphic Organizer]
+
+  READING/ELA specific:
+  [Reading + Questions] [Vocabulary Match] [Writing Prompt]
+  [Word Search] [Mini Book] [Story Map]
+
+  MATH specific:
+  [Practice Problems] [Number Bonds] [Graph/Chart]
+  [Measurement] [Word Problems] [Ten Frames]
+
+  SCIENCE specific:
+  [Label Diagram] [Sequence/Cycle] [Observation Sheet]
+  [Sort/Classify] [Research Notes] [Experiment Log]
+
+  SOCIAL STUDIES specific:
+  [Timeline] [Map Activity] [Research Notes]
+  [Compare/Contrast] [Graphic Organizer] [Vocabulary]
+
+  ART specific:
+  [Coloring Page] [Observation Drawing] [Art Analysis]
+  [Color Wheel] [Artist Study] [Creative Prompt]
+
+  Below the grid — one optional text field:
+  "Anything specific to add?" (placeholder)
+  This is where teachers add details:
+  "include a word bank" 
+  "make it Halloween themed"
+  "only 3 questions"
+  This field is OPTIONAL. Not required to proceed.
+
+  Bottom: [Generate ✦] button — large, brand color.
+
+  As soon as teacher taps Generate:
+  → Transition immediately to GENERATION VIEW
+  → Do NOT wait for API before transitioning
+  → The transition itself signals the app is working
+
+── GENERATION VIEW ───────────────────────────────────────────
+
+This screen appears IMMEDIATELY on tapping Generate.
+The API call happens in the background.
+The screen never freezes.
+
+LAYOUT:
+  Top: "Creating your [Activity Type] for [Topic]..."
+  Subtitle: "Grade [X] · [Subject]"
+
+  Center: Three worksheet preview cards side by side.
+  Each card starts in SKELETON STATE (shimmer loading).
+  As each layout completes, it fades in replacing shimmer.
+
+  Cards are labeled: Layout A · Layout B · Layout C
+
+  Right side panel (or bottom panel on mobile):
+  CUSTOMIZATION OPTIONS — available immediately,
+  before generation completes.
+
+  Teacher adjusts these WHILE waiting:
+
+  ┌─────────────────────────────────┐
+  │  CUSTOMIZE WHILE IT GENERATES  │
+  │                                 │
+  │  Color Theme                    │
+  │  ○ Black & White  ○ Color       │
+  │  ○ Pastel         ○ Bold        │
+  │                                 │
+  │  Font Style                     │
+  │  ○ Playful  ○ Clean             │
+  │  ○ Cursive  ○ Bold              │
+  │                                 │
+  │  Border                         │
+  │  ○ None  ○ Simple               │
+  │  ○ Decorative  ○ Heavy          │
+  │                                 │
+  │  Differentiation                │
+  │  ○ Single version               │
+  │  ○ Multiple levels              │
+  │  If multiple: [+ Add Level]     │
+  │                                 │
+  │  Name line    ○ Yes  ○ No       │
+  │  Date line    ○ Yes  ○ No       │
+  └─────────────────────────────────┘
+
+  These settings apply to the final worksheet.
+  Changing them updates the generation prompt if 
+  generation hasn't completed yet (cancel + refire).
+  If already complete, instantly re-renders previews.
+
+  Bottom: Progress indicator
+  "Layout A ✓  Layout B ⏳  Layout C ⏳"
+
+  When all 3 complete:
+  Bottom bar changes to:
+  [← Adjust]  [Open in Editor →]
+  
+  Teacher clicks the layout they want, then 
+  "Open in Editor →" to enter full canvas.
+
+── REMOVING "TRY ONE OF THESE" SUGGESTIONS ──────────────────
+
+DELETE the current "Try one of these" suggestion block.
+Do not replace it with anything.
+
+The new subject → topic → activity flow makes these 
+redundant. If a teacher reaches the generation screen
+they already know what they want.
+
+The only AI suggestion shown is the pre-selected
+activity type in Step 3 (one pre-selection, not a 
+list of suggestions the teacher has to read).
+
+═══════════════════════════════════════════════════════════════
+PART 3 — PARALLEL JOB ARCHITECTURE
+═══════════════════════════════════════════════════════════════
+
+The app must run multiple jobs simultaneously.
+Nothing should block the UI thread.
+
+── JOB QUEUE SYSTEM ──────────────────────────────────────────
+
+Implement a lightweight job queue:
+
+const JobQueue = {
+  jobs: [],
+  running: 0,
+  maxConcurrent: 3,
+
+  add(jobFn, priority = 'normal') {
+    return new Promise((resolve, reject) => {
+      this.jobs.push({ jobFn, resolve, reject, priority });
+      this.jobs.sort((a, b) => 
+        a.priority === 'high' ? -1 : 1
+      );
+      this.flush();
+    });
+  },
+
+  async flush() {
+    while (this.running < this.maxConcurrent 
+           && this.jobs.length > 0) {
+      const job = this.jobs.shift();
+      this.running++;
+      try {
+        const result = await job.jobFn();
+        job.resolve(result);
+      } catch(e) {
+        job.reject(e);
+      } finally {
+        this.running--;
+        this.flush();
+      }
+    }
+  }
+};
+
+JOBS THAT RUN IN PARALLEL:
+
+Job 1 (high priority): Generate Layout A content
+Job 2 (high priority): Generate Layout B content  
+Job 3 (high priority): Generate Layout C content
+Job 4 (normal): Pre-load font assets for selected style
+Job 5 (normal): Pre-fetch relevant clipart/images
+Job 6 (low): Pre-warm differentiation if selected
+
+Results from Jobs 1–3 render independently as they 
+complete. Teacher sees Layout A appear, then B, then C.
+Not all at once after a long wait.
+
+── CLAUDE API CALL OPTIMIZATION ─────────────────────────────
+
+REDUCE PROMPT SIZE:
+Current prompts are likely too long → slower responses.
+
+For the 3 layout generation calls, use a shorter
+focused prompt. All context in the system prompt.
+User message should be under 200 tokens.
+
+SYSTEM PROMPT (set once, cached by API):
+"You are a worksheet layout designer for elementary 
+teachers. Return JSON only. No explanation. No markdown.
+Format: { title,

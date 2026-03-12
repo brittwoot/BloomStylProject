@@ -4,19 +4,43 @@ import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
 
+function safeParseJSON(str: string): any | null {
+  try {
+    const cleaned = str
+      .replace(/^```json\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("[GEN] JSON parse failed:", e);
+    return null;
+  }
+}
+
+// Layout variant instructions — vary structure/focus between A/B/C
+const VARIANT_INSTRUCTIONS: Record<string, string> = {
+  A: "Generate the most straightforward, classic layout for this activity type. Clear structure, standard organization.",
+  B: "Generate a slightly more visual/graphic layout. Add more structure boxes, use headers creatively, consider columns or visual dividers.",
+  C: "Generate a more scaffolded, step-by-step layout. Break tasks into smaller sub-steps, add more guidance/sentence starters if applicable.",
+};
+
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { activityType, options, originalPrompt, parsedPromptData } = req.body;
+    const { activityType, options, originalPrompt, parsedPromptData, layoutVariant, subject, details } = req.body;
 
     if (!activityType) {
       res.status(400).json({ error: "BAD_REQUEST", message: "activityType is required" });
       return;
     }
 
+    console.log(`[GEN] Layout ${layoutVariant ?? "–"}: Starting (type=${activityType})`);
+
     const title = options?.title || parsedPromptData?.topic || activityType;
     const grade = options?.gradeLevel || parsedPromptData?.gradeLevel || "General";
     const topic = parsedPromptData?.topic || originalPrompt || title;
     const targetWord = parsedPromptData?.targetWord;
+    const variantInstruction = layoutVariant ? (VARIANT_INSTRUCTIONS[layoutVariant] ?? "") : "";
+    const detailsNote = details ? `\nTeacher's specific request: "${details}"` : "";
 
     // Build sections based on activity type
     const systemPrompt = `You are an expert elementary school worksheet content generator.
@@ -153,25 +177,42 @@ Generate appropriate sections based on the activity type and topic.
 Include 2-4 sections with real content for the topic.
 
 Fill in ALL placeholder content with real, grade-appropriate content for "${topic}" at grade ${grade}.
+${variantInstruction}${detailsNote}
 Return ONLY valid JSON.`;
+
+    const userMsg = layoutVariant
+      ? `Generate Layout ${layoutVariant} worksheet content. Activity: "${activityType}". Topic: "${topic}". Grade: ${grade}. Return ONLY valid JSON.`
+      : `Generate the worksheet content for activity type "${activityType}" about "${topic}". Return ONLY valid JSON.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 4000,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Generate the worksheet content for activity type "${activityType}" about "${topic}". Return ONLY valid JSON.` },
+        { role: "user", content: userMsg },
       ],
       response_format: { type: "json_object" },
     });
 
     const rawContent = completion.choices[0]?.message?.content;
     if (!rawContent) {
+      console.error(`[GEN] Layout ${layoutVariant ?? "–"}: No content from AI`);
       res.status(500).json({ error: "AI_ERROR", message: "No response from AI" });
       return;
     }
 
-    const result = JSON.parse(rawContent);
+    console.log(`[GEN] Layout ${layoutVariant ?? "–"}: Parsing response...`);
+    let result: any;
+    try {
+      result = JSON.parse(rawContent);
+    } catch {
+      result = safeParseJSON(rawContent);
+    }
+    if (!result) {
+      console.error(`[GEN] Layout ${layoutVariant ?? "–"}: JSON parse failed`);
+      res.status(500).json({ error: "PARSE_FAILED", message: "AI returned malformed JSON" });
+      return;
+    }
 
     // Ensure worksheet_id and section ids
     if (result.worksheet) {
@@ -198,9 +239,10 @@ Return ONLY valid JSON.`;
       };
     }
 
+    console.log(`[GEN] Layout ${layoutVariant ?? "–"}: Done ✓`);
     res.json(result);
   } catch (err) {
-    console.error("Customize-generate error:", err);
+    console.error(`[GEN] Layout ${layoutVariant ?? "–"}: Error —`, err);
     res.status(500).json({ error: "GENERATION_FAILED", message: "Failed to generate worksheet" });
   }
 });
