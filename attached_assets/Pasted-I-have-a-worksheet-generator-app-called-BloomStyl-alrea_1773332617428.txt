@@ -1,0 +1,277 @@
+I have a worksheet generator app called BloomStyl already started. 
+The basic architecture exists. I need you to take it to the next level 
+with the following major feature additions. Do not rebuild what exists — 
+only add and improve.
+
+═══════════════════════════════════════
+CONTEXT: WHAT BLOOMSTYL CREATES
+═══════════════════════════════════════
+BloomStyl helps teachers create elementary classroom worksheets 
+like these types:
+- Color by sight word / sound (coloring + activity sheets)
+- "All About Me" style graphic organizers with image boxes and 
+  labeled sections
+- Letter find / circle the letter worksheets
+- Handwriting practice with tracing lines
+- Vocabulary, reading comprehension, and exit tickets
+
+The target aesthetic is: black and white line art, fun headers with 
+decorative fonts, clipart-style illustrations, clear student-facing 
+layout, print-ready.
+
+═══════════════════════════════════════
+FEATURE 1: AI PROMPT-TO-WORKSHEET GENERATION
+═══════════════════════════════════════
+When a teacher types a prompt like:
+  "Color by beginning sound worksheet for kindergarten"
+  "All About Me graphic organizer, fun style"
+  "Letter G find and circle worksheet"
+  "Handwriting practice - uppercase letters, dashed lines"
+
+The system should:
+1. Parse the prompt to detect: grade level, activity type, skill 
+   focus, and style preference
+2. Generate 3 distinct layout variations the teacher can choose from
+3. Each layout variation should have a thumbnail preview card 
+   showing the structure
+4. The teacher clicks one to open it in the editor
+
+Layout variations should differ in:
+- Section arrangement (grid vs stacked vs mixed)
+- Header style (banner, outlined, playful, cursive)
+- Decorative density (minimal / medium / rich)
+- Answer space sizing
+
+═══════════════════════════════════════
+FEATURE 2: LAYOUT TEMPLATE ENGINE
+═══════════════════════════════════════
+Build a layout engine that supports these worksheet structures:
+
+A) ACTIVITY GRID LAYOUT
+   - Title bar at top
+   - 2x2 or 3x3 grid of activity cells
+   - Each cell: image placeholder + answer choices beside or below
+   - Used for: color by sound, letter matching, picture sorts
+
+B) GRAPHIC ORGANIZER LAYOUT  
+   - Large decorative title
+   - Named sections in boxes (My Favorite Color, My Favorite Food, etc.)
+   - Mix of: lined answer areas, image placeholder boxes, 
+     small text fields
+   - Used for: All About Me, KWL charts, character maps
+
+C) FIND AND CIRCLE LAYOUT
+   - Directions box at top
+   - Large central illustration area (clipart placeholder)
+   - Scattered letter/word items around the image
+   - Answer recording boxes at bottom
+   - Used for: Letter Find, Word Hunt, I Spy sheets
+
+D) TRACING / HANDWRITING LAYOUT
+   - Decorative header with activity title
+   - Demonstration row at top
+   - Repeating dashed trace lines with guide dots
+   - Decorative clipart in corners or margins
+   - Used for: letter tracing, name practice, pattern tracing
+
+E) COLORING PAGE LAYOUT
+   - Large central coloring image area
+   - Color key box (word → color swatch)
+   - Optional: sight words or labels embedded in image regions
+   - Used for: color by word, color by number, seasonal pages
+
+Each layout must be:
+- Fully editable after generation
+- Print-ready at 8.5x11
+- Exportable as PDF or PNG
+
+═══════════════════════════════════════
+FEATURE 3: AI STYLE LEARNING SYSTEM
+═══════════════════════════════════════
+Track teacher style preferences across sessions.
+
+Store in user profile:
+- Most used layout types
+- Most used font categories (playful / cursive / clean / decorative)
+- Most used themes (animals / school / seasonal / neutral)
+- Grade level default
+- Border preference (heavy / light / none)
+- Decoration density preference (minimal / medium / heavy)
+
+After 3+ worksheets created, the AI should:
+1. Show a "Based on your style" section at the top of template 
+   picker showing pre-configured options matching their preferences
+2. When generating new worksheets, automatically pre-select their 
+   preferred font, border, and decoration settings
+3. Offer a "Style Profile" card in settings showing their detected 
+   preferences with ability to adjust
+
+═══════════════════════════════════════
+FEATURE 4: TYPOGRAPHY SYSTEM
+═══════════════════════════════════════
+Add a font system with these categories and specific use cases:
+
+DISPLAY / HEADING FONTS (for worksheet titles):
+- Bubblegum Sans — playful, elementary
+- Fredoka One — rounded, friendly  
+- Pacifico — cursive, decorative
+- Architects Daughter — handwritten classroom feel
+- Lilita One — bold, fun
+
+BODY / DIRECTIONS FONTS:
+- DM Sans — clean, readable
+- Nunito — rounded, friendly
+- Patrick Hand — casual handwritten
+- Noto Sans — clear, accessible
+
+TRACING / STUDENT WRITING FONTS:
+- Special Elite — typewriter style
+- Caveat — casual handwriting
+- Indie Flower — loopy handwriting
+
+Load all from Google Fonts CDN.
+
+Title text should support these heading styles:
+- OUTLINED: text with stroke, no fill
+- BANNER: text inside a filled rectangle or ribbon shape
+- SHADOWED: text with drop shadow offset
+- CURSIVE DECORATIVE: script font with flourish underline SVG
+- BUBBLE: rounded puffy letter style (use Bubblegum Sans + 
+  heavy stroke)
+
+═══════════════════════════════════════
+FEATURE 5: CLIPART AND VISUAL ELEMENTS
+═══════════════════════════════════════
+Add a clipart system using SVG-based illustrations.
+
+Create or source simple black-and-white line art SVGs for 
+these categories:
+- Alphabet (letters A-Z with associated objects)
+- Animals (cat, dog, frog, bird, fish, bear, butterfly)
+- School items (pencil, book, crayon, ruler, backpack, apple)
+- Nature (sun, cloud, rain, rainbow, flower, tree, leaf)
+- Food (pizza slice, apple, banana, cupcake, sandwich)
+- Seasonal (pumpkin, snowflake, heart, shamrock, star)
+
+Clipart panel behavior:
+- Teacher searches or browses by category
+- Clicking inserts clipart into the worksheet at a default position
+- Clipart is draggable, resizable, deletable
+- AI suggests relevant clipart based on worksheet topic
+  Example: prompt mentions "frogs" → suggest frog SVG
+  Example: worksheet is about letter G → suggest gumball machine
+
+For the AI prompt "Color by beginning sound" → auto-place 
+4 clipart items in a 2x2 grid with letter choice boxes beside each.
+
+═══════════════════════════════════════
+FEATURE 6: ANSWER KEY SYSTEM
+═══════════════════════════════════════
+When generating worksheets with questions or activities:
+
+1. Auto-generate an answer key version
+2. Show "Export with Answer Key" toggle on the export screen
+3. Answer key formatting:
+   - Same layout as student sheet
+   - Answers shown in a colored highlight or red font overlay
+   - Top right corner badge: "ANSWER KEY"
+4. Export options:
+   - Student worksheet only (PDF/PNG)
+   - Answer key only (PDF/PNG)  
+   - Combined: student sheet page 1, answer key page 2
+
+═══════════════════════════════════════
+FEATURE 7: CONTENT BLOCK EDITOR
+═══════════════════════════════════════
+After a worksheet is generated, the teacher enters an edit mode.
+
+Each section of the worksheet is a draggable content block:
+- Drag handle on left side
+- Edit button (pencil icon) to edit content
+- Delete button (×) to remove
+- Duplicate button to copy the block
+- Resize handles for image/clipart blocks
+
+Blocks can be reordered by dragging.
+
+The worksheet canvas updates live as edits are made.
+
+Add an "+ Add Block" button that lets teachers insert:
+- Text block (directions, labels)
+- Answer lines block
+- Image/clipart placeholder
+- Vocabulary word list
+- Tracing line set
+- Color key box
+- Divider line
+
+═══════════════════════════════════════
+FEATURE 8: AI GAP-FILL SUGGESTIONS
+═══════════════════════════════════════
+While editing, if the system detects incomplete content, 
+show a subtle suggestion banner:
+
+Examples:
+- Worksheet has questions but no directions → 
+  "Add directions? [AI Suggested: 'Read each question carefully 
+  and circle the correct answer.'] [Accept] [Edit] [Dismiss]"
+- Activity sheet has no title → 
+  "Add a title? [AI Suggested: 'Letter G Hunt!'] [Accept] [Edit]"
+- Vocabulary list has no definitions → 
+  "Add definition blanks? [Accept] [Dismiss]"
+
+All suggestions are clearly labeled AI Suggested and require 
+explicit teacher approval before being added.
+
+═══════════════════════════════════════
+FEATURE 9: EXPORT SYSTEM
+═══════════════════════════════════════
+Export the worksheet canvas as:
+
+PDF:
+- 8.5 x 11 inches
+- 150 DPI minimum
+- Fonts embedded
+- Use html2canvas + jsPDF or Puppeteer server-side
+
+PNG:
+- High resolution (1240 x 1754px at 150dpi equivalent)
+- White background
+- Trim to content if shorter than full page
+
+Export UI:
+- Modal with preview thumbnail
+- Toggle: Student Sheet / Answer Key / Both
+- Download button
+- "Copy shareable link" option (future)
+
+═══════════════════════════════════════
+TECH STACK NOTES
+═══════════════════════════════════════
+- Keep existing architecture — do not rebuild
+- Frontend: use whatever framework is already in place
+- For AI calls: use Anthropic claude-sonnet-4 via API
+- For PDF export: html2canvas + jsPDF (client-side preferred)
+- For drag-and-drop blocks: use interact.js or native 
+  HTML5 drag API
+- All SVG clipart should be inline (not image tags) so they 
+  scale cleanly and print crisply
+- Store style preferences in localStorage for now; 
+  prepare schema for database migration later
+- Google Fonts loaded via CDN link tags
+
+═══════════════════════════════════════
+PRIORITY ORDER (build in this sequence)
+═══════════════════════════════════════
+1. AI prompt → 3 layout variations picker (Feature 1 + 2)
+2. Typography system with heading styles (Feature 4)
+3. Content block editor with drag reorder (Feature 7)  
+4. Clipart panel with AI suggestions (Feature 5)
+5. Export to PDF/PNG (Feature 9)
+6. Answer key system (Feature 6)
+7. AI gap-fill suggestions (Feature 8)
+8. Style learning system (Feature 3)
+
+Start with Feature 1 and 2. Show me the layout variation 
+picker working with at least 3 worksheet types before 
+moving on.
