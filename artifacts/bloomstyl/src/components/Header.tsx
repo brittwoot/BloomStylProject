@@ -34,7 +34,7 @@ export function Header() {
                   position: "relative",
                   top: "4px",
                   marginLeft: "1px",
-                  transform: "rotate(14deg)",
+                  transform: "rotate(-20deg)",
                   flexShrink: 0,
                 }}
               >
