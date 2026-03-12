@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import { LayoutPickerPage } from "./pages/LayoutPickerPage";
 import { ActivitySuggestionPage } from "./pages/ActivitySuggestionPage";
 import { WorksheetTypeBrowserPage } from "./pages/WorksheetTypeBrowserPage";
 import { CustomizePage } from "./pages/CustomizePage";
+import CanvasEditor from "./pages/CanvasEditor";
 import NotFound from "./pages/not-found";
 
 const queryClient = new QueryClient({
@@ -20,26 +21,42 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+function AppLayout() {
+  const [location] = useLocation();
+  const isCanvas = location === "/canvas";
+
+  if (isCanvas) {
+    return (
+      <Switch>
+        <Route path="/canvas" component={CanvasEditor} />
+      </Switch>
+    );
+  }
+
   return (
-    <Switch>
-      {/* Document upload flow */}
-      <Route path="/" component={UploadPage} />
-      <Route path="/detect" component={DetectPage} />
-      <Route path="/settings" component={SettingsPage} />
-      <Route path="/result" component={Result} />
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1">
+        <Switch>
+          {/* Document upload flow */}
+          <Route path="/" component={UploadPage} />
+          <Route path="/detect" component={DetectPage} />
+          <Route path="/settings" component={SettingsPage} />
+          <Route path="/result" component={Result} />
 
-      {/* AI prompt flow */}
-      <Route path="/prompt" component={PromptPage} />
-      <Route path="/suggest" component={ActivitySuggestionPage} />
-      <Route path="/types" component={WorksheetTypeBrowserPage} />
-      <Route path="/customize" component={CustomizePage} />
+          {/* AI prompt flow */}
+          <Route path="/prompt" component={PromptPage} />
+          <Route path="/suggest" component={ActivitySuggestionPage} />
+          <Route path="/types" component={WorksheetTypeBrowserPage} />
+          <Route path="/customize" component={CustomizePage} />
 
-      {/* Legacy */}
-      <Route path="/pick-layout" component={LayoutPickerPage} />
+          {/* Legacy */}
+          <Route path="/pick-layout" component={LayoutPickerPage} />
 
-      <Route component={NotFound} />
-    </Switch>
+          <Route component={NotFound} />
+        </Switch>
+      </main>
+    </div>
   );
 }
 
@@ -48,12 +65,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <div className="min-h-screen flex flex-col bg-background">
-            <Header />
-            <main className="flex-1">
-              <Router />
-            </main>
-          </div>
+          <AppLayout />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

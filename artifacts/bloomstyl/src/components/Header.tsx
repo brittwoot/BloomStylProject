@@ -48,9 +48,17 @@ export function Header() {
           </span>
         </div>
 
-        <span className="text-xs text-muted-foreground font-medium px-3 py-1 rounded-full bg-primary/8 text-primary">
-          For Teachers
-        </span>
+        <div className="flex items-center gap-3">
+          <a
+            href={`${import.meta.env.BASE_URL.replace(/\/$/, "") || "/"}/canvas`}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/30 text-primary hover:bg-primary/8 transition-colors"
+          >
+            ✦ Canvas Editor
+          </a>
+          <span className="text-xs text-muted-foreground font-medium px-3 py-1 rounded-full bg-primary/8 text-primary">
+            For Teachers
+          </span>
+        </div>
       </div>
     </header>
   );

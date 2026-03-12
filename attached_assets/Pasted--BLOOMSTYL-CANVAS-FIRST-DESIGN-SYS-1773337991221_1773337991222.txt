@@ -1,0 +1,811 @@
+═══════════════════════════════════════════════════════════════
+BLOOMSTYL — CANVAS-FIRST DESIGN SYSTEM
+Free-form layout, real image generation, shape tools,
+and AI formatting intelligence
+═══════════════════════════════════════════════════════════════
+
+DO NOT REBUILD THE EXISTING APP.
+Add, replace, and improve specific systems only.
+
+═══════════════════════════════════════════════════════════════
+THE CORE SHIFT — FROM FORM TO CANVAS
+═══════════════════════════════════════════════════════════════
+
+Stop thinking about worksheets as forms with fixed sections.
+Start thinking like Canva.
+
+Every worksheet is a blank 8.5x11 canvas.
+Every element — text, image, shape, line, coloring region —
+is a draggable, resizable, layerable object on that canvas.
+
+The AI does not generate a fixed layout.
+The AI places elements on the canvas in a suggested arrangement,
+then gets out of the way so the teacher can move everything.
+
+There is no "correct structure."
+A worksheet might be:
+- Just a big coloring image with a title
+- A poem overlaid on a watercolor-style background shape
+- A diagram with floating labels
+- Three columns of content with a banner heading
+- A mini book folded from one page
+- A full-page illustration with a color key in the corner
+- Sight words scattered around a central cartoon character
+
+The AI suggests. The teacher decides. Everything is movable.
+
+═══════════════════════════════════════════════════════════════
+PART 1 — THE CANVAS ENGINE
+═══════════════════════════════════════════════════════════════
+
+BUILD A FREE-FORM CANVAS with these capabilities:
+
+CANVAS SPECS:
+- 8.5 x 11 inches at 96dpi screen resolution
+- Snap-to-grid optional (toggle in toolbar)
+- Rulers on top and left edges
+- Bleed guides visible as faint dotted lines
+- Background: white by default, changeable
+
+EVERY ELEMENT ON CANVAS IS AN OBJECT:
+Each object has:
+- Position (x, y) — draggable anywhere
+- Size (width, height) — resize handles on corners and edges
+- Rotation — rotation handle above object
+- Z-index — send to back / bring to front controls
+- Lock toggle — lock position to prevent accidental moves
+- Opacity slider
+- Delete button
+
+ELEMENT TYPES:
+1. Text Block — any font, size, color, alignment, line spacing
+2. Image — uploaded, searched, or AI generated
+3. Shape — from shape library (see Part 4)
+4. Line / Divider — straight, curved, dashed, decorative
+5. Coloring Region — closed SVG path that students color in
+6. Answer Lines — set of ruled lines, configurable count/spacing
+7. Write-in Box — bordered rectangle for student responses
+8. Color Key Box — auto-formatted code → color mapping
+9. Word Bank Box — styled container for vocabulary list
+10. Clipart/Icon — SVG element, scalable and colorable
+
+SELECTION AND MANIPULATION:
+- Click to select single object
+- Shift+click or drag to select multiple
+- Arrow keys nudge selected object 1px (shift+arrow = 10px)
+- Align tools: align left, center, right, top, middle, bottom
+- Distribute evenly: horizontal or vertical spacing
+- Group selected objects together
+- Duplicate with Cmd/Ctrl+D
+- Undo/redo stack (minimum 50 steps)
+
+LAYERS PANEL (right sidebar, collapsible):
+- Shows all objects as a stacked list
+- Click layer to select that object on canvas
+- Drag layers to reorder
+- Eye icon to hide/show
+- Lock icon per layer
+- Layer name (double-click to rename)
+
+═══════════════════════════════════════════════════════════════
+PART 2 — AI FORMATTING INTELLIGENCE
+═══════════════════════════════════════════════════════════════
+
+The AI's job is LAYOUT AND FORMATTING, not rigid templates.
+
+When a teacher enters a prompt, the AI should think:
+"What is the best way to arrange this content on a page
+so it is visually clear, age-appropriate, and engaging?"
+
+Then it should generate 3–4 distinct layout arrangements
+using different organizational logic — not different colors
+or fonts, but genuinely different ways of structuring
+the same information spatially.
+
+── LAYOUT VARIATION LOGIC ────────────────────────────────────
+
+For any given prompt, the AI generates layout options
+based on these organizational patterns:
+
+PATTERN A — TOP ANCHOR
+  Large title or hero image at top.
+  Content flows below in columns or rows.
+  Good for: coloring pages, writing prompts, activity sheets.
+
+PATTERN B — GRID ARRANGEMENT
+  Content organized into equal cells.
+  Each cell is a self-contained unit.
+  Good for: matching, letter finds, bingo, sorting, 
+  color by code, vocabulary grids.
+
+PATTERN C — SIDEBAR + MAIN AREA
+  Narrow column on left or right.
+  Wide main content area opposite.
+  Good for: word bank + writing area, directions + diagram,
+  vocabulary list + reading passage.
+
+PATTERN D — FULL BLEED ILLUSTRATION
+  Image or coloring art fills most of the canvas.
+  Text overlaid or tucked into corners.
+  Good for: coloring pages, seasonal sheets, mini posters.
+
+PATTERN E — CENTERED FOCAL POINT
+  Main concept or image in center.
+  Supporting content radiates outward.
+  Good for: mind maps, graphic organizers, 
+  vocabulary webs, All About Me sheets.
+
+PATTERN F — STACKED SECTIONS
+  Horizontal bands of content top to bottom.
+  Each band is a distinct section.
+  Good for: study guides, multi-part worksheets,
+  reading + questions layouts.
+
+PATTERN G — SCATTERED / PLAYFUL
+  Elements placed with intentional irregularity.
+  Content floats around an illustration.
+  Text at varied angles (slight rotations, not random).
+  Good for: kindergarten, holiday sheets, letter hunts,
+  sight word activities.
+
+PATTERN H — FOLD-AND-USE
+  Page divided into quadrants or panels.
+  Designed to be cut or folded.
+  Good for: mini books, flashcards, dice nets,
+  four-square organizers.
+
+When showing layout variations to the teacher:
+- Show actual miniature previews of each layout arrangement
+- Label the pattern name (e.g. "Grid" / "Sidebar" / "Scattered")
+- One sentence explaining why this layout suits the content
+- Teacher clicks the one they want to start from
+- They can switch to a different layout at any time without
+  losing their content — content reflows into new arrangement
+
+── AI FONT OVERLAYING ────────────────────────────────────────
+
+Typography is not a setting — it is a design decision
+the AI makes based on content and age level.
+
+When generating a layout, the AI should:
+
+1. SELECT A FONT PAIRING (one display, one body):
+   Based on: grade level + activity type + tone
+
+   Grade K–2 examples:
+   - Bubblegum Sans (display) + Nunito (body)
+   - Fredoka One (display) + DM Sans (body)
+   - Architects Daughter (display) + Patrick Hand (body)
+   
+   Grade 3–5 examples:
+   - Lilita One (display) + Nunito (body)
+   - Poppins Bold (display) + Poppins Regular (body)
+   - Chewy (display) + DM Sans (body)
+   
+   Grade 6+ examples:
+   - Playfair Display (display) + Lora (body)
+   - Montserrat Bold (display) + Montserrat Regular (body)
+   - Space Grotesk Bold (display) + Inter (body)
+
+2. SCALE FONT SIZES TO FIT CONTENT DENSITY:
+   If there is very little text → use large display sizes
+   If there is a lot of text → tighten line-height, 
+   reduce to minimum readable size
+   
+   Never let text overflow its container.
+   Never let text be so small it is unreadable when printed.
+   Minimum body text: 11pt. Minimum label text: 9pt.
+
+3. OVERLAY TEXT ON IMAGES INTELLIGENTLY:
+   When text sits on top of an image or colored shape:
+   - Check contrast ratio
+   - Add semi-transparent backing pill/box if contrast is low
+   - Or use text outline/shadow to ensure readability
+   - Offer teacher the choice: backing box vs. text outline
+
+4. SHIFT FORMATTING BASED ON CONTENT LENGTH:
+   Teacher changes the directions text from 1 line to 4 lines?
+   → AI automatically reflows layout to accommodate
+   → Other elements shift down or resize proportionally
+   → Teacher gets a notification: "Layout adjusted to fit —
+      tap to undo or drag to customize"
+
+── LAYOUT AI PROMPT STRUCTURE ────────────────────────────────
+
+When calling Claude for layout suggestions, use this format:
+
+SYSTEM PROMPT:
+"You are a graphic designer specializing in elementary 
+educational worksheets. Your job is to suggest how to 
+arrange content on an 8.5x11 page. Return structured JSON 
+only. Think about visual hierarchy, whitespace, and what 
+will be most engaging and usable for a child of the 
+specified grade level."
+
+USER PROMPT:
+"Content: [list of content items teacher has or wants]
+Grade level: [grade]
+Activity type: [type]
+Tone: [fun / clean / academic / playful]
+Generate 4 layout arrangements. For each, specify:
+- layout_pattern: (one of the 8 patterns)
+- element_positions: array of objects with element type, 
+  x, y, width, height, z_index, font_size, font_family,
+  text_content or placeholder_label
+- reasoning: one sentence on why this layout fits
+- font_pair: { display: fontName, body: fontName }"
+
+Parse the JSON response and render each layout as a 
+thumbnail preview the teacher can click.
+
+═══════════════════════════════════════════════════════════════
+PART 3 — COLOR BY CODE WITH REAL IMAGE GENERATION
+═══════════════════════════════════════════════════════════════
+
+CRITICAL CHANGE:
+Color by Code is not a pre-made illustration with regions.
+The teacher describes what they want and an actual
+illustration is generated that matches their description.
+
+── HOW IT WORKS ──────────────────────────────────────────────
+
+STEP 1 — TEACHER DESCRIBES THE IMAGE:
+Input field: "Describe the illustration for your coloring page"
+Examples:
+  "A friendly frog sitting on a lily pad"
+  "A fire truck driving down a street"
+  "A sunflower with 8 petals and a big center"
+  "A kindergarten classroom with desks and a chalkboard"
+  "A bear eating honey from a beehive in a forest"
+  "Emergency symbols: fire extinguisher, exit sign, first aid"
+
+STEP 2 — TEACHER SETS THE COLOR CODE:
+What do the colors represent?
+  □ Sight words (enter word list)
+  □ Letters (specify which letters)
+  □ Numbers (specify number range)
+  □ Math answers (specify equations)
+  □ Parts of speech
+  □ Phonics patterns
+  □ Custom (teacher writes own labels)
+
+STEP 3 — GENERATE THE ILLUSTRATION:
+Call Claude to generate an SVG coloring illustration
+that matches the teacher's description.
+
+SVG GENERATION PROMPT for Claude:
+"Create an SVG coloring page illustration of [description].
+
+Requirements:
+- ViewBox: 0 0 500 500
+- All shapes: stroke='#1a1a1a' stroke-width='2.5' fill='none'
+- All paths must be CLOSED (no open-ended strokes)
+- Divide the illustration into [N] distinct colorable regions
+- Each region must be a separate closed <path> or <polygon>
+  element with a unique id='region_1', id='region_2', etc.
+- Each region should be large enough for a child to color
+- Label each region with a small <text> element showing
+  the color code value (word, letter, or number)
+  positioned at the visual center of that region
+- The text label style: font-size='11' fill='#333' 
+  font-family='sans-serif' text-anchor='middle'
+- Add a subtle drop shadow filter on the outer border only
+- Do not use clip-path
+- Do not use external images or references
+- The overall illustration should look like a coloring book page
+  a 6-year-old would recognize and enjoy coloring"
+
+STEP 4 — INTERACTIVE REGION ASSIGNMENT:
+After SVG is generated, show it in the canvas editor.
+Teacher can click any region to:
+  - Assign or change the code label for that region
+  - Preview what color that region represents
+  - See the color key update in real time
+
+STEP 5 — COLOR KEY AUTO-GENERATION:
+Based on the code type and labels used, auto-generate
+a formatted color key box element.
+
+Color key box contains:
+  [colored swatch] [code label]
+  [colored swatch] [code label]
+  etc.
+
+Teacher can:
+  - Drag the color key box anywhere on canvas
+  - Resize it
+  - Change the colors assigned to each code value
+  - Change the key box style (bordered / shaded / plain)
+
+── REGION SUBDIVISION TOOL ───────────────────────────────────
+
+If the generated SVG does not have enough regions,
+let the teacher add more:
+
+"Add Region" tool:
+  - Teacher draws a closed path on top of an existing region
+  - That path becomes a new colorable region
+  - Assign a code label to it
+  - Color key updates automatically
+
+── COMPLEXITY SETTINGS ───────────────────────────────────────
+
+Before generating, teacher sets:
+  Regions: 4 / 6 / 8 / 10 / 12+ (more regions = more complex)
+  Detail level: Simple outline / Medium detail / Detailed
+  Age group: Pre-K / K–1 / 2–3 / 4–5 (affects line weight,
+  region size, and label font size)
+
+═══════════════════════════════════════════════════════════════
+PART 4 — SHAPE LIBRARY AND TOOLS
+═══════════════════════════════════════════════════════════════
+
+Shapes are first-class canvas elements.
+They are not just decorations — they are layout tools,
+content containers, visual organizers, and coloring regions.
+
+── SHAPE CATEGORIES ──────────────────────────────────────────
+
+BASIC SHAPES:
+Rectangle, Rounded Rectangle, Square, Circle, Oval,
+Triangle (equilateral, right, isoceles), Diamond,
+Pentagon, Hexagon, Octagon, Star (4pt, 5pt, 6pt, 8pt),
+Heart, Arrow (right, left, up, down, double),
+Cross/Plus, Cloud, Thought bubble, Speech bubble (5 styles)
+
+EDUCATIONAL SHAPES:
+Lined notebook paper box (with rules inside the shape)
+Dotted writing box
+Flash card (front/back toggle)
+Sticky note (square, angled)
+Banner ribbon (left, right, center, wave)
+Label tag (price tag, luggage tag)
+Bracket (left, right, curly, square)
+Underline accent (straight, wavy, double, dotted)
+Divider ornament (simple line, line with diamond center,
+  dashed, scalloped, zigzag)
+
+FRAME SHAPES (for images/writing areas):
+Polaroid frame, Chalkboard frame, Corkboard pin frame,
+Comic panel frame, Filmstrip panel, TV/monitor frame,
+Simple border box, Scalloped border box, 
+Stitched border box, Stamp border
+
+DECORATIVE SHAPES:
+Laurel wreath, Award ribbon, Medal circle,
+Starburst badge (6pt, 8pt, 12pt),
+Explosion shape, Gear/cog,
+Maple leaf, Oak leaf, Flower (5pt, daisy),
+Lightning bolt, Moon crescent, Raindrop,
+Footprint (human, animal), Pawprint
+
+── SHAPE BEHAVIOR ────────────────────────────────────────────
+
+Every shape can be:
+  - Filled with a solid color
+  - Filled with a gradient (2-color linear or radial)
+  - Filled with a light pattern (dots, lines, crosshatch, 
+    checker — useful for coloring page regions)
+  - Stroke only (outline, no fill) — for coloring pages
+  - Set to any stroke color, width (0.5 to 10px), 
+    dash pattern (solid, dashed, dotted, dot-dash)
+  - Used as a TEXT CONTAINER — type inside the shape,
+    text auto-wraps to fit the shape boundary
+  - Used as an IMAGE MASK — drop an image into a shape,
+    image clips to shape boundary (like Canva)
+
+SHAPE AS CONTENT CONTAINER:
+When a teacher drops text inside a shape:
+  - Text auto-centers within the shape
+  - Font inherits the current body font setting
+  - Teacher can change font, size, color, alignment 
+    independently of the shape fill/stroke
+  - Shape resizes to fit text (optional toggle: auto-fit)
+
+SMART SHAPES:
+Some shapes have built-in educational behavior:
+
+Lined Box:
+  - Automatically renders horizontal rules inside
+  - Line count adjustable (teacher sets number of lines)
+  - Line spacing adjustable (wide rule / college / 
+    narrow / custom px)
+  - Used as: answer area, writing space, journal box
+
+T-Chart Shape:
+  - Divided rectangle with header row and two columns
+  - Headers editable
+  - Used as: compare/contrast, pros/cons, cause/effect
+
+Web/Bubble Shape:
+  - Center circle with connected satellite circles
+  - Add/remove satellite circles
+  - Connection lines always maintained
+  - Used as: mind maps, vocabulary webs, brainstorming
+
+Sequence Arrow Chain:
+  - 3/4/5/6 connected boxes with arrows between
+  - Add or remove boxes
+  - Arrow style: filled, outline, curved, straight
+  - Used as: story sequence, scientific method, timelines
+
+── SHAPE PANEL (LEFT SIDEBAR TAB) ───────────────────────────
+
+Shapes accessible from left panel tab labeled "Shapes".
+
+Panel layout:
+  Search bar at top (search "cloud", "star", "arrow" etc.)
+  Category tabs below search:
+    Basic | Educational | Frames | Decorative | Smart
+
+  Shape grid: icon thumbnails in 3-column grid
+  Hover shows shape name tooltip
+  Click inserts shape at canvas center at default size
+  Drag from panel directly onto canvas at desired position
+
+Recently used shapes appear at top of panel (last 8 used).
+
+═══════════════════════════════════════════════════════════════
+PART 5 — IMAGE SEARCH AND GENERATION PANEL
+═══════════════════════════════════════════════════════════════
+
+The left panel has tabs. One tab is "Images."
+This is the image discovery and generation hub.
+
+── PANEL LAYOUT ──────────────────────────────────────────────
+
+TOP SECTION — AI IMAGE GENERATION:
+  Prompt input field:
+  "Describe an image to generate..."
+  
+  Style selector (icon chips, not dropdowns):
+    [Line Art]  [Sketch]  [Cartoon]  [Flat Icon]  [Realistic]
+  
+  Color mode:
+    [Black & White]  [Grayscale]  [Color]
+  
+  [Generate Image] button
+  
+  Generated images appear as thumbnails below.
+  Click to insert onto canvas.
+  Regenerate button for new variations.
+  
+  "Make it a coloring page" toggle:
+    When on: strips all fill, converts to stroke-only line art,
+    increases stroke weight to 2.5px for coloring.
+
+MIDDLE SECTION — SEARCH:
+  Search bar: "Search images, clipart, icons..."
+  
+  Filter pills:
+    All | Clipart | Icons | Photos | Patterns | Backgrounds
+  
+  Results grid (3 columns of thumbnails)
+  
+  Search sources (handled server-side, unified results):
+    - Internal BloomStyl SVG library (always first results)
+    - Open-source SVG icon sets (heroicons, phosphor, etc.)
+    - Unsplash API for photographs (filtered: safe, 
+      education-relevant)
+    - Flaticon or Noun Project API (if licensed)
+  
+  Each result shows:
+    - Thumbnail
+    - Small type badge (SVG / PNG / JPG)
+    - Click to insert onto canvas
+    - Hover shows "Make B&W" option for SVGs
+
+BOTTOM SECTION — UPLOADS:
+  [Upload Image] button
+  Accepts: PNG, JPG, SVG, WebP
+  Uploaded images appear in this section for reuse.
+  
+  "Remove background" option on uploaded photos
+  (use remove.bg API or client-side AI background removal)
+
+── AI IMAGE GENERATION DETAILS ───────────────────────────────
+
+Use Anthropic's claude-sonnet-4 for SVG generation.
+For raster images, integrate with an image generation API
+(DALL-E, Stability AI, or Replicate) — use whichever
+is already configured in the project, or default to 
+Stability AI's API.
+
+For coloring page requests, always use SVG generation
+via Claude (not raster) for clean print output.
+
+For photographs or realistic images, use raster generation.
+Always apply a safe content filter.
+Always watermark AI-generated raster images with a small
+"AI" badge in corner until teacher reviews.
+
+IMAGE BEHAVIOR ON CANVAS:
+  - Images can be placed freely
+  - Drag corner handles to resize proportionally
+  - Shift+drag to resize freely
+  - Double-click image to enter crop mode
+    (crop handles appear, drag to set visible area)
+  - Right-click menu: 
+    Bring to Front / Send to Back / Duplicate / 
+    Delete / Replace Image / Set as Background /
+    Make Coloring Page Version
+
+CONTEXTUAL AI IMAGE SUGGESTIONS:
+When a teacher types a topic in the main prompt,
+the Images panel should automatically:
+  - Pre-populate the search with the topic keyword
+  - Show "Suggested for this worksheet" section at top
+    with 4–6 relevant thumbnails
+  - Offer one-click generate: "Generate a [topic] coloring 
+    page illustration" button prominently
+
+═══════════════════════════════════════════════════════════════
+PART 6 — SMART CONTENT BLOCKS (NOT RIGID SECTIONS)
+═══════════════════════════════════════════════════════════════
+
+Replace "sections" with "content blocks" —
+lightweight, composable, freely positionable elements.
+
+A content block is just a canvas element with
+a specific type that gives it smart behavior.
+
+Available content blocks (accessible from left panel 
+"Content" tab):
+
+ANSWER LINES BLOCK:
+  - N horizontal ruled lines
+  - Configurable: line count (1–20), line spacing, 
+    line color, line weight, label above optional
+  - Renders as SVG lines, prints crisply
+
+WORD BANK BLOCK:
+  - Bordered box with word list inside
+  - Auto-formats words in columns if list is long
+  - Style options: dashed border / solid / shadow
+  - Words separated by commas or shown one per line
+  - AI fills word bank from worksheet topic automatically
+
+DIRECTIONS BLOCK:
+  - Small text area with optional directions icon prefix
+  - Style: boxed / plain / banner / sticky note
+  - AI suggests directions text based on activity type
+
+VOCABULARY BLOCK:
+  - Word + definition line pairs
+  - Style options: two-column, numbered list, 
+    word with blank definition line, 
+    matching columns (word left, definition right)
+
+NAME / DATE LINE BLOCK:
+  - Standard header fields
+  - Configurable: Name only / Name + Date / 
+    Name + Date + Class / fully custom labels
+  - Font matches worksheet body font
+
+COLOR KEY BLOCK:
+  - Swatch + label pairs
+  - Auto-populates from color-by-code assignments
+  - Standalone or auto-linked to illustration regions
+
+TITLE BLOCK:
+  - Styled heading text
+  - Heading style options: plain / outlined / banner /
+    shadowed / underlined / enclosed in shape
+  - Independent font from body text
+
+CUSTOM TEXT BLOCK:
+  - Free text, any content
+  - Full typography controls
+
+═══════════════════════════════════════════════════════════════
+PART 7 — LEFT PANEL ARCHITECTURE
+═══════════════════════════════════════════════════════════════
+
+The left panel is a tabbed sidebar, always visible.
+
+TAB 1 — GENERATE (wand icon)
+  Main AI prompt input.
+  Layout variation selector.
+  Activity type picker.
+  This is the starting point.
+
+TAB 2 — CONTENT (grid icon)
+  All available content blocks listed.
+  Click to add to canvas.
+  "Suggested for this worksheet" section at top.
+
+TAB 3 — IMAGES (image icon)
+  Full image panel as described in Part 5.
+
+TAB 4 — SHAPES (shapes icon)
+  Full shape panel as described in Part 4.
+
+TAB 5 — TEXT (T icon)
+  Text style presets.
+  Font family selector with live preview.
+  Heading styles with visual examples.
+  Quick-add: Title / Subtitle / Body / Label / Caption
+
+TAB 6 — BACKGROUND (palette icon)
+  Page background color (solid color picker)
+  Background patterns (dots / lines / grid / crosshatch /
+    blueprint / music staff / handwriting lines / isometric)
+  Background images (upload or search)
+  Paper textures (white / cream / kraft / construction paper)
+
+═══════════════════════════════════════════════════════════════
+PART 8 — RIGHT PANEL — ELEMENT PROPERTIES
+═══════════════════════════════════════════════════════════════
+
+When an element is selected on canvas, the right panel
+shows that element's properties. This replaces any 
+fixed "settings" panel.
+
+ALWAYS SHOWN (all element types):
+  Position: X ___  Y ___
+  Size: W ___  H ___  [lock proportions toggle]
+  Rotation: ___ degrees
+  Opacity: slider 0–100%
+  [Bring Forward] [Send Back] [Delete] [Duplicate] [Lock]
+
+TEXT ELEMENTS:
+  Font family selector (searchable)
+  Size / Bold / Italic / Underline / Strikethrough
+  Color (hex + color picker)
+  Alignment (left / center / right / justify)
+  Line height, Letter spacing
+  Text transform (UPPERCASE / lowercase / Title Case)
+  Background fill for text box (none / color / transparent %)
+  Padding (inner spacing)
+
+SHAPE ELEMENTS:
+  Fill type (none / solid / gradient)
+  Fill color(s)
+  Stroke color, width, dash style
+  Corner radius (for rectangles)
+  Shadow (x, y, blur, color, toggle)
+  "Use as text container" toggle
+
+IMAGE ELEMENTS:
+  Crop button
+  Flip horizontal / vertical
+  Opacity / Blend mode
+  "Make coloring page version" button
+  Replace image button
+  Alt text (for accessibility export)
+  Border (color, width, radius)
+
+COLORING REGION ELEMENTS:
+  Region label (text shown inside region)
+  Label font size, color
+  Default fill color (for teacher preview only, 
+  not shown in student print version)
+  Stroke color, width
+
+═══════════════════════════════════════════════════════════════
+PART 9 — AI FORMATTING SUGGESTIONS (NON-BLOCKING)
+═══════════════════════════════════════════════════════════════
+
+As the teacher builds or edits the canvas, the AI watches
+and makes non-intrusive suggestions via a small floating
+"Suggestions" chip at the bottom of the canvas.
+
+The chip shows a count: "2 suggestions" — clicking it
+opens a small panel with each suggestion as a card:
+
+FORMATTING SUGGESTIONS:
+  "Your title is smaller than your directions text —
+   consider making the title larger."
+  [Fix It Automatically] [Show Me] [Dismiss]
+
+  "This text block overlaps the image slightly —
+   nudge it right 12px to clear the image edge."
+  [Fix It] [Dismiss]
+
+  "The answer lines block is very close to the 
+   page edge — it may get cut off when printed."
+  [Move to Safe Area] [Dismiss]
+
+  "This worksheet has a lot of text for Grade K-1 — 
+   consider a more visual format like color by code 
+   or a matching activity."
+  [See Visual Alternatives] [Dismiss]
+
+CONTENT SUGGESTIONS:
+  "No directions found — add them?"
+  [AI Write Directions] [Add Blank] [Dismiss]
+
+  "Coloring page has no title — add one?"
+  [AI Suggest Title] [Add Blank] [Dismiss]
+
+  "This looks like a vocabulary list — want to add 
+   a definition column or matching activity?"
+  [Add Matching] [Add Definition Lines] [Dismiss]
+
+RULES:
+  - Maximum 3 active suggestions at a time
+  - Never the same suggestion twice in one session
+  - Never block canvas interaction
+  - All dismissable permanently ("Don't suggest this again")
+  - "Fix It Automatically" makes the change and adds it 
+    to the undo stack — teacher can undo immediately
+
+═══════════════════════════════════════════════════════════════
+PART 10 — TECHNICAL REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+CANVAS RENDERING:
+  Use a canvas framework that supports:
+    - Free-form drag and drop of all elements
+    - SVG rendering for shapes and coloring regions
+    - Text editing in-place (click to edit)
+    - Layer management
+    - High-res export
+
+  Recommended: Fabric.js (well-suited for this use case)
+  OR: Konva.js for canvas-based rendering
+  OR: Custom SVG + HTML overlay if already established
+
+  If a canvas library is already in use in the project,
+  extend it — do not replace it.
+
+AI CALLS:
+  Claude claude-sonnet-4 for:
+    - Layout arrangement suggestions (JSON output)
+    - SVG illustration generation
+    - Content suggestions (directions, titles, word banks)
+    - Formatting suggestions
+
+  Image generation API for:
+    - Raster image requests (photos, colored illustrations)
+    - Use whatever image API is configured in the project
+
+PERFORMANCE:
+  - Canvas interactions: 60fps, no lag on drag/resize
+  - AI layout suggestions: skeleton preview in < 300ms, 
+    full render when JSON complete
+  - SVG illustrations: cached by description hash,
+    never regenerated if cached version exists
+  - Shape library: all SVGs pre-loaded on panel open,
+    not fetched on demand
+
+EXPORT:
+  PDF export: html2canvas or Puppeteer rendering
+  PNG export: same
+  Coloring page export: SVG-first (vector, infinitely sharp)
+  Answer key: separate render pass with answers shown
+
+═══════════════════════════════════════════════════════════════
+BUILD ORDER
+═══════════════════════════════════════════════════════════════
+
+1. CANVAS ENGINE
+   Free-form element placement, drag, resize, layer panel.
+   All 10 element types must be insertable.
+
+2. LEFT PANEL TABS
+   All 6 tabs present and functional.
+   Images tab: search working, upload working.
+   Shapes tab: basic + educational shapes available.
+
+3. AI LAYOUT SUGGESTIONS
+   Prompt → 4 layout variations → teacher picks one.
+   Canvas populates with AI-arranged elements.
+
+4. SVG COLORING PAGE GENERATION
+   Teacher describes illustration → Claude generates SVG →
+   Regions are interactive → Color key auto-generates.
+
+5. RIGHT PANEL PROPERTIES
+   Selected element shows correct property controls.
+   All properties update canvas in real time.
+
+6. AI FORMATTING SUGGESTIONS
+   Non-blocking chip system watching for common issues.
+
+7. EXPORT
+   PDF and PNG, student and answer key versions.
+
+Start with the canvas engine. Every other feature 
+depends on it. Show me free-form drag, resize, and 
+layer reordering working before moving to step 2.

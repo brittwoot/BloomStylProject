@@ -1,0 +1,731 @@
+═══════════════════════════════════════════════════════════════
+BLOOMSTYL — DIFFERENTIATION & SCAFFOLDING SYSTEM
+Create multiple versions of any worksheet from a single source
+═══════════════════════════════════════════════════════════════
+
+DO NOT REBUILD THE EXISTING APP.
+Add this as a new system that integrates with the 
+existing canvas, AI generation, and template engine.
+
+═══════════════════════════════════════════════════════════════
+THE CORE IDEA
+═══════════════════════════════════════════════════════════════
+
+One topic. One teacher. Multiple learners.
+
+A teacher should be able to create a single worksheet
+concept and instantly generate 2–5 differentiated versions
+tailored to different readiness levels, language needs,
+or learning profiles — all from the same starting point.
+
+Every version shares the same topic, learning goal,
+and visual identity. What changes is the scaffolding:
+text complexity, question depth, visual support,
+answer structure, and cognitive demand.
+
+This is not making "easier" and "harder" versions.
+This is meeting students where they are.
+
+═══════════════════════════════════════════════════════════════
+PART 1 — DIFFERENTIATION ENTRY POINTS
+═══════════════════════════════════════════════════════════════
+
+A teacher can start differentiation from three places:
+
+── ENTRY POINT A — FROM THE START ────────────────────────────
+
+Before generating any worksheet, the teacher sees a
+"Create versions for multiple levels?" toggle in the
+Generate panel.
+
+When toggled on, a LEVEL SELECTOR appears:
+
+  "Who is this for?"
+
+  Show level chips the teacher clicks to select.
+  Multiple chips can be active at once.
+
+  GRADE-BASED LEVELS:
+  [Pre-K] [K] [1st] [2nd] [3rd] [4th] [5th] [6th] [7th] [8th]
+
+  READINESS-BASED LEVELS (for mixed classrooms):
+  [Approaching]  [On Grade Level]  [Above Grade Level]
+
+  LANGUAGE SUPPORT LEVELS:
+  [ELL Beginning]  [ELL Intermediate]  [ELL Advanced]
+
+  LEARNING PROFILE OPTIONS:
+  [Dyslexia-Friendly]  [Low Print / High Visual]  
+  [Extended Response]  [Modified / Reduced Content]
+
+  Teacher selects 2–5 levels.
+  One level is marked as the "anchor" version 
+  (the base the others adapt from).
+
+  Then clicks: [Generate All Versions]
+
+── ENTRY POINT B — FROM AN EXISTING WORKSHEET ────────────────
+
+After a worksheet is created on the canvas, a 
+"Differentiate This" button appears in the top toolbar.
+
+Clicking it opens the DIFFERENTIATION PANEL (see Part 2)
+with the current worksheet loaded as the anchor version.
+
+── ENTRY POINT C — FROM THE TEMPLATE PICKER ──────────────────
+
+When browsing or selecting a worksheet template,
+a "Create Differentiated Set" option appears alongside
+"Use This Template."
+
+This allows teachers to start from a proven structure
+and immediately produce a leveled set.
+
+═══════════════════════════════════════════════════════════════
+PART 2 — THE DIFFERENTIATION PANEL
+═══════════════════════════════════════════════════════════════
+
+The Differentiation Panel is a full-screen workspace
+that replaces the single-canvas view.
+
+LAYOUT:
+  Left side: Level configuration panel
+  Center: Multi-version preview area (horizontal scroll)
+  Right side: Selected version property panel
+
+── CENTER — MULTI-VERSION PREVIEW ────────────────────────────
+
+Shows all selected versions side by side as 
+worksheet thumbnails in a horizontal row.
+
+Each version card shows:
+  - Level label (e.g. "Grade 2" or "Approaching")
+  - Worksheet thumbnail (live mini-preview)
+  - Edit button (opens that version in full canvas editor)
+  - Duplicate button
+  - Delete button
+  - "Set as Anchor" button
+
+Below each card:
+  Key differences summary (AI generated, 2–3 bullet points):
+  e.g.
+  ✦ Shorter passage (3 sentences vs. 6)
+  ✦ Picture support added to each question
+  ✦ Word bank included
+  ✦ Sentence frames provided
+
+Clicking any thumbnail opens that version in the 
+full canvas editor. A breadcrumb at top shows:
+"← Back to All Versions"
+
+── LEFT — LEVEL CONFIGURATION ────────────────────────────────
+
+VERSION MANAGER:
+  Shows each active version as a row.
+  
+  Each row has:
+    - Level label (editable — teacher can rename)
+    - Color indicator dot (each version gets a unique color
+      that appears on its tab, card, and printed footer)
+    - Scaffold settings summary
+    - Edit scaffold settings button
+    - Delete version
+
+  [+ Add Another Level] button at bottom
+
+ANCHOR VERSION:
+  One version is the anchor — the baseline.
+  All other versions are derived from it.
+  Anchor is marked with a star icon.
+  Changing the anchor content propagates a 
+  "Sync available" notification to other versions.
+
+GLOBAL SETTINGS (apply to all versions):
+  □ Same title across all versions (yes/no)
+  □ Same visual theme/colors (yes/no — teachers often
+    want versions to look identical so students don't 
+    notice they have different versions)
+  □ Same page layout structure (yes/no)
+  □ Version indicator on student copy (none / subtle 
+    footer dot / colored corner tab / version letter)
+  □ Print all versions together or separately
+
+═══════════════════════════════════════════════════════════════
+PART 3 — SCAFFOLD SETTINGS PER VERSION
+═══════════════════════════════════════════════════════════════
+
+Each version has its own SCAFFOLD SETTINGS that control
+how the AI adapts the content.
+
+These settings appear when the teacher clicks
+"Edit Scaffold Settings" for a version.
+
+── TEXT COMPLEXITY ────────────────────────────────────────────
+
+READING LEVEL:
+  Slider from Pre-K → 12th grade
+  AI rewrites passage text to match Lexile range:
+    Pre-K:     Simple sentences, 1–5 words each
+    K–1:       Short sentences, high-frequency words
+    2–3:       Simple paragraphs, Grade 2–3 Lexile
+    4–5:       Multi-sentence paragraphs, Grade 4–5 Lexile
+    6–8:       Complex sentences, domain vocabulary
+    9–12:      Academic prose, sophisticated syntax
+
+SENTENCE LENGTH:
+  [Short — max 8 words] [Medium — max 15 words] 
+  [Standard] [No limit]
+
+VOCABULARY LEVEL:
+  [Sight words only]
+  [Common words + 2–3 content terms]
+  [Grade-level vocabulary]
+  [Advanced / domain-specific vocabulary]
+
+TEXT REDUCTION:
+  Passage length as % of anchor version:
+    25% — Key sentences only (summary version)
+    50% — Half length
+    75% — Slightly reduced
+    100% — Same as anchor
+
+── VISUAL SUPPORT ────────────────────────────────────────────
+
+IMAGE SUPPORT:
+  [None]
+  [Key vocabulary illustrated — add small icons next to 
+   new or difficult words]
+  [Full picture support — each question/item has 
+   an associated image]
+  [Image-primary — reduce text, maximize visuals]
+
+WORD BANK:
+  [None]
+  [Partial word bank — 50% of answers provided]
+  [Full word bank — all answers provided]
+  [Illustrated word bank — words with small images]
+
+SENTENCE FRAMES:
+  [None]
+  [Partial frames — beginning of sentence provided]
+  [Full frames — complete sentence structure given,
+   student fills key word(s) only]
+
+EXAMPLE ANSWERS:
+  [None]
+  [First item modeled — show example completed item]
+  [First two items modeled]
+
+── QUESTION DESIGN ───────────────────────────────────────────
+
+QUESTION TYPE:
+  [Open response — student writes full answer]
+  [Sentence frame response — partial sentence provided]
+  [Multiple choice — 3 options]
+  [Multiple choice — 4 options]
+  [Yes/No or True/False]
+  [Circle the answer — answers embedded in question]
+  [Draw your answer — image response box]
+  [Mixed — let AI decide best type per question]
+
+QUESTION DEPTH (Bloom's Taxonomy level):
+  [Remember — recall facts]
+  [Understand — explain in own words]
+  [Apply — use knowledge in new context]
+  [Analyze — break down and examine]
+  [Evaluate — make judgments]
+  [Create — produce something new]
+
+  Note: Lower levels are not "worse" — they are
+  appropriate entry points for different learners.
+
+QUESTION COUNT:
+  Number input — can reduce from anchor version.
+  "Use same questions as anchor but simplify" toggle.
+  "Generate new questions at this level" toggle.
+
+ANSWER SPACE:
+  [1 line]  [2 lines]  [3 lines]  [4 lines]  
+  [Large box — drawing/diagram response]
+  [Match anchor version spacing]
+
+── LANGUAGE SUPPORT ──────────────────────────────────────────
+
+Shown only when an ELL level is selected.
+
+PRIMARY LANGUAGE SUPPORT:
+  [English only]
+  [Bilingual labels — key terms shown in L1 + English]
+  [Bilingual directions — directions in both languages]
+  [Full bilingual — all text available in both languages]
+
+SUPPORTED LANGUAGE PAIRS:
+  Spanish / English
+  Vietnamese / English  
+  Chinese (Simplified) / English
+  Arabic / English
+  Somali / English
+  Haitian Creole / English
+  Portuguese / English
+  Tagalog / English
+  Hmong / English
+
+PHONETIC SUPPORT:
+  [None]
+  [Pronunciation guide on vocabulary words]
+
+── ACCESSIBILITY OPTIONS ─────────────────────────────────────
+
+Shown when Dyslexia-Friendly or Modified is selected.
+
+DYSLEXIA-FRIENDLY MODE:
+  □ Switch to OpenDyslexic font
+  □ Increased letter spacing (0.12em)
+  □ Increased line spacing (1.8–2.0)
+  □ Left-aligned text only (no justified)
+  □ Avoid italics (use bold for emphasis instead)
+  □ Pastel background instead of white (reduces glare)
+  □ Larger font size minimum (14pt body)
+  □ Wider margins
+
+REDUCED CONTENT MODE:
+  □ Cut question count by 50%
+  □ Shorten all text
+  □ Break multi-step instructions into numbered steps
+  □ One concept per page (split if needed)
+
+═══════════════════════════════════════════════════════════════
+PART 4 — AI DIFFERENTIATION ENGINE
+═══════════════════════════════════════════════════════════════
+
+When the teacher clicks "Generate All Versions,"
+the AI takes the anchor content and produces each
+leveled version according to its scaffold settings.
+
+── AI CALL STRUCTURE ─────────────────────────────────────────
+
+Make one AI call per version (can be parallel).
+
+SYSTEM PROMPT:
+"You are an expert special education teacher and 
+curriculum designer specializing in differentiated 
+instruction and Universal Design for Learning (UDL).
+
+Your job is to adapt educational worksheet content 
+for different learner readiness levels while keeping 
+the same learning goal, topic, and general structure.
+
+Return structured JSON only. No prose wrapper."
+
+USER PROMPT PER VERSION:
+"Anchor content: [full content of anchor version as JSON]
+Learning goal: [teacher's stated goal]
+Target level: [level label]
+Scaffold settings: [JSON of scaffold settings for this version]
+
+Adapt the anchor content according to these settings.
+Return adapted content in the same JSON structure as input.
+
+Rules:
+- Keep the same topic and learning goal
+- Keep the same section structure (passage, vocab, questions)
+- Change ONLY what the scaffold settings specify
+- Preserve proper nouns, key vocabulary terms unless 
+  vocabulary level setting changes them
+- Do not add sections that don't exist in the anchor
+- Do not remove sections unless content reduction is set
+- For ELL versions, add translations only to specified fields
+- For each change made, add a 'change_note' field explaining 
+  what was adapted and why (used for teacher summary display)
+- Flag any place where the adaptation required significant
+  changes with 'significant_change': true"
+
+── WHAT THE AI ADAPTS ────────────────────────────────────────
+
+PASSAGE TEXT:
+Given anchor passage → rewrite at target reading level
+  - Shorten sentences
+  - Replace complex vocabulary with simpler synonyms
+    (unless key vocabulary must stay)
+  - Reduce length if text reduction is set
+  - Add bilingual labels if ELL mode
+
+DIRECTIONS:
+Given anchor directions → rewrite to be:
+  - Simpler (shorter sentences, common words)
+  - OR more scaffolded (numbered steps)
+  - OR bilingual (parallel text)
+
+QUESTIONS:
+Given anchor questions → adapt each by:
+  - Converting open response to multiple choice
+  - Converting multiple choice to true/false
+  - Adding sentence frames
+  - Reducing cognitive complexity
+  - Changing Bloom's level
+  - Reducing question count
+  - Adding picture support note 
+    (AI flags where to insert an image; 
+     teacher approves which image)
+
+VOCABULARY LIST:
+  - Keep words but add definition blanks
+  - Keep words but add sentence frame usage examples
+  - Keep words with L1 translation
+  - Reduce list to most essential terms
+
+── PARALLEL GENERATION ───────────────────────────────────────
+
+All versions generate simultaneously (parallel API calls).
+Show progress per version in the panel:
+
+  [Grade 2]  ████████░░  Adapting questions...
+  [Grade 4]  ██████████  Complete ✓
+  [Grade 6]  ████░░░░░░  Rewriting passage...
+
+Each version renders on the canvas as it completes.
+Teacher does not have to wait for all versions 
+before reviewing the first completed one.
+
+═══════════════════════════════════════════════════════════════
+PART 5 — VERSION SYNC SYSTEM
+═══════════════════════════════════════════════════════════════
+
+When a teacher edits the anchor version after
+differentiation has already been generated:
+
+Show a SYNC NOTIFICATION bar at top of canvas:
+  "You edited the anchor version. 
+   Sync changes to other versions?"
+  
+  [Sync All Versions] [Choose Which to Sync] [Dismiss]
+
+SYNC OPTIONS:
+  When syncing, teacher chooses what to propagate:
+
+  □ Passage text (re-adapt with new text)
+  □ Questions (re-adapt with new questions)
+  □ Title
+  □ Visual layout (update all versions to match 
+    anchor layout changes)
+  □ Images and shapes
+  □ All changes
+
+  "Smart sync" option:
+  AI compares old anchor to new anchor, identifies
+  only what changed, and applies targeted updates
+  to each version rather than regenerating entirely.
+
+  Synced versions show a "Last synced: 2 min ago" 
+  timestamp on their version card.
+
+MANUAL OVERRIDE PROTECTION:
+  If a teacher has manually edited a non-anchor version
+  after generation, those changes are marked as
+  "teacher override" and protected from sync.
+  
+  Sync notification will say:
+  "Grade 2 version has manual edits — skip it during sync?"
+  [Skip] [Overwrite Manual Edits] [Review Changes]
+
+═══════════════════════════════════════════════════════════════
+PART 6 — VISUAL IDENTITY ACROSS VERSIONS
+═══════════════════════════════════════════════════════════════
+
+Teachers often need all versions to look identical
+so students do not know they received a modified version.
+This must be the default.
+
+SAME APPEARANCE MODE (default on):
+  All versions share:
+  - Same title
+  - Same fonts
+  - Same colors
+  - Same layout structure
+  - Same images and decorative elements
+  - Differences are only in text content,
+    question types, and scaffolding elements
+
+  The only visual difference allowed in this mode:
+  - A small, discreet version dot in the footer
+    (●  ◆  ★  ▲ — teacher chooses the symbol set)
+  - This allows the teacher to tell versions apart
+    without students knowing
+
+DIFFERENTIATED APPEARANCE MODE (optional):
+  Teacher turns this on if they want versions to 
+  look intentionally distinct.
+  
+  In this mode, each version can have:
+  - A unique accent color (used in headers, dividers)
+  - A level label in the header 
+    ("Challenge Version" / "Supported Version" etc.)
+  - Different border or layout density
+
+LEVEL LABELS (teacher customizes these names):
+  Default names:
+    "Supported"   (below grade)
+    "Grade Level" (anchor)
+    "Extended"    (above grade)
+  
+  Teacher can rename to anything:
+    "Blue Group" / "Red Group" / "Green Group"
+    "Tier 1" / "Tier 2" / "Tier 3"
+    "Stars" / "Rockets" / "Explorers"
+    Or leave completely blank (no label printed)
+
+═══════════════════════════════════════════════════════════════
+PART 7 — EXPORT FOR DIFFERENTIATED SETS
+═══════════════════════════════════════════════════════════════
+
+EXPORT OPTIONS when a differentiated set is complete:
+
+PRINT ALL VERSIONS:
+  All versions collated in a single PDF.
+  Each version is a separate page (or page set).
+  Order: teacher can drag to reorder versions before export.
+  
+  Print layout options:
+  [One version per page]
+  [Two versions per page — side by side, for comparison]
+  [All versions → then all answer keys]
+  [Version 1, Answer Key 1, Version 2, Answer Key 2...]
+
+PRINT INDIVIDUAL VERSIONS:
+  Each version downloadable as its own PDF/PNG.
+  File named automatically:
+  "[WorksheetTitle]_Grade2.pdf"
+  "[WorksheetTitle]_Supported.pdf"
+  "[WorksheetTitle]_ELL_Spanish.pdf"
+
+CLASS SET PRINT MODE:
+  Teacher enters:
+    "How many copies of each version?"
+    Version A: ___ copies
+    Version B: ___ copies
+    Version C: ___ copies
+  
+  Export produces a single print-ready PDF with
+  correct quantities of each version, collated for
+  cutting and distributing without sorting.
+
+ANSWER KEYS:
+  Each version has its own answer key.
+  Answer keys can be exported with versions or separately.
+  Answer key footer shows: "ANSWER KEY — [Version Label]"
+
+DIGITAL EXPORT (future-ready, stub now):
+  Each version exportable as a separate Google Form
+  or interactive web worksheet.
+  Stub this in the export menu as "Coming Soon."
+
+═══════════════════════════════════════════════════════════════
+PART 8 — DIFFERENTIATION TEMPLATES
+═══════════════════════════════════════════════════════════════
+
+Save and reuse differentiation configurations.
+
+A DIFFERENTIATION TEMPLATE is a saved set of:
+  - Which levels to generate
+  - Scaffold settings for each level
+  - Visual identity settings
+  - Version label names
+
+Teachers can save their most-used configurations:
+
+  "My 3rd Grade Reading Group Set"
+    → Approaching / On Level / Extended
+    → My saved scaffold settings per level
+
+  "ELL Inclusion Class"
+    → Grade Level / ELL Intermediate / ELL Beginning
+    → Spanish bilingual support on ELL versions
+
+  "Resource Room Modified"
+    → Anchor / Modified 50% / Dyslexia-Friendly
+
+When starting a new worksheet, teacher can select
+a saved differentiation template and those settings
+auto-populate — just enter the topic and generate.
+
+Built-in starter templates (pre-loaded, not editable 
+but can be duplicated and customized):
+
+  STARTER TEMPLATE 1 — 3-Level Reading
+    Supported (2 grade levels below, sentence frames,
+    word bank, multiple choice)
+    Grade Level (anchor, open response)
+    Extended (above grade, higher Bloom's, 
+    open-ended extension)
+
+  STARTER TEMPLATE 2 — ELL Support
+    English Only (anchor)
+    ELL Intermediate (bilingual directions, 
+    vocabulary picture support)
+    ELL Beginning (full bilingual, illustrated word bank,
+    sentence frames for all responses)
+
+  STARTER TEMPLATE 3 — Inclusive Classroom
+    Standard
+    Modified (reduced content, sentence frames)
+    Dyslexia-Friendly (font/spacing adjustments,
+    same content as standard)
+
+  STARTER TEMPLATE 4 — Small Group Stations
+    4 versions: Below / Approaching / On Level / Above
+    All look identical (Same Appearance Mode on)
+    Subtle shape indicator in footer only
+
+═══════════════════════════════════════════════════════════════
+PART 9 — TEACHER-FACING DOCUMENTATION
+═══════════════════════════════════════════════════════════════
+
+When a differentiated set is generated, produce a
+TEACHER SUMMARY SHEET (optional, exportable as PDF):
+
+One page (or part of a page) that shows:
+
+  WORKSHEET TITLE: ___________
+  Learning Goal: ___________
+  Generated: [date]
+
+  VERSION OVERVIEW TABLE:
+  Version | Level | Key Scaffolds Used | Copies Needed
+  --------|-------|-------------------|---------------
+  A       | Gr 2  | Word bank, frames |
+  B       | Gr 4  | Anchor version    |
+  C       | Gr 6  | Extension Qs      |
+
+  DIFFERENTIATION NOTES:
+  Auto-generated summary of what was changed per version.
+  Example:
+  "Version A (Grade 2): Passage reduced to 3 sentences 
+  (from 6). All questions converted to multiple choice 
+  with 3 options. Word bank provided with 6 words. 
+  Sentence frames provided for Q2 and Q4."
+
+  SUGGESTED GROUPING:
+  Based on the levels selected, AI suggests grouping:
+  "This set is designed for a 3-group model. Assign 
+  Version A to students reading below the 2nd grade 
+  benchmark, Version B to students at grade level, 
+  and Version C as an enrichment option."
+
+  This summary sheet is clearly marked 
+  "FOR TEACHER USE ONLY" in the header.
+
+═══════════════════════════════════════════════════════════════
+PART 10 — TECHNICAL REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+DATA MODEL:
+  A differentiated set is a new top-level object:
+  
+  DifferentiatedSet {
+    id: string
+    title: string
+    learningGoal: string
+    anchorVersionId: string
+    versions: Version[]
+    differentiationTemplate: DiffTemplate | null
+    createdAt: timestamp
+    updatedAt: timestamp
+  }
+  
+  Version {
+    id: string
+    label: string          // "Grade 2", "Supported", etc.
+    colorIndicator: string // hex color for UI identification
+    levelType: string      // grade | readiness | ell | access
+    levelValue: string     // "grade_2", "approaching", etc.
+    scaffoldSettings: ScaffoldSettings
+    canvasState: object    // full canvas JSON for this version
+    isAnchor: boolean
+    hasManualEdits: boolean
+    lastSyncedAt: timestamp | null
+    changeNotes: string[]  // AI-generated summary of changes
+  }
+  
+  ScaffoldSettings {
+    readingLevel: string
+    sentenceLength: string
+    vocabularyLevel: string
+    textReduction: number   // 0.25 to 1.0
+    imageSupport: string
+    wordBank: string
+    sentenceFrames: string
+    exampleAnswers: string
+    questionType: string
+    bloomsLevel: string
+    questionCount: number | null
+    answerSpace: string
+    languageSupport: string
+    targetLanguage: string | null
+    dyslexiaFriendly: boolean
+    reducedContent: boolean
+  }
+
+AI CALLS:
+  - Parallel API calls for all versions simultaneously
+  - Use Promise.all() for parallel generation
+  - Each call uses claude-sonnet-4
+  - Structured JSON output enforced via system prompt
+  - Max tokens per call: 2000 (sufficient for worksheet content)
+  - If a call fails, that version shows error state 
+    with [Retry] button — does not block other versions
+
+STORAGE:
+  - Save differentiated sets to localStorage for now
+  - Prepare data model for Replit DB or PostgreSQL migration
+  - Each set stored with full version canvases
+  - Auto-save every 30 seconds while editing
+
+PERFORMANCE:
+  - Parallel generation (not sequential)
+  - Progress shown per version
+  - First completed version renders before others finish
+  - Switching between versions is instant 
+    (canvas states pre-loaded in memory)
+
+═══════════════════════════════════════════════════════════════
+BUILD ORDER
+═══════════════════════════════════════════════════════════════
+
+1. DATA MODEL AND VERSION MANAGEMENT
+   DifferentiatedSet and Version data structures.
+   Create/read/update/delete versions.
+   Multi-version preview panel with thumbnails.
+
+2. SCAFFOLD SETTINGS UI
+   Settings panel per version.
+   All scaffold controls present and saving correctly.
+   Does not need to call AI yet — just the UI.
+
+3. AI DIFFERENTIATION ENGINE
+   Parallel API calls.
+   Anchor → adapted version content per settings.
+   Change notes generated per version.
+
+4. MULTI-CANVAS VERSION SWITCHING
+   Each version opens in full canvas editor.
+   Back to all versions navigation.
+   Visual identity mode (same appearance / distinct).
+
+5. SYNC SYSTEM
+   Anchor edit detection.
+   Sync notification and options.
+   Manual override protection.
+
+6. EXPORT FOR DIFFERENTIATED SETS
+   Single PDF with all versions.
+   Class set print mode.
+   Teacher summary sheet.
+
+7. DIFFERENTIATION TEMPLATES
+   Save and reuse configurations.
+   4 built-in starter templates.
+
+Start with step 1. Show me the multi-version preview
+panel with version cards, the anchor designation,
+and the scaffold settings panel opening per version
+before moving to step 2.

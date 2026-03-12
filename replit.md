@@ -137,6 +137,57 @@ activeSectionId: string | null
 - `artifacts/api-server/src/routes/worksheet/generate.ts` — Worksheet generation
 - `lib/api-spec/openapi.yaml` — OpenAPI source of truth
 
+## Canvas-First Design System (New — Primary Editor)
+
+A Canva-like free-form canvas editor at `/canvas`. Every element is draggable, resizable, and layerable on an 8.5×11 paper canvas.
+
+### Canvas Engine (Fabric.js v6)
+- 816×1056px canvas (8.5×11 at 96dpi)
+- Free-form drag, resize, rotate for all elements
+- Undo/redo stack (50 steps)
+- Keyboard shortcuts: Delete, arrow keys, Ctrl+Z/Y, Ctrl+D
+- Snap-to-grid (20px) with toggle
+- PNG export (2x resolution)
+
+### Element Types
+1. Text Block (Textbox) — font, size, color, align, weight, line-height
+2. Shapes — 30+ shapes across 4 categories (Basic, Educational, Frames, Decorative)
+3. Images — upload PNG/JPG/SVG/WebP
+4. Smart Content Blocks — Answer Lines, Word Bank, Write-in Box, Directions, Name/Date Line, Color Key, Title, Subtitle
+
+### Left Panel (6 tabs)
+- **Generate** — Link to prompt flow + Claude-powered SVG coloring page generator
+- **Content** — All smart content blocks (click to add)
+- **Images** — Upload and place images
+- **Shapes** — 30+ shapes in 4 categories
+- **Text** — 7 typography presets (K-2, 3-5, 6+)
+- **Background** — Solid color picker + snap grid toggle
+
+### Right Panel
+- Context-sensitive properties: position, size, rotation, opacity
+- Text controls: font, size, weight, style, alignment, color, line-height
+- Shape controls: fill color, stroke color/width, corner radius
+- Layers panel: all objects listed, click to select, hide/show, lock/unlock
+
+### AI Suggestions Chip (non-blocking)
+- Floating chip shows count of active suggestions
+- Detects: missing title, missing directions, missing name/date line
+- "Fix It" applies change and adds to undo stack
+
+### New API Routes
+- `POST /api/worksheet/generate-svg` — Claude `claude-sonnet-4-6` generates SVG coloring page illustrations with numbered regions
+
+### Key Files
+- `artifacts/bloomstyl/src/pages/CanvasEditor.tsx` — Main canvas editor page
+- `artifacts/bloomstyl/src/components/canvas/FabricCanvas.tsx` — Fabric.js wrapper (core engine)
+- `artifacts/bloomstyl/src/components/canvas/LeftPanel.tsx` — 6-tab left panel
+- `artifacts/bloomstyl/src/components/canvas/RightPanel.tsx` — Properties + Layers panel
+- `artifacts/bloomstyl/src/components/canvas/CanvasToolbar.tsx` — Top toolbar
+- `artifacts/bloomstyl/src/components/canvas/AISuggestionsChip.tsx` — Non-blocking suggestions
+- `artifacts/bloomstyl/src/components/canvas/shapeLibrary.ts` — 30+ shape SVG paths
+- `artifacts/bloomstyl/src/components/canvas/canvasTypes.ts` — Shared TypeScript types
+- `artifacts/api-server/src/routes/worksheet/generate-svg.ts` — Claude SVG generation
+
 ## What's Needed to Persist to Backend
 
 1. Add `editor_state` column to worksheets table (JSON) storing sectionStyles + sectionClipart + worksheetPageStyle
