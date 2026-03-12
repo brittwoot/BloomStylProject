@@ -6,15 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type WorksheetSectionType =
-  (typeof WorksheetSectionType)[keyof typeof WorksheetSectionType];
+export type WorksheetQuestionQuestionType =
+  (typeof WorksheetQuestionQuestionType)[keyof typeof WorksheetQuestionQuestionType];
 
-export const WorksheetSectionType = {
-  instructions: "instructions",
+export const WorksheetQuestionQuestionType = {
   multiple_choice: "multiple_choice",
   short_answer: "short_answer",
-  fill_in_blank: "fill_in_blank",
   true_false: "true_false",
-  matching: "matching",
+  fill_in_blank: "fill_in_blank",
   essay: "essay",
 } as const;

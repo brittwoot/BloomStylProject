@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "./components/Header";
-
 import { UploadPage } from "./pages/UploadPage";
 import { DetectPage } from "./pages/DetectPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -12,10 +11,7 @@ import NotFound from "./pages/not-found";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
-    },
+    queries: { retry: false, refetchOnWindowFocus: false },
   },
 });
 
@@ -31,7 +27,7 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -48,5 +44,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;

@@ -17,7 +17,11 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  DetectContentRequest,
+  DetectContentResponse,
   ErrorResponse,
+  ExtractTextBody,
+  ExtractTextResponse,
   GenerateWorksheetRequest,
   GenerateWorksheetResponse,
   HealthStatus,
@@ -33,7 +37,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -109,8 +112,181 @@ export function useHealthCheck<
 }
 
 /**
- * Takes lesson text and generates a formatted worksheet using AI
- * @summary Generate a worksheet from lesson content
+ * @summary Extract text from an uploaded PDF or DOCX file
+ */
+export const getExtractTextUrl = () => {
+  return `/api/worksheet/extract-text`;
+};
+
+export const extractText = async (
+  extractTextBody: ExtractTextBody,
+  options?: RequestInit,
+): Promise<ExtractTextResponse> => {
+  const formData = new FormData();
+  formData.append(`file`, extractTextBody.file);
+
+  return customFetch<ExtractTextResponse>(getExtractTextUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getExtractTextMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractText>>,
+    TError,
+    { data: BodyType<ExtractTextBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof extractText>>,
+  TError,
+  { data: BodyType<ExtractTextBody> },
+  TContext
+> => {
+  const mutationKey = ["extractText"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof extractText>>,
+    { data: BodyType<ExtractTextBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return extractText(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExtractTextMutationResult = NonNullable<
+  Awaited<ReturnType<typeof extractText>>
+>;
+export type ExtractTextMutationBody = BodyType<ExtractTextBody>;
+export type ExtractTextMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Extract text from an uploaded PDF or DOCX file
+ */
+export const useExtractText = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractText>>,
+    TError,
+    { data: BodyType<ExtractTextBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof extractText>>,
+  TError,
+  { data: BodyType<ExtractTextBody> },
+  TContext
+> => {
+  return useMutation(getExtractTextMutationOptions(options));
+};
+
+/**
+ * @summary Detect instructional content blocks from lesson text
+ */
+export const getDetectContentUrl = () => {
+  return `/api/worksheet/detect`;
+};
+
+export const detectContent = async (
+  detectContentRequest: DetectContentRequest,
+  options?: RequestInit,
+): Promise<DetectContentResponse> => {
+  return customFetch<DetectContentResponse>(getDetectContentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(detectContentRequest),
+  });
+};
+
+export const getDetectContentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detectContent>>,
+    TError,
+    { data: BodyType<DetectContentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof detectContent>>,
+  TError,
+  { data: BodyType<DetectContentRequest> },
+  TContext
+> => {
+  const mutationKey = ["detectContent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof detectContent>>,
+    { data: BodyType<DetectContentRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return detectContent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DetectContentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof detectContent>>
+>;
+export type DetectContentMutationBody = BodyType<DetectContentRequest>;
+export type DetectContentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Detect instructional content blocks from lesson text
+ */
+export const useDetectContent = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detectContent>>,
+    TError,
+    { data: BodyType<DetectContentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof detectContent>>,
+  TError,
+  { data: BodyType<DetectContentRequest> },
+  TContext
+> => {
+  return useMutation(getDetectContentMutationOptions(options));
+};
+
+/**
+ * @summary Generate a formatted worksheet from selected content blocks
  */
 export const getGenerateWorksheetUrl = () => {
   return `/api/worksheet/generate`;
@@ -173,7 +349,7 @@ export type GenerateWorksheetMutationBody = BodyType<GenerateWorksheetRequest>;
 export type GenerateWorksheetMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Generate a worksheet from lesson content
+ * @summary Generate a formatted worksheet from selected content blocks
  */
 export const useGenerateWorksheet = <
   TError = ErrorType<ErrorResponse>,

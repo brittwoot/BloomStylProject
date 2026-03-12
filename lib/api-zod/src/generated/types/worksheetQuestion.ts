@@ -5,16 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { WorksheetQuestionQuestionType } from "./worksheetQuestionQuestionType";
 
 export interface WorksheetQuestion {
-  /** Question number */
-  number: number;
-  /** The question text */
+  id: string;
   text: string;
-  /** Answer choices for multiple choice questions */
+  question_type: WorksheetQuestionQuestionType;
+  difficulty_level?: string;
   options?: string[];
-  /** The correct answer (optional, for answer key) */
   answer?: string;
-  /** Number of lines for written response */
+  points?: number;
+  order: number;
   lines?: number;
 }

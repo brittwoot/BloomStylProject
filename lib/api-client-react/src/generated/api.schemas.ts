@@ -9,67 +9,145 @@ export interface HealthStatus {
   status: string;
 }
 
-export interface GenerateWorksheetRequest {
-  /** The lesson content to convert into a worksheet */
-  lessonText: string;
-  /** Optional grade level for the worksheet */
-  gradeLevel?: string;
-  /** Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank) */
-  worksheetType?: string;
-}
-
-export type WorksheetSectionType =
-  (typeof WorksheetSectionType)[keyof typeof WorksheetSectionType];
-
-export const WorksheetSectionType = {
-  instructions: "instructions",
-  multiple_choice: "multiple_choice",
-  short_answer: "short_answer",
-  fill_in_blank: "fill_in_blank",
-  true_false: "true_false",
-  matching: "matching",
-  essay: "essay",
-} as const;
-
-export interface WorksheetQuestion {
-  /** Question number */
-  number: number;
-  /** The question text */
-  text: string;
-  /** Answer choices for multiple choice questions */
-  options?: string[];
-  /** The correct answer (optional, for answer key) */
-  answer?: string;
-  /** Number of lines for written response */
-  lines?: number;
-}
-
-export interface WorksheetSection {
-  type: WorksheetSectionType;
-  /** Section heading */
-  title: string;
-  /** Instructions for this section */
-  instructions?: string;
-  questions: WorksheetQuestion[];
-  /** Points for this section */
-  points?: number;
-}
-
-export interface GenerateWorksheetResponse {
-  /** The worksheet title */
-  title: string;
-  /** The subject area */
-  subject: string;
-  /** The target grade level */
-  gradeLevel: string;
-  sections: WorksheetSection[];
-  /** Placeholder for student name field */
-  studentName?: string;
-  /** Placeholder for date field */
-  date?: string;
-}
-
 export interface ErrorResponse {
   error: string;
   message: string;
 }
+
+export interface ExtractTextResponse {
+  text: string;
+}
+
+export type ContentBlockType =
+  (typeof ContentBlockType)[keyof typeof ContentBlockType];
+
+export const ContentBlockType = {
+  title: "title",
+  directions: "directions",
+  passage: "passage",
+  questions: "questions",
+  vocabulary: "vocabulary",
+  teacher_notes: "teacher_notes",
+  activity: "activity",
+  objective: "objective",
+  table: "table",
+  extra: "extra",
+} as const;
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  page: number;
+  label: string;
+  text: string;
+  is_selected: boolean;
+  order: number;
+}
+
+export interface DetectContentRequest {
+  lessonText: string;
+  language?: string;
+}
+
+export interface DetectContentResponse {
+  blocks: ContentBlock[];
+  detectedLanguage: string;
+  safetyPassed: boolean;
+  safetyFlags?: string[];
+}
+
+export type WorksheetSettingsTemplateType =
+  (typeof WorksheetSettingsTemplateType)[keyof typeof WorksheetSettingsTemplateType];
+
+export const WorksheetSettingsTemplateType = {
+  reading: "reading",
+  practice: "practice",
+  vocabulary: "vocabulary",
+} as const;
+
+export type WorksheetSettingsTheme =
+  (typeof WorksheetSettingsTheme)[keyof typeof WorksheetSettingsTheme];
+
+export const WorksheetSettingsTheme = {
+  clean: "clean",
+  classroom: "classroom",
+  fun: "fun",
+} as const;
+
+export interface WorksheetSettings {
+  templateType: WorksheetSettingsTemplateType;
+  theme: WorksheetSettingsTheme;
+  includeName: boolean;
+  includeDate: boolean;
+  generateAnswerKey: boolean;
+  language?: string;
+}
+
+export interface GenerateWorksheetRequest {
+  blocks: ContentBlock[];
+  settings: WorksheetSettings;
+  lessonText?: string;
+  gradeLevel?: string;
+  worksheetType?: string;
+}
+
+export type WorksheetQuestionQuestionType =
+  (typeof WorksheetQuestionQuestionType)[keyof typeof WorksheetQuestionQuestionType];
+
+export const WorksheetQuestionQuestionType = {
+  multiple_choice: "multiple_choice",
+  short_answer: "short_answer",
+  true_false: "true_false",
+  fill_in_blank: "fill_in_blank",
+  essay: "essay",
+} as const;
+
+export interface WorksheetQuestion {
+  id: string;
+  text: string;
+  question_type: WorksheetQuestionQuestionType;
+  difficulty_level?: string;
+  options?: string[];
+  answer?: string;
+  points?: number;
+  order: number;
+  lines?: number;
+}
+
+export interface VocabularyEntry {
+  id: string;
+  word: string;
+  definition: string;
+  order: number;
+}
+
+export interface WorksheetSection {
+  id: string;
+  type: string;
+  title: string;
+  instructions?: string;
+  questions: WorksheetQuestion[];
+  vocabulary?: VocabularyEntry[];
+  passage?: string;
+  order: number;
+  points?: number;
+}
+
+export type GenerateWorksheetResponseAnswerKey = { [key: string]: unknown };
+
+export interface GenerateWorksheetResponse {
+  worksheet_id: string;
+  title: string;
+  subject?: string;
+  gradeLevel?: string;
+  language?: string;
+  template_type?: string;
+  theme?: string;
+  settings: WorksheetSettings;
+  sections: WorksheetSection[];
+  answer_key?: GenerateWorksheetResponseAnswerKey;
+}
+
+export type ExtractTextBody = {
+  file: Blob;
+};

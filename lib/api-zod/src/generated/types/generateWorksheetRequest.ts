@@ -5,12 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ContentBlock } from "./contentBlock";
+import type { WorksheetSettings } from "./worksheetSettings";
 
 export interface GenerateWorksheetRequest {
-  /** The lesson content to convert into a worksheet */
-  lessonText: string;
-  /** Optional grade level for the worksheet */
+  blocks: ContentBlock[];
+  settings: WorksheetSettings;
+  lessonText?: string;
   gradeLevel?: string;
-  /** Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank) */
   worksheetType?: string;
 }

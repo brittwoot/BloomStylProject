@@ -1,6 +1,5 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
   description: API specification
@@ -18,7 +17,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -26,12 +24,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /worksheet/extract-text:
+    post:
+      operationId: extractText
+      tags: [worksheet]
+      summary: Extract text from an uploaded PDF or DOCX file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        "200":
+          description: Extracted text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractTextResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /worksheet/detect:
+    post:
+      operationId: detectContent
+      tags: [worksheet]
+      summary: Detect instructional content blocks from lesson text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetectContentRequest"
+      responses:
+        "200":
+          description: Detected content blocks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetectContentResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /worksheet/generate:
     post:
       operationId: generateWorksheet
       tags: [worksheet]
-      summary: Generate a worksheet from lesson content
-      description: Takes lesson text and generates a formatted worksheet using AI
+      summary: Generate a formatted worksheet from selected content blocks
       requestBody:
         required: true
         content:
@@ -57,6 +110,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -64,95 +118,8 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
-    GenerateWorksheetRequest:
-      type: object
-      properties:
-        lessonText:
-          type: string
-          description: The lesson content to convert into a worksheet
-        gradeLevel:
-          type: string
-          description: Optional grade level for the worksheet
-        worksheetType:
-          type: string
-          description: Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank)
-      required:
-        - lessonText
-    GenerateWorksheetResponse:
-      type: object
-      properties:
-        title:
-          type: string
-          description: The worksheet title
-        subject:
-          type: string
-          description: The subject area
-        gradeLevel:
-          type: string
-          description: The target grade level
-        sections:
-          type: array
-          items:
-            $ref: "#/components/schemas/WorksheetSection"
-        studentName:
-          type: string
-          description: Placeholder for student name field
-        date:
-          type: string
-          description: Placeholder for date field
-      required:
-        - title
-        - subject
-        - gradeLevel
-        - sections
-    WorksheetSection:
-      type: object
-      properties:
-        type:
-          type: string
-          enum: [instructions, multiple_choice, short_answer, fill_in_blank, true_false, matching, essay]
-        title:
-          type: string
-          description: Section heading
-        instructions:
-          type: string
-          description: Instructions for this section
-        questions:
-          type: array
-          items:
-            $ref: "#/components/schemas/WorksheetQuestion"
-        points:
-          type: number
-          description: Points for this section
-      required:
-        - type
-        - title
-        - questions
-    WorksheetQuestion:
-      type: object
-      properties:
-        number:
-          type: integer
-          description: Question number
-        text:
-          type: string
-          description: The question text
-        options:
-          type: array
-          items:
-            type: string
-          description: Answer choices for multiple choice questions
-        answer:
-          type: string
-          description: The correct answer (optional, for answer key)
-        lines:
-          type: integer
-          description: Number of lines for written response
-      required:
-        - number
-        - text
+      required: [status]
+
     ErrorResponse:
       type: object
       properties:
@@ -160,6 +127,187 @@ components:
           type: string
         message:
           type: string
-      required:
-        - error
-        - message
+      required: [error, message]
+
+    ExtractTextResponse:
+      type: object
+      properties:
+        text:
+          type: string
+      required: [text]
+
+    ContentBlock:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [title, directions, passage, questions, vocabulary, teacher_notes, activity, objective, table, extra]
+        page:
+          type: integer
+        label:
+          type: string
+        text:
+          type: string
+        is_selected:
+          type: boolean
+        order:
+          type: integer
+      required: [id, type, page, label, text, is_selected, order]
+
+    DetectContentRequest:
+      type: object
+      properties:
+        lessonText:
+          type: string
+        language:
+          type: string
+      required: [lessonText]
+
+    DetectContentResponse:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentBlock"
+        detectedLanguage:
+          type: string
+        safetyPassed:
+          type: boolean
+        safetyFlags:
+          type: array
+          items:
+            type: string
+      required: [blocks, detectedLanguage, safetyPassed]
+
+    WorksheetSettings:
+      type: object
+      properties:
+        templateType:
+          type: string
+          enum: [reading, practice, vocabulary]
+        theme:
+          type: string
+          enum: [clean, classroom, fun]
+        includeName:
+          type: boolean
+        includeDate:
+          type: boolean
+        generateAnswerKey:
+          type: boolean
+        language:
+          type: string
+      required: [templateType, theme, includeName, includeDate, generateAnswerKey]
+
+    GenerateWorksheetRequest:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentBlock"
+        settings:
+          $ref: "#/components/schemas/WorksheetSettings"
+        lessonText:
+          type: string
+        gradeLevel:
+          type: string
+        worksheetType:
+          type: string
+      required: [blocks, settings]
+
+    WorksheetQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        question_type:
+          type: string
+          enum: [multiple_choice, short_answer, true_false, fill_in_blank, essay]
+        difficulty_level:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        answer:
+          type: string
+        points:
+          type: integer
+        order:
+          type: integer
+        lines:
+          type: integer
+      required: [id, text, question_type, order]
+
+    VocabularyEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        word:
+          type: string
+        definition:
+          type: string
+        order:
+          type: integer
+      required: [id, word, definition, order]
+
+    WorksheetSection:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        instructions:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorksheetQuestion"
+        vocabulary:
+          type: array
+          items:
+            $ref: "#/components/schemas/VocabularyEntry"
+        passage:
+          type: string
+        order:
+          type: integer
+        points:
+          type: integer
+      required: [id, type, title, questions, order]
+
+    GenerateWorksheetResponse:
+      type: object
+      properties:
+        worksheet_id:
+          type: string
+        title:
+          type: string
+        subject:
+          type: string
+        gradeLevel:
+          type: string
+        language:
+          type: string
+        template_type:
+          type: string
+        theme:
+          type: string
+        settings:
+          $ref: "#/components/schemas/WorksheetSettings"
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorksheetSection"
+        answer_key:
+          type: object
+          additionalProperties: true
+      required: [worksheet_id, title, sections, settings]

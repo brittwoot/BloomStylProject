@@ -5,18 +5,19 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GenerateWorksheetResponseAnswerKey } from "./generateWorksheetResponseAnswerKey";
 import type { WorksheetSection } from "./worksheetSection";
+import type { WorksheetSettings } from "./worksheetSettings";
 
 export interface GenerateWorksheetResponse {
-  /** The worksheet title */
+  worksheet_id: string;
   title: string;
-  /** The subject area */
-  subject: string;
-  /** The target grade level */
-  gradeLevel: string;
+  subject?: string;
+  gradeLevel?: string;
+  language?: string;
+  template_type?: string;
+  theme?: string;
+  settings: WorksheetSettings;
   sections: WorksheetSection[];
-  /** Placeholder for student name field */
-  studentName?: string;
-  /** Placeholder for date field */
-  date?: string;
+  answer_key?: GenerateWorksheetResponseAnswerKey;
 }

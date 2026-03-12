@@ -1,22 +1,19 @@
 import { useMutation } from "@tanstack/react-query";
 
-// Simulating a file extraction endpoint that returns the parsed text from a document.
 export function useUploadDocument() {
   return useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (file: File): Promise<string> => {
       const formData = new FormData();
       formData.append("file", file);
-      
-      const res = await fetch("/api/upload", {
+
+      const res = await fetch("/api/worksheet/extract-text", {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
-        // Fallback for demonstration if endpoint is missing as requested in notes
-        console.warn("Upload endpoint missing, mocking text extraction for demo purposes");
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return `Extracted lesson text from ${file.name}. \n\nPhotosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods from carbon dioxide and water. Photosynthesis in plants generally involves the green pigment chlorophyll and generates oxygen as a byproduct.`;
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to extract text from file");
       }
 
       const data = await res.json();

@@ -8,7 +8,6 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -16,69 +15,146 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Takes lesson text and generates a formatted worksheet using AI
- * @summary Generate a worksheet from lesson content
+ * @summary Extract text from an uploaded PDF or DOCX file
+ */
+export const ExtractTextBody = zod.object({
+  file: zod.instanceof(File),
+});
+
+export const ExtractTextResponse = zod.object({
+  text: zod.string(),
+});
+
+/**
+ * @summary Detect instructional content blocks from lesson text
+ */
+export const DetectContentBody = zod.object({
+  lessonText: zod.string(),
+  language: zod.string().optional(),
+});
+
+export const DetectContentResponse = zod.object({
+  blocks: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.enum([
+        "title",
+        "directions",
+        "passage",
+        "questions",
+        "vocabulary",
+        "teacher_notes",
+        "activity",
+        "objective",
+        "table",
+        "extra",
+      ]),
+      page: zod.number(),
+      label: zod.string(),
+      text: zod.string(),
+      is_selected: zod.boolean(),
+      order: zod.number(),
+    }),
+  ),
+  detectedLanguage: zod.string(),
+  safetyPassed: zod.boolean(),
+  safetyFlags: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Generate a formatted worksheet from selected content blocks
  */
 export const GenerateWorksheetBody = zod.object({
-  lessonText: zod
-    .string()
-    .describe("The lesson content to convert into a worksheet"),
-  gradeLevel: zod
-    .string()
-    .optional()
-    .describe("Optional grade level for the worksheet"),
-  worksheetType: zod
-    .string()
-    .optional()
-    .describe(
-      "Optional type of worksheet (e.g., quiz, comprehension, fill-in-the-blank)",
-    ),
+  blocks: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.enum([
+        "title",
+        "directions",
+        "passage",
+        "questions",
+        "vocabulary",
+        "teacher_notes",
+        "activity",
+        "objective",
+        "table",
+        "extra",
+      ]),
+      page: zod.number(),
+      label: zod.string(),
+      text: zod.string(),
+      is_selected: zod.boolean(),
+      order: zod.number(),
+    }),
+  ),
+  settings: zod.object({
+    templateType: zod.enum(["reading", "practice", "vocabulary"]),
+    theme: zod.enum(["clean", "classroom", "fun"]),
+    includeName: zod.boolean(),
+    includeDate: zod.boolean(),
+    generateAnswerKey: zod.boolean(),
+    language: zod.string().optional(),
+  }),
+  lessonText: zod.string().optional(),
+  gradeLevel: zod.string().optional(),
+  worksheetType: zod.string().optional(),
 });
 
 export const GenerateWorksheetResponse = zod.object({
-  title: zod.string().describe("The worksheet title"),
-  subject: zod.string().describe("The subject area"),
-  gradeLevel: zod.string().describe("The target grade level"),
+  worksheet_id: zod.string(),
+  title: zod.string(),
+  subject: zod.string().optional(),
+  gradeLevel: zod.string().optional(),
+  language: zod.string().optional(),
+  template_type: zod.string().optional(),
+  theme: zod.string().optional(),
+  settings: zod.object({
+    templateType: zod.enum(["reading", "practice", "vocabulary"]),
+    theme: zod.enum(["clean", "classroom", "fun"]),
+    includeName: zod.boolean(),
+    includeDate: zod.boolean(),
+    generateAnswerKey: zod.boolean(),
+    language: zod.string().optional(),
+  }),
   sections: zod.array(
     zod.object({
-      type: zod.enum([
-        "instructions",
-        "multiple_choice",
-        "short_answer",
-        "fill_in_blank",
-        "true_false",
-        "matching",
-        "essay",
-      ]),
-      title: zod.string().describe("Section heading"),
-      instructions: zod
-        .string()
-        .optional()
-        .describe("Instructions for this section"),
+      id: zod.string(),
+      type: zod.string(),
+      title: zod.string(),
+      instructions: zod.string().optional(),
       questions: zod.array(
         zod.object({
-          number: zod.number().describe("Question number"),
-          text: zod.string().describe("The question text"),
-          options: zod
-            .array(zod.string())
-            .optional()
-            .describe("Answer choices for multiple choice questions"),
-          answer: zod
-            .string()
-            .optional()
-            .describe("The correct answer (optional, for answer key)"),
-          lines: zod
-            .number()
-            .optional()
-            .describe("Number of lines for written response"),
+          id: zod.string(),
+          text: zod.string(),
+          question_type: zod.enum([
+            "multiple_choice",
+            "short_answer",
+            "true_false",
+            "fill_in_blank",
+            "essay",
+          ]),
+          difficulty_level: zod.string().optional(),
+          options: zod.array(zod.string()).optional(),
+          answer: zod.string().optional(),
+          points: zod.number().optional(),
+          order: zod.number(),
+          lines: zod.number().optional(),
         }),
       ),
-      points: zod.number().optional().describe("Points for this section"),
+      vocabulary: zod
+        .array(
+          zod.object({
+            id: zod.string(),
+            word: zod.string(),
+            definition: zod.string(),
+            order: zod.number(),
+          }),
+        )
+        .optional(),
+      passage: zod.string().optional(),
+      order: zod.number(),
+      points: zod.number().optional(),
     }),
   ),
-  studentName: zod
-    .string()
-    .optional()
-    .describe("Placeholder for student name field"),
-  date: zod.string().optional().describe("Placeholder for date field"),
+  answer_key: zod.record(zod.string(), zod.unknown()).optional(),
 });

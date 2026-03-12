@@ -6,10 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./contentBlock";
+export * from "./contentBlockType";
+export * from "./detectContentRequest";
+export * from "./detectContentResponse";
 export * from "./errorResponse";
+export * from "./extractTextBody";
+export * from "./extractTextResponse";
 export * from "./generateWorksheetRequest";
 export * from "./generateWorksheetResponse";
+export * from "./generateWorksheetResponseAnswerKey";
 export * from "./healthStatus";
+export * from "./vocabularyEntry";
 export * from "./worksheetQuestion";
+export * from "./worksheetQuestionQuestionType";
 export * from "./worksheetSection";
-export * from "./worksheetSectionType";
+export * from "./worksheetSettings";
+export * from "./worksheetSettingsTemplateType";
+export * from "./worksheetSettingsTheme";

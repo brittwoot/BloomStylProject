@@ -5,16 +5,17 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VocabularyEntry } from "./vocabularyEntry";
 import type { WorksheetQuestion } from "./worksheetQuestion";
-import type { WorksheetSectionType } from "./worksheetSectionType";
 
 export interface WorksheetSection {
-  type: WorksheetSectionType;
-  /** Section heading */
+  id: string;
+  type: string;
   title: string;
-  /** Instructions for this section */
   instructions?: string;
   questions: WorksheetQuestion[];
-  /** Points for this section */
+  vocabulary?: VocabularyEntry[];
+  passage?: string;
+  order: number;
   points?: number;
 }
