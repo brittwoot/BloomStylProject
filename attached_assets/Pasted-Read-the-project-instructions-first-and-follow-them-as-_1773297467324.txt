@@ -1,0 +1,166 @@
+Read the project instructions first and follow them as the source of truth.
+
+Now upgrade the BloomStyl worksheet preview/editor into a teacher-friendly editable design workspace.
+
+The goal is to let teachers edit and style worksheet content directly in the preview, move text elements around the page, add decorative formatting, insert clipart, and receive keyword-based clipart suggestions.
+
+Use local state and mock data for now, but structure everything so it can later persist to the master worksheet JSON schema and backend.
+
+BUILD THE FOLLOWING FEATURES:
+
+1. EDITABLE TEXT THAT SAVES
+- Any text edited in the preview must save immediately in state
+- Edited text must remain after:
+  - switching screens
+  - changing themes
+  - reordering sections
+  - refreshing local preview state if possible
+- Editable text should include:
+  - title
+  - directions
+  - passage
+  - questions
+  - vocabulary text
+- Do not make edits visual-only; store them in the worksheet editor state
+
+2. TEXT FONT / COLOR / TYPE OPTIONS
+Add teacher controls for:
+- font family
+- font size
+- font color
+- bold
+- italic
+- underline
+- text alignment
+- bullet points
+- numbered lists
+
+Include multiple teacher-friendly font options such as:
+- Poppins
+- Nunito
+- Inter
+- Open Sans
+- Roboto
+- Pacifico or another cursive/decorative heading font
+
+Support different font styling for:
+- worksheet title
+- section headings
+- body text
+- question text
+
+3. MOVE TEXT ON THE PAGE
+Teachers must be able to move text elements on the worksheet page.
+
+At minimum:
+- allow dragging and repositioning of text boxes or text sections inside the preview area
+- store their updated placement in state
+
+If full freeform dragging is too complex for the first pass, then:
+- allow section movement with visible move controls
+- keep code structured so true drag-and-drop text positioning can be added next
+
+4. BACKGROUND / BORDER / BULLET OPTIONS
+Add worksheet style controls for:
+- full page background color
+- section background color
+- border style
+- border color
+- border thickness
+- rounded corners
+- bullet point styling
+- list formatting
+
+Teachers should be able to apply these styles to:
+- the full worksheet
+- individual sections
+- editable text areas where appropriate
+
+5. CLIPART ADDITIONS
+Add a clipart panel teachers can open from the preview/editor.
+
+Teachers should be able to:
+- browse clipart categories
+- insert clipart into the worksheet
+- place clipart near titles or sections
+- remove clipart
+- keep inserted clipart saved in local state
+
+Clipart categories should include mock examples like:
+- school
+- reading
+- writing
+- math
+- science
+- animals
+- weather
+- holidays
+- classroom objects
+
+6. AI KEYWORD-BASED CLIPART SUGGESTIONS
+Add a Suggested Clipart panel that analyzes worksheet text and suggests appropriate clipart based on keywords.
+
+For now, implement mock keyword logic in code only.
+
+Examples:
+- “water cycle” → clouds, rain, sun
+- “fractions” → pizza, circles, math icons
+- “plants” → leaves, flowers, garden icons
+- “reading” → books, pencils, reading glasses
+
+Allow teachers to click a suggestion and insert it into the worksheet.
+
+TECHNICAL REQUIREMENTS
+
+A. STATE MODEL
+Each editable section should support and save:
+- text content
+- font family
+- font size
+- font color
+- bold
+- italic
+- underline
+- alignment
+- list style
+- background style
+- border style
+- position/order
+- attached clipart items
+
+B. COMPONENTS
+Create modular reusable components such as:
+- EditableTextBlock
+- TextStyleToolbar
+- SectionStylePanel
+- ClipartPanel
+- SuggestedClipartPanel
+- DraggableSection
+- WorksheetEditorPanel
+
+C. UX
+Keep the interface clean, visual, and teacher-friendly.
+This should feel like a simple classroom design tool, not a complex professional design app.
+
+D. SCOPE
+Do not connect Supabase yet.
+Do not connect real AI yet.
+Use local state and mock data.
+Focus on making the worksheet editor interactive and persistent.
+
+DELIVERABLE
+Update the existing BloomStyl preview/editor so teachers can:
+- edit text and keep edits saved
+- change fonts, colors, and text styles
+- move text elements/sections on the page
+- apply backgrounds and borders
+- use bullets and numbered lists
+- add clipart
+- receive keyword-based suggested clipart
+
+After building, explain:
+1. what components were created
+2. how edits are saved in state
+3. how text movement is stored
+4. how clipart suggestions are generated
+5. what is needed later to persist this to the backend

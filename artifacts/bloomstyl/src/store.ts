@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { nanoid } from "nanoid";
 
 export type ContentBlock = {
   id: string;
@@ -18,6 +19,70 @@ export type WorksheetSettings = {
   generateAnswerKey: boolean;
   language: string;
 };
+
+// ── Editor State Types ─────────────────────────────────────────────────────────
+
+export type TextStyle = {
+  fontFamily: string;
+  fontSize: number;
+  fontColor: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  alignment: "left" | "center" | "right";
+  listStyle: "none" | "bullet" | "number";
+};
+
+export type SectionStyle = {
+  textStyle: TextStyle;
+  bgColor: string;
+  borderStyle: "none" | "solid" | "dashed" | "dotted";
+  borderColor: string;
+  borderWidth: number;
+  rounded: boolean;
+};
+
+export type ClipartItem = {
+  id: string;
+  emoji: string;
+  label: string;
+  category: string;
+  size: "sm" | "md" | "lg";
+};
+
+export type WorksheetPageStyle = {
+  bgColor: string;
+  titleFont: string;
+  bodyFont: string;
+};
+
+export const DEFAULT_TEXT_STYLE: TextStyle = {
+  fontFamily: "DM Sans",
+  fontSize: 14,
+  fontColor: "#1a1a2e",
+  bold: false,
+  italic: false,
+  underline: false,
+  alignment: "left",
+  listStyle: "none",
+};
+
+export const DEFAULT_SECTION_STYLE: SectionStyle = {
+  textStyle: DEFAULT_TEXT_STYLE,
+  bgColor: "transparent",
+  borderStyle: "none",
+  borderColor: "#d1d5db",
+  borderWidth: 1,
+  rounded: false,
+};
+
+export const DEFAULT_PAGE_STYLE: WorksheetPageStyle = {
+  bgColor: "#ffffff",
+  titleFont: "Outfit",
+  bodyFont: "DM Sans",
+};
+
+// ── Store Type ─────────────────────────────────────────────────────────────────
 
 type BloomStore = {
   // Step 1 — Upload
@@ -39,11 +104,24 @@ type BloomStore = {
   settings: WorksheetSettings;
   setSettings: (s: Partial<WorksheetSettings>) => void;
 
-  // Step 4 — Worksheet
+  // Step 4 — Worksheet content
   worksheet: any;
   setWorksheet: (w: any) => void;
   updateSection: (id: string, updates: Partial<any>) => void;
   updateQuestion: (sectionId: string, qId: string, updates: Partial<any>) => void;
+
+  // Step 4 — Editor state
+  activeSectionId: string | null;
+  sectionStyles: Record<string, SectionStyle>;
+  sectionClipart: Record<string, ClipartItem[]>;
+  worksheetPageStyle: WorksheetPageStyle;
+  setActiveSection: (id: string | null) => void;
+  setSectionStyle: (sectionId: string, updates: Partial<SectionStyle>) => void;
+  setTextStyle: (sectionId: string, updates: Partial<TextStyle>) => void;
+  setWorksheetPageStyle: (updates: Partial<WorksheetPageStyle>) => void;
+  addClipart: (sectionId: string, item: Omit<ClipartItem, "id">) => void;
+  removeClipart: (sectionId: string, itemId: string) => void;
+  getSectionStyle: (sectionId: string) => SectionStyle;
 
   // Reset
   reset: () => void;
@@ -58,7 +136,7 @@ const DEFAULT_SETTINGS: WorksheetSettings = {
   language: "English",
 };
 
-export const useBloomStore = create<BloomStore>((set) => ({
+export const useBloomStore = create<BloomStore>((set, get) => ({
   lessonText: "",
   language: "auto",
   setLessonText: (lessonText) => set({ lessonText }),
@@ -115,6 +193,70 @@ export const useBloomStore = create<BloomStore>((set) => ({
       },
     })),
 
+  // Editor state
+  activeSectionId: null,
+  sectionStyles: {},
+  sectionClipart: {},
+  worksheetPageStyle: DEFAULT_PAGE_STYLE,
+
+  setActiveSection: (id) => set({ activeSectionId: id }),
+
+  getSectionStyle: (sectionId) => {
+    const state = get();
+    return state.sectionStyles[sectionId] ?? DEFAULT_SECTION_STYLE;
+  },
+
+  setSectionStyle: (sectionId, updates) =>
+    set((state) => ({
+      sectionStyles: {
+        ...state.sectionStyles,
+        [sectionId]: {
+          ...(state.sectionStyles[sectionId] ?? DEFAULT_SECTION_STYLE),
+          ...updates,
+        },
+      },
+    })),
+
+  setTextStyle: (sectionId, updates) =>
+    set((state) => {
+      const current = state.sectionStyles[sectionId] ?? DEFAULT_SECTION_STYLE;
+      return {
+        sectionStyles: {
+          ...state.sectionStyles,
+          [sectionId]: {
+            ...current,
+            textStyle: { ...current.textStyle, ...updates },
+          },
+        },
+      };
+    }),
+
+  setWorksheetPageStyle: (updates) =>
+    set((state) => ({
+      worksheetPageStyle: { ...state.worksheetPageStyle, ...updates },
+    })),
+
+  addClipart: (sectionId, item) =>
+    set((state) => ({
+      sectionClipart: {
+        ...state.sectionClipart,
+        [sectionId]: [
+          ...(state.sectionClipart[sectionId] ?? []),
+          { ...item, id: nanoid(6) },
+        ],
+      },
+    })),
+
+  removeClipart: (sectionId, itemId) =>
+    set((state) => ({
+      sectionClipart: {
+        ...state.sectionClipart,
+        [sectionId]: (state.sectionClipart[sectionId] ?? []).filter(
+          (c) => c.id !== itemId
+        ),
+      },
+    })),
+
   reset: () =>
     set({
       lessonText: "",
@@ -125,8 +267,11 @@ export const useBloomStore = create<BloomStore>((set) => ({
       safetyFlags: [],
       settings: DEFAULT_SETTINGS,
       worksheet: null,
+      activeSectionId: null,
+      sectionStyles: {},
+      sectionClipart: {},
+      worksheetPageStyle: DEFAULT_PAGE_STYLE,
     }),
 }));
 
-// Keep old export for backward compat
 export const useWorksheetStore = useBloomStore;

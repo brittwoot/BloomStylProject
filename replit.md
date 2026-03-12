@@ -2,7 +2,7 @@
 
 ## Overview
 
-BloomStyl is an AI-powered educational content transformation platform that converts teacher-provided lesson materials into structured, student-ready worksheets.
+BloomStyl is an AI-powered educational content transformation platform that converts teacher-provided lesson materials into structured, student-ready worksheets. Teachers can then edit, style, and decorate the worksheet in a built-in design workspace before exporting to PDF.
 
 ## Stack
 
@@ -14,55 +14,76 @@ BloomStyl is an AI-powered educational content transformation platform that conv
 - **State**: Zustand (useBloomStore)
 - **UI**: TailwindCSS + shadcn/ui + Framer Motion
 - **API Codegen**: Orval (from OpenAPI spec in lib/api-spec)
+- **Fonts**: DM Sans, Outfit, Poppins, Nunito, Inter, Open Sans, Roboto, Pacifico (Google Fonts)
 
 ## 4-Page Workflow
 
 1. **Upload** (`/`) — Paste lesson text or upload PDF/DOCX. Language selector (Auto, English, Vietnamese, Spanish, French).
-2. **Detect** (`/detect`) — AI analyzes lesson content and returns structured content blocks (title, passage, directions, questions, vocabulary, etc.). Teacher can toggle/reorder blocks.
-3. **Settings** (`/settings`) — Configure template type (Reading/Practice/Vocabulary), theme (Clean/Classroom/Fun), and layout options (name line, date line, answer key).
-4. **Preview & Export** (`/result`) — Formatted worksheet with inline text editing, section reordering, and print/PDF export.
+2. **Detect** (`/detect`) — AI analyzes lesson content and returns structured content blocks. Teacher can toggle/reorder blocks.
+3. **Settings** (`/settings`) — Configure template type (Reading/Practice/Vocabulary), theme (Clean/Classroom/Fun), and layout options.
+4. **Preview & Export** (`/result`) — Full worksheet editor with inline text editing, styling, clipart, and PDF export.
 
-## Core Concepts
+## Worksheet Editor (Step 4)
 
-### Content Block Architecture
-Every document is decomposed into blocks:
+### Two-panel layout
+- **Left**: Live printable worksheet preview
+- **Right**: Collapsible editor sidebar with 3 tabs
+
+### Editor Sidebar Tabs
+1. **Text tab** — Font family (8 options), size, color, bold/italic/underline, alignment, bullet/numbered lists
+2. **Style tab** — Page background color, section background color, border style/color/thickness, rounded corners
+3. **Clipart tab** — Browse by category, search, size picker; "Suggested" tab with AI keyword analysis
+
+### Clipart System
+- 9 categories: school, reading, writing, math, science, animals, weather, holidays, classroom
+- 80+ emoji clipart items
+- Mock AI keyword suggestions scan worksheet content and map to relevant clipart
+
+## Core State Architecture
+
 ```ts
-{ id, type, page, label, text, is_selected, order }
+// Per-section styling
+type SectionStyle = {
+  textStyle: TextStyle;           // font, size, color, bold/italic/underline, align, list
+  bgColor: string;
+  borderStyle: "none"|"solid"|"dashed"|"dotted";
+  borderColor: string;
+  borderWidth: number;
+  rounded: boolean;
+}
+
+// Global page style
+type WorksheetPageStyle = { bgColor, titleFont, bodyFont }
+
+// Clipart
+type ClipartItem = { id, emoji, label, category, size }
+
+// Store additions
+sectionStyles: Record<sectionId, SectionStyle>
+sectionClipart: Record<sectionId, ClipartItem[]>
+worksheetPageStyle: WorksheetPageStyle
+activeSectionId: string | null
 ```
-Types: title | directions | passage | questions | vocabulary | teacher_notes | activity | objective | table | extra
-
-### Teacher Control Principle
-- AI detects and suggests; teachers decide what to include
-- All AI-generated content is labeled
-- Inline editing of every text field on the preview page
-- Content safety check runs on every upload
-
-## API Endpoints
-
-- `POST /api/worksheet/extract-text` — Upload PDF/DOCX, returns extracted text
-- `POST /api/worksheet/detect` — AI detects content blocks from lesson text
-- `POST /api/worksheet/generate` — Generate formatted worksheet from selected blocks + settings
 
 ## Key Files
 
-- `artifacts/bloomstyl/src/store.ts` — Zustand store (useBloomStore) with full workflow state
+- `artifacts/bloomstyl/src/store.ts` — Zustand store with full workflow + editor state
 - `artifacts/bloomstyl/src/pages/UploadPage.tsx` — Step 1
 - `artifacts/bloomstyl/src/pages/DetectPage.tsx` — Step 2
 - `artifacts/bloomstyl/src/pages/SettingsPage.tsx` — Step 3
-- `artifacts/bloomstyl/src/pages/Result.tsx` — Step 4 with inline editing
-- `artifacts/api-server/src/routes/worksheet/detect.ts` — AI content detection route
-- `artifacts/api-server/src/routes/worksheet/generate.ts` — Worksheet generation route
+- `artifacts/bloomstyl/src/pages/Result.tsx` — Step 4 with full editor
+- `artifacts/bloomstyl/src/components/editor/EditableTextBlock.tsx` — Inline text editor with style support
+- `artifacts/bloomstyl/src/components/editor/TextStyleToolbar.tsx` — Font/text controls
+- `artifacts/bloomstyl/src/components/editor/SectionStylePanel.tsx` — Section bg/border controls
+- `artifacts/bloomstyl/src/components/editor/ClipartPanel.tsx` — Clipart browser + AI suggestions
+- `artifacts/bloomstyl/src/components/editor/EditorSidebar.tsx` — Main right sidebar
+- `artifacts/bloomstyl/src/components/editor/clipartData.ts` — Clipart data + keyword map
+- `artifacts/api-server/src/routes/worksheet/detect.ts` — AI content detection
+- `artifacts/api-server/src/routes/worksheet/generate.ts` — Worksheet generation
 - `lib/api-spec/openapi.yaml` — OpenAPI source of truth
 
-## Structure
+## What's Needed to Persist to Backend
 
-```
-artifacts/
-  bloomstyl/          # React + Vite frontend
-  api-server/         # Express backend
-lib/
-  api-spec/           # OpenAPI spec + Orval codegen config
-  api-client-react/   # Generated React Query hooks
-  api-zod/            # Generated Zod validation schemas
-  integrations-openai-ai-server/  # OpenAI client helpers
-```
+1. Add `editor_state` column to worksheets table (JSON) storing sectionStyles + sectionClipart + worksheetPageStyle
+2. Call a `PATCH /worksheet/:id/editor-state` endpoint on every edit (debounced)
+3. Load editor state from API when opening an existing worksheet
