@@ -31,10 +31,10 @@ export function Header() {
                 aria-hidden
                 style={{
                   display: "inline-block",
-                  verticalAlign: "middle",
+                  position: "relative",
+                  top: "4px",
                   marginLeft: "1px",
-                  marginBottom: "2px",
-                  transform: "rotate(-14deg)",
+                  transform: "rotate(14deg)",
                   flexShrink: 0,
                 }}
               >
