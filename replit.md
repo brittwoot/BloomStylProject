@@ -34,6 +34,7 @@ BloomStyl is an AI-powered educational content transformation platform that conv
 | `/suggest` | ActivitySuggestionPage | AI-recommended type cards with reasons |
 | `/types` | WorksheetTypeBrowserPage | Browsable grid of all 30 types |
 | `/customize` | CustomizePage | Left-panel settings + right-panel preview |
+| `/differentiate` | DifferentiationPanel | Side-by-side differentiated version panel |
 
 ## 4-Page Workflow (Document Mode)
 
@@ -69,6 +70,7 @@ BloomStyl is an AI-powered educational content transformation platform that conv
 - `POST /api/worksheet/generate-layouts` — Generate 3 distinct layout variations from a prompt (legacy)
 - `POST /api/worksheet/analyze-prompt` — Analyze teacher prompt, return 3 type suggestions with reasons or clarifying question
 - `POST /api/worksheet/customize-generate` — Generate full worksheet JSON from chosen type + options
+- `POST /api/worksheet/differentiate` — Generate differentiated versions from anchor + scaffold settings
 
 ## Worksheet Editor (Step 4)
 
@@ -187,6 +189,54 @@ A Canva-like free-form canvas editor at `/canvas`. Every element is draggable, r
 - `artifacts/bloomstyl/src/components/canvas/shapeLibrary.ts` — 30+ shape SVG paths
 - `artifacts/bloomstyl/src/components/canvas/canvasTypes.ts` — Shared TypeScript types
 - `artifacts/api-server/src/routes/worksheet/generate-svg.ts` — Claude SVG generation
+
+## Differentiation & Scaffolding System
+
+A full differentiated worksheet system that lets teachers generate 2–5 leveled versions of any worksheet from a single source, with UDL-based scaffolding controls.
+
+### Route
+| Route | Page | Description |
+|-------|------|-------------|
+| `/differentiate` | DifferentiationPanel | Full-screen panel showing all versions as side-by-side cards |
+
+### Entry Points
+1. **PromptPage** (`/prompt`) — "Create versions for multiple levels?" toggle with level-chip selector (grade, readiness, ELL, learning profile)
+2. **Result Page** (`/result`) — "Differentiate This" button loads current worksheet as anchor
+3. **WorksheetTypeBrowserPage** (`/types`) — "Create Differentiated Set" button
+
+### Three-Column Panel Layout
+- **Left**: Global settings (same title/theme/layout, version indicator, print mode) + Templates tab
+- **Center**: Horizontal-scroll version cards with thumbnails, level labels, AI change summaries, and per-card actions (Edit/Duplicate/Delete/Set as Anchor)
+- **Right**: Scaffold Settings panel for selected version
+
+### Scaffold Settings (per version)
+Reading level (Pre-K→12th), sentence length, vocabulary level, text reduction (25–100%), image support, word bank, sentence frames, example answers, question type, Bloom's taxonomy depth, question count with anchor-sync toggle, answer space, ELL language pair + bilingual mode, dyslexia-friendly mode, reduced content mode.
+
+### AI Differentiation Engine
+- `POST /api/worksheet/differentiate` — accepts anchor content + array of scaffold settings, makes parallel AI calls (gpt-5.2), returns adapted content + 2–3 bullet change summary per version
+- Uses UDL/special-ed teacher persona in system prompt
+
+### 4 Built-in Templates
+- **Grade Band Trio** — Below/On/Above grade level
+- **ELL Support Set** — Beginning/Intermediate/Advanced ELL
+- **Mixed Readiness** — Approaching/On Grade/Above
+- **Dyslexia + On Grade** — Dyslexia-friendly + standard
+
+### Export
+- Single PDF with all versions concatenated
+- Class-set print mode (specify copies per level)
+- Optional teacher summary sheet listing each version's level and settings
+
+### Anchor Sync
+- Detects anchor content changes, shows "Sync available" badge
+- Options: re-sync from anchor (re-runs AI) or keep override
+
+### Key Files
+- `artifacts/bloomstyl/src/types/differentiationTypes.ts` — All types and constants
+- `artifacts/bloomstyl/src/stores/differentiationStore.ts` — Zustand store
+- `artifacts/bloomstyl/src/pages/DifferentiationPanel.tsx` — Main panel page
+- `artifacts/bloomstyl/src/components/differentiation/` — VersionCard, ScaffoldSettingsPanel, GlobalSettingsPanel, DiffTemplatePicker, DiffExportModal, LevelSelector
+- `artifacts/api-server/src/routes/worksheet/differentiate.ts` — API endpoint
 
 ## What's Needed to Persist to Backend
 

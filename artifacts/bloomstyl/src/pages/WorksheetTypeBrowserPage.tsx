@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Search, ArrowLeft, ChevronRight } from "lucide-react";
+import { Search, ArrowLeft, ChevronRight, Layers } from "lucide-react";
 import {
   WORKSHEET_TYPES,
   TYPES_BY_CATEGORY,
@@ -10,6 +10,8 @@ import {
   type WorksheetTypeDef,
 } from "../types/worksheetTypes";
 import { useBloomStore } from "../store";
+import { useDifferentiationStore } from "../stores/differentiationStore";
+import { BUILT_IN_DIFF_TEMPLATES } from "../types/differentiationTypes";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -57,7 +59,7 @@ function TypeCard({ type, onPick }: { type: WorksheetTypeDef; onPick: () => void
         ))}
       </div>
 
-      <div className="px-3 pb-3 flex items-center justify-end">
+      <div className="px-3 pb-3 flex items-center justify-between">
         <span className="text-[11px] font-semibold text-primary group-hover:underline flex items-center gap-0.5">
           Use this type <ChevronRight className="w-3 h-3" />
         </span>
@@ -94,6 +96,16 @@ export function WorksheetTypeBrowserPage() {
     setLocation(`${BASE}/customize`);
   };
 
+  const { applyTemplate, activeSet } = useDifferentiationStore();
+
+  const handleDifferentiate = () => {
+    if (!activeSet) {
+      const defaultTemplate = BUILT_IN_DIFF_TEMPLATES[0];
+      applyTemplate(defaultTemplate, null);
+    }
+    setLocation(`${BASE}/differentiate`);
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8 space-y-6">
 
@@ -112,6 +124,15 @@ export function WorksheetTypeBrowserPage() {
             {WORKSHEET_TYPES.length} formats available — pick the one that fits your lesson.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleDifferentiate}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/5 text-primary font-semibold border border-primary/20 hover:bg-primary/10 transition-colors text-sm"
+        >
+          <Layers className="w-4 h-4" />
+          Create Differentiated Set
+        </button>
 
         {/* Search */}
         <div className="relative w-full sm:w-72">

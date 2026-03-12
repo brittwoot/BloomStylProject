@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Download, ArrowLeft, ChevronDown, ChevronUp, PanelRight, Check, RotateCcw, Pencil } from "lucide-react";
+import { Download, ArrowLeft, ChevronDown, ChevronUp, PanelRight, Check, RotateCcw, Pencil, Layers } from "lucide-react";
 import { useBloomStore, DEFAULT_SECTION_STYLE, type SectionStyle, type GlobalTypography } from "../store";
 import { StepIndicator } from "./UploadPage";
 import { EditorSidebar } from "../components/editor/EditorSidebar";
 import { EditableTextBlock } from "../components/editor/EditableTextBlock";
 import { ExportModal } from "../components/ExportModal";
 import { getHeadingCSS } from "../components/editor/fontData";
+import { useDifferentiationStore } from "../stores/differentiationStore";
 import {
   WordPracticeSection,
   WordSightRow,
@@ -483,9 +484,41 @@ export function Result() {
     updateSection, reset,
   } = useBloomStore();
 
+  const {
+    createSet, editingVersionId, setEditingVersion,
+    activeSet, updateVersionContent, markManuallyOverridden,
+    pendingLevels, materializePendingSet,
+  } = useDifferentiationStore();
+
+  const handleDifferentiate = () => {
+    if (!worksheet) return;
+    createSet(worksheet.title || "Differentiated Set", worksheet);
+    setLocation("/differentiate");
+  };
+
+  const breadcrumbBack = editingVersionId && activeSet;
+
+  const handleBreadcrumbBack = () => {
+    if (editingVersionId && worksheet) {
+      updateVersionContent(editingVersionId, worksheet, []);
+      const editedVersion = activeSet?.versions.find((v) => v.id === editingVersionId);
+      if (editedVersion && !editedVersion.isAnchor) {
+        markManuallyOverridden(editingVersionId);
+      }
+    }
+    setEditingVersion(null);
+    setLocation("/differentiate");
+  };
+
   useEffect(() => {
     if (!worksheet) setLocation("/");
   }, [worksheet, setLocation]);
+
+  useEffect(() => {
+    if (worksheet && pendingLevels && pendingLevels.length > 0) {
+      materializePendingSet(worksheet.title || "Differentiated Worksheet", worksheet);
+    }
+  }, [worksheet, pendingLevels, materializePendingSet]);
 
   if (!worksheet) return null;
 
@@ -515,20 +548,32 @@ export function Result() {
         <div className="print:hidden sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
           <div className="max-w-[860px] mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => { reset(); setLocation("/"); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                New
-              </button>
-              <button
-                onClick={() => setLocation("/settings")}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Settings
-              </button>
+              {breadcrumbBack ? (
+                <button
+                  onClick={handleBreadcrumbBack}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Differentiation Panel
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { reset(); setLocation("/"); }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    New
+                  </button>
+                  <button
+                    onClick={() => setLocation("/settings")}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Settings
+                  </button>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -547,6 +592,24 @@ export function Result() {
                 <PanelRight className="w-3.5 h-3.5" />
                 {sidebarOpen ? "Hide Editor" : "Open Editor"}
               </button>
+              {!breadcrumbBack && activeSet && (
+                <button
+                  onClick={() => setLocation("/differentiate")}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary font-bold border border-primary/30 hover:bg-primary/20 transition-colors text-sm animate-pulse"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Go to Differentiation Panel ({activeSet.versions.length} versions)
+                </button>
+              )}
+              {!breadcrumbBack && !activeSet && (
+                <button
+                  onClick={handleDifferentiate}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-primary font-semibold hover:bg-primary/5 border border-primary/30 transition-colors text-sm"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Differentiate This
+                </button>
+              )}
               <button
                 onClick={() => setExportOpen(true)}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 transition-all text-sm"

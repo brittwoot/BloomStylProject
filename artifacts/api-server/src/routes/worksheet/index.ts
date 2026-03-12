@@ -6,6 +6,7 @@ import generateLayoutsRouter from "./generate-layouts";
 import analyzePromptRouter from "./analyze-prompt";
 import customizeGenerateRouter from "./customize-generate";
 import generateSvgRouter from "./generate-svg";
+import differentiateRouter from "./differentiate";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -46,5 +47,6 @@ router.use("/generate-layouts", generateLayoutsRouter);
 router.use("/analyze-prompt", analyzePromptRouter);
 router.use("/customize-generate", customizeGenerateRouter);
 router.use("/generate-svg", generateSvgRouter);
+router.use("/differentiate", differentiateRouter);
 
 export default router;

@@ -13,6 +13,7 @@ import { ActivitySuggestionPage } from "./pages/ActivitySuggestionPage";
 import { WorksheetTypeBrowserPage } from "./pages/WorksheetTypeBrowserPage";
 import { CustomizePage } from "./pages/CustomizePage";
 import CanvasEditor from "./pages/CanvasEditor";
+import { DifferentiationPanel } from "./pages/DifferentiationPanel";
 import NotFound from "./pages/not-found";
 
 const queryClient = new QueryClient({
@@ -49,6 +50,9 @@ function AppLayout() {
           <Route path="/suggest" component={ActivitySuggestionPage} />
           <Route path="/types" component={WorksheetTypeBrowserPage} />
           <Route path="/customize" component={CustomizePage} />
+
+          {/* Differentiation */}
+          <Route path="/differentiate" component={DifferentiationPanel} />
 
           {/* Legacy */}
           <Route path="/pick-layout" component={LayoutPickerPage} />

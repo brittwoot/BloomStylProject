@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, ChevronRight, Lightbulb, MessageCircleQuestion, LayoutGrid } from "lucide-react";
+import { Sparkles, Loader2, ChevronRight, Lightbulb, MessageCircleQuestion, LayoutGrid, Layers, Check } from "lucide-react";
 import { useBloomStore } from "../store";
+import { useDifferentiationStore } from "../stores/differentiationStore";
+import { LevelSelector } from "../components/differentiation/LevelSelector";
+import type { LevelPreset } from "../types/differentiationTypes";
 import { StepIndicator } from "./UploadPage";
 
 const EXAMPLE_PROMPTS = [
@@ -28,9 +31,13 @@ export function PromptPage() {
     setOriginalPrompt,
   } = useBloomStore();
 
+  const { setPendingLevels, pendingLevels, clearPendingLevels } = useDifferentiationStore();
+
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showDiffToggle, setShowDiffToggle] = useState(false);
+  const [showLevelSelector, setShowLevelSelector] = useState(false);
 
   // Clarifying question state
   const [clarifyingQuestion, setClarifyingQuestion] = useState("");
@@ -181,6 +188,87 @@ export function PromptPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Differentiation toggle */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  showDiffToggle || pendingLevels ? "bg-primary" : "bg-muted-foreground/20"
+                }`}
+                onClick={() => {
+                  if (pendingLevels) {
+                    clearPendingLevels();
+                    setShowDiffToggle(false);
+                  } else {
+                    setShowDiffToggle(!showDiffToggle);
+                    if (showDiffToggle) setShowLevelSelector(false);
+                  }
+                }}
+              >
+                <div
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    showDiffToggle || pendingLevels ? "translate-x-5" : ""
+                  }`}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Create versions for multiple levels?</span>
+              </div>
+            </label>
+
+            <AnimatePresence>
+              {pendingLevels && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex items-center gap-3">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-emerald-800">
+                        {pendingLevels.length} level{pendingLevels.length !== 1 ? "s" : ""} selected
+                      </p>
+                      <p className="text-xs text-emerald-600">
+                        {pendingLevels.map((l) => l.label).join(", ")} — versions will be created after worksheet generation
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowDiffToggle(true); clearPendingLevels(); }}
+                      className="text-xs text-emerald-600 hover:text-emerald-800 underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+              {showDiffToggle && !pendingLevels && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-4">
+                    <LevelSelector
+                      onConfirm={(levels: LevelPreset[]) => {
+                        setShowDiffToggle(false);
+                        setPendingLevels(levels.map((l) => ({
+                          label: l.label,
+                          color: l.color,
+                          scaffoldOverrides: l.scaffoldOverrides,
+                        })));
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Example prompts */}
           <div className="space-y-2">
