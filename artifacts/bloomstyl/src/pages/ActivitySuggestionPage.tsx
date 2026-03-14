@@ -107,6 +107,28 @@ function SuggestionCard({
           {suggestion.reason}
         </p>
 
+        {/* Visual preview */}
+        <div className="border rounded-lg bg-white p-3 mb-2 shadow-sm">
+          <div className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+            Layout Preview
+          </div>
+
+          <div className="space-y-2">
+            <div className="h-2 bg-gray-300 rounded w-1/2"></div>
+
+            <div className="space-y-1">
+              <div className="h-1.5 bg-gray-200 rounded"></div>
+              <div className="h-1.5 bg-gray-200 rounded w-5/6"></div>
+              <div className="h-1.5 bg-gray-200 rounded w-4/6"></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="h-6 border rounded bg-gray-100"></div>
+              <div className="h-6 border rounded bg-gray-100"></div>
+            </div>
+          </div>
+        </div>
+        
         {/* Preview description */}
         <div className="rounded-lg bg-muted/50 px-3 py-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
@@ -205,7 +227,7 @@ export function ActivitySuggestionPage() {
           className="space-y-2"
         >
           <h1 className="text-2xl font-bold text-foreground">
-            AI recommends these formats
+            AI recommends these formats TEST
           </h1>
           {originalPrompt && (
             <p className="text-sm text-muted-foreground">

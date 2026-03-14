@@ -64,7 +64,7 @@ export function SettingsPage() {
   const { blocks, settings, setSettings, setWorksheet, lessonText } = useBloomStore();
 
   useEffect(() => {
-    if (!lessonText) setLocation("/");
+    if (!lessonText) setLocation("/quickgen");
   }, [lessonText, setLocation]);
 
   const { mutate: generate, isPending } = useGenerateWorksheet({

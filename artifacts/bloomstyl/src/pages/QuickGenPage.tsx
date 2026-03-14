@@ -215,6 +215,7 @@ function LayoutCard({
 }) {
   const ws = layout.data?.worksheet ?? layout.data;
   const sections: any[] = ws?.sections ?? [];
+  const previewColor = label.includes("A") ? "#eef3fb" : label.includes("B") ? "#f3eefb" : "#eefbf3";
 
   if (layout.status === "error") {
     return (
@@ -244,8 +245,30 @@ function LayoutCard({
           ? "border-primary bg-primary/5 shadow-lg shadow-primary/12 scale-[1.02]"
           : "border-border bg-white hover:border-primary/40 hover:shadow-md"
         }`}
-      style={{ cursor: "pointer" }}
-    >
+      style={{ cursor: "pointer" }}>
+        <div
+          className="border rounded-md p-3 mb-3"
+          style={{ backgroundColor: previewColor }}
+        >
+        <div className="text-[10px] uppercase text-muted-foreground mb-2 font-semibold">
+          Layout Preview
+        </div>
+
+        <div className="space-y-2">
+          <div className="h-2 bg-white/70 rounded w-1/2"></div>
+
+          <div className="space-y-1">
+            <div className="h-1.5 bg-white/50 rounded"></div>
+            <div className="h-1.5 bg-white/50 rounded w-5/6"></div>
+            <div className="h-1.5 bg-white/50 rounded w-4/6"></div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="h-6 border rounded bg-gray-100"></div>
+            <div className="h-6 border rounded bg-gray-100"></div>
+          </div>
+        </div>
+      </div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           {label}
@@ -592,7 +615,7 @@ export function QuickGenPage() {
               skillFocus: subjectObj?.label ?? subject,
             },
             options: {
-              title: `${topic.trim()} — ${activityTypeLabel || subjectObj?.label || "Worksheet"}`,
+              title: activityTypeLabel || `${subjectObj?.label || subject} Worksheet`,
               gradeLevel: grade || "General",
               includeName: custom.nameLine,
               includeDate: custom.dateLine,
@@ -681,8 +704,14 @@ export function QuickGenPage() {
     if (selectedLayout === id && phase === "done") {
       // Second click: open editor
       const ws = layout.data?.worksheet ?? layout.data;
+      const previewColor =
+        layout.id === "A"
+          ? "#E0F2FE" // blue
+          : layout.id === "B"
+          ? "#DCFCE7" // green
+          : "#FCE7F3"; // pink
       if (ws) setWorksheet(ws);
-      setLocation(`${BASE}/canvas`);
+      setLocation("/result");;
       return;
     }
     setSelectedLayout(id);
@@ -966,7 +995,7 @@ export function QuickGenPage() {
                       onClick={() => {
                         const chosen = layouts.find((l) => l.id === selectedLayout && l.status === "done");
                         if (chosen?.data) setWorksheet(chosen.data?.worksheet ?? chosen.data);
-                        setLocation(`${BASE}/canvas`);
+                        setLocation("/result");
                       }}
                       disabled={!layouts.some((l) => l.status === "done")}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-40 shadow-lg shadow-primary/20"

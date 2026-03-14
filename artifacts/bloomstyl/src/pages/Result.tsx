@@ -1,8 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Download, ArrowLeft, ChevronDown, ChevronUp, PanelRight, Check, RotateCcw, Pencil, Layers } from "lucide-react";
-import { useBloomStore, DEFAULT_SECTION_STYLE, type SectionStyle, type GlobalTypography } from "../store";
+import {
+  Download,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  PanelRight,
+  Check,
+  RotateCcw,
+  Pencil,
+  Layers,
+} from "lucide-react";
+import {
+  useBloomStore,
+  DEFAULT_SECTION_STYLE,
+  type SectionStyle,
+  type GlobalTypography,
+} from "../store";
 import { StepIndicator } from "./UploadPage";
 import { EditorSidebar } from "../components/editor/EditorSidebar";
 import { EditableTextBlock } from "../components/editor/EditableTextBlock";
@@ -48,10 +63,14 @@ import {
   CrosswordSection,
 } from "../components/editor/NewSections";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 // ── Typography helpers ─────────────────────────────────────────────────────────
 
 function titleStyle(t: GlobalTypography): React.CSSProperties {
-  const { containerStyle, textStyle } = getHeadingCSS(t.titleHeadingStyle, t.accentColor);
+  const { containerStyle, textStyle } = getHeadingCSS(
+    t.titleHeadingStyle,
+    t.accentColor,
+  );
   return {
     fontFamily: `'${t.titleFont}', sans-serif`,
     color: t.titleColor,
@@ -80,12 +99,17 @@ function bodyFontStyle(t: GlobalTypography): React.CSSProperties {
 
 function sectionCSS(style: SectionStyle): React.CSSProperties {
   return {
-    backgroundColor: style.bgColor === "transparent" ? undefined : style.bgColor,
-    border: style.borderStyle !== "none"
-      ? `${style.borderWidth}px ${style.borderStyle} ${style.borderColor}`
-      : undefined,
+    backgroundColor:
+      style.bgColor === "transparent" ? undefined : style.bgColor,
+    border:
+      style.borderStyle !== "none"
+        ? `${style.borderWidth}px ${style.borderStyle} ${style.borderColor}`
+        : undefined,
     borderRadius: style.rounded ? "12px" : undefined,
-    padding: style.bgColor !== "transparent" || style.borderStyle !== "none" ? "16px" : undefined,
+    padding:
+      style.bgColor !== "transparent" || style.borderStyle !== "none"
+        ? "16px"
+        : undefined,
   };
 }
 
@@ -105,10 +129,20 @@ function ClipartRow({ sectionId }: { sectionId: string }) {
           title={`Remove ${c.label} (click to remove)`}
           className="print:pointer-events-none group relative leading-none hover:opacity-80 transition-opacity"
         >
-          <span className={c.size === "sm" ? "text-3xl" : c.size === "lg" ? "text-6xl" : "text-4xl"}>
+          <span
+            className={
+              c.size === "sm"
+                ? "text-3xl"
+                : c.size === "lg"
+                  ? "text-6xl"
+                  : "text-4xl"
+            }
+          >
             {c.emoji}
           </span>
-          <span className="print:hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</span>
+          <span className="print:hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            ✕
+          </span>
         </button>
       ))}
     </div>
@@ -117,14 +151,22 @@ function ClipartRow({ sectionId }: { sectionId: string }) {
 
 // ── WritingLines ──────────────────────────────────────────────────────────────
 
-function WritingLines({ count = 3, accentColor }: { count: number; accentColor?: string }) {
+function WritingLines({
+  count = 3,
+  accentColor,
+}: {
+  count: number;
+  accentColor?: string;
+}) {
   return (
     <div className="mt-2 space-y-3">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
           className="border-b h-7"
-          style={{ borderColor: accentColor ? `${accentColor}40` : "rgba(0,0,0,0.15)" }}
+          style={{
+            borderColor: accentColor ? `${accentColor}40` : "rgba(0,0,0,0.15)",
+          }}
         />
       ))}
     </div>
@@ -134,9 +176,17 @@ function WritingLines({ count = 3, accentColor }: { count: number; accentColor?:
 // ── QuestionItem ──────────────────────────────────────────────────────────────
 
 function QuestionItem({
-  q, number, sectionId, textStyle, globalTypo,
+  q,
+  number,
+  sectionId,
+  textStyle,
+  globalTypo,
 }: {
-  q: any; number: number; sectionId: string; textStyle: any; globalTypo: GlobalTypography;
+  q: any;
+  number: number;
+  sectionId: string;
+  textStyle: any;
+  globalTypo: GlobalTypography;
 }) {
   const { updateQuestion } = useBloomStore();
   const type = q.question_type || q.type || "short_answer";
@@ -148,27 +198,38 @@ function QuestionItem({
         <span className="font-bold shrink-0">{number}.</span>
         <EditableTextBlock
           value={q.text ?? q.prompt ?? ""}
-          onChange={(v) => updateQuestion(sectionId, q.id, { text: v, prompt: v })}
+          onChange={(v) =>
+            updateQuestion(sectionId, q.id, { text: v, prompt: v })
+          }
           multiline
           textStyle={textStyle}
           className="flex-1"
         />
       </div>
-      {type === "multiple_choice" && Array.isArray(q.options) && q.options.length > 0 && (
-        <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-1 mt-2">
-          {q.options.map((opt: string, i: number) => (
-            <div key={i} className="flex items-start gap-2 text-sm" style={bodyFontStyle(globalTypo)}>
+      {type === "multiple_choice" &&
+        Array.isArray(q.options) &&
+        q.options.length > 0 && (
+          <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-1 mt-2">
+            {q.options.map((opt: string, i: number) => (
               <div
-                className="w-4 h-4 rounded-full border shrink-0 mt-0.5"
-                style={{ borderColor: `${globalTypo.accentColor}60` }}
-              />
-              <span>{opt}</span>
-            </div>
-          ))}
-        </div>
-      )}
+                key={i}
+                className="flex items-start gap-2 text-sm"
+                style={bodyFontStyle(globalTypo)}
+              >
+                <div
+                  className="w-4 h-4 rounded-full border shrink-0 mt-0.5"
+                  style={{ borderColor: `${globalTypo.accentColor}60` }}
+                />
+                <span>{opt}</span>
+              </div>
+            ))}
+          </div>
+        )}
       {type === "true_false" && (
-        <div className="ml-5 flex gap-6 text-sm mt-1" style={bodyFontStyle(globalTypo)}>
+        <div
+          className="ml-5 flex gap-6 text-sm mt-1"
+          style={bodyFontStyle(globalTypo)}
+        >
           {["True", "False"].map((opt) => (
             <div key={opt} className="flex items-center gap-2">
               <div
@@ -180,7 +241,9 @@ function QuestionItem({
           ))}
         </div>
       )}
-      {(type === "short_answer" || type === "fill_in_blank" || type === "essay") && (
+      {(type === "short_answer" ||
+        type === "fill_in_blank" ||
+        type === "essay") && (
         <WritingLines count={lines} accentColor={globalTypo.accentColor} />
       )}
     </div>
@@ -190,15 +253,27 @@ function QuestionItem({
 // ── SectionBlock ──────────────────────────────────────────────────────────────
 
 function SectionBlock({
-  section, index, total, isActive, onSelect, onMoveUp, onMoveDown, globalTypo,
+  section,
+  index,
+  total,
+  isActive,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  globalTypo,
 }: {
-  section: any; index: number; total: number;
-  isActive: boolean; onSelect: () => void;
-  onMoveUp: () => void; onMoveDown: () => void;
+  section: any;
+  index: number;
+  total: number;
+  isActive: boolean;
+  onSelect: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   globalTypo: GlobalTypography;
 }) {
   const { updateSection, updateQuestion, sectionStyles } = useBloomStore();
-  const style: SectionStyle = sectionStyles[section.id] ?? DEFAULT_SECTION_STYLE;
+  const style: SectionStyle =
+    sectionStyles[section.id] ?? DEFAULT_SECTION_STYLE;
   const ts = style.textStyle;
 
   return (
@@ -218,14 +293,28 @@ function SectionBlock({
         <div className="flex items-start justify-between gap-3">
           <h2
             className="text-lg font-bold"
-            style={{ ...headingStyle(globalTypo), fontFamily: `'${ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont}', sans-serif`, color: ts.fontColor !== "#1a1a2e" ? ts.fontColor : globalTypo.headingColor }}
+            style={{
+              ...headingStyle(globalTypo),
+              fontFamily: `'${ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont}', sans-serif`,
+              color:
+                ts.fontColor !== "#1a1a2e"
+                  ? ts.fontColor
+                  : globalTypo.headingColor,
+            }}
           >
             <EditableTextBlock
               value={section.title}
               onChange={(v) => updateSection(section.id, { title: v })}
               onFocus={onSelect}
               onClick={onSelect}
-              textStyle={{ ...ts, bold: true, fontFamily: ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont }}
+              textStyle={{
+                ...ts,
+                bold: true,
+                fontFamily:
+                  ts.fontFamily !== "DM Sans"
+                    ? ts.fontFamily
+                    : globalTypo.headingFont,
+              }}
             />
           </h2>
 
@@ -234,7 +323,10 @@ function SectionBlock({
             <button
               type="button"
               disabled={index === 0}
-              onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUp();
+              }}
               className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25 transition-colors"
             >
               <ChevronUp className="w-3.5 h-3.5" />
@@ -242,7 +334,10 @@ function SectionBlock({
             <button
               type="button"
               disabled={index === total - 1}
-              onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveDown();
+              }}
               className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25 transition-colors"
             >
               <ChevronDown className="w-3.5 h-3.5" />
@@ -252,7 +347,10 @@ function SectionBlock({
 
         {/* Instructions */}
         {section.instructions && (
-          <p className="text-sm italic text-foreground/70" style={bodyFontStyle(globalTypo)}>
+          <p
+            className="text-sm italic text-foreground/70"
+            style={bodyFontStyle(globalTypo)}
+          >
             <EditableTextBlock
               value={section.instructions}
               onChange={(v) => updateSection(section.id, { instructions: v })}
@@ -269,7 +367,10 @@ function SectionBlock({
           <div
             className="rounded-xl p-4 text-sm border border-border"
             style={{
-              backgroundColor: style.bgColor !== "transparent" ? "rgba(255,255,255,0.5)" : "#f9f9f9",
+              backgroundColor:
+                style.bgColor !== "transparent"
+                  ? "rgba(255,255,255,0.5)"
+                  : "#f9f9f9",
               ...bodyFontStyle(globalTypo),
             }}
           >
@@ -291,10 +392,19 @@ function SectionBlock({
               <div
                 key={item.id || i}
                 className="flex gap-2 text-sm"
-                style={{ fontFamily: `'${globalTypo.vocabFont}', sans-serif`, fontSize: `${14 * globalTypo.baseSize}px`, color: ts.fontColor }}
+                style={{
+                  fontFamily: `'${globalTypo.vocabFont}', sans-serif`,
+                  fontSize: `${14 * globalTypo.baseSize}px`,
+                  color: ts.fontColor,
+                }}
               >
                 <span className="font-bold shrink-0">{i + 1}.</span>
-                <span className="font-semibold" style={{ color: globalTypo.headingColor }}>{item.word}</span>
+                <span
+                  className="font-semibold"
+                  style={{ color: globalTypo.headingColor }}
+                >
+                  {item.word}
+                </span>
                 <span className="text-foreground/70">— {item.definition}</span>
               </div>
             ))}
@@ -310,7 +420,13 @@ function SectionBlock({
                 q={q}
                 number={qi + 1}
                 sectionId={section.id}
-                textStyle={{ ...ts, fontFamily: ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.questionFont }}
+                textStyle={{
+                  ...ts,
+                  fontFamily:
+                    ts.fontFamily !== "DM Sans"
+                      ? ts.fontFamily
+                      : globalTypo.questionFont,
+                }}
                 globalTypo={globalTypo}
               />
             ))}
@@ -363,100 +479,184 @@ function SectionBlock({
 
         {/* ── Graphic Organizers ── */}
         {section.type === "mind_map" && (
-          <MindMapSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <MindMapSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "venn_diagram" && (
-          <VennDiagramSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <VennDiagramSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "kwl_chart" && (
-          <KWLChartSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <KWLChartSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "sequence_chart" && (
-          <SequenceChartSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <SequenceChartSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "frayer_model" && (
-          <FrayerModelSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <FrayerModelSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "story_map" && (
-          <StoryMapSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <StoryMapSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
 
         {/* ── Writing ── */}
         {section.type === "acrostic" && (
-          <AcrosticSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <AcrosticSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "mini_book" && (
-          <MiniBookSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <MiniBookSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "writing_prompt_header" && (
-          <WritingPromptHeader section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <WritingPromptHeader
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "word_bank" && (
-          <WordBankSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <WordBankSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "sentence_frames" && (
-          <SentenceFramesSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <SentenceFramesSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
 
         {/* ── Math ── */}
         {section.type === "number_bond" && (
-          <NumberBondSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <NumberBondSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "ten_frame" && (
-          <TenFrameSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <TenFrameSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "clock_practice" && (
-          <ClockPracticeSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <ClockPracticeSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "graph_page" && (
-          <GraphPageSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <GraphPageSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
 
         {/* ── Science / Social Studies ── */}
         {section.type === "label_diagram" && (
-          <LabelDiagramSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <LabelDiagramSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "observation_sheet" && (
-          <ObservationSheetSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <ObservationSheetSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "timeline" && (
-          <TimelineSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <TimelineSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
 
         {/* ── Matching / Sorting ── */}
         {section.type === "line_matching" && (
-          <LineMatchingSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <LineMatchingSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "cut_and_sort" && (
-          <CutAndSortSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <CutAndSortSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "picture_sort" && (
-          <PictureSortSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <PictureSortSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
 
         {/* ── Games ── */}
         {section.type === "bingo_card" && (
-          <BingoCardSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <BingoCardSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "word_search_full" && (
-          <FullWordSearchSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <FullWordSearchSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "crossword" && (
-          <CrosswordSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <CrosswordSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "spinner" && (
-          <SpinnerSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <SpinnerSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "dice_activity" && (
-          <DiceActivitySection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <DiceActivitySection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
 
         {/* ── Coloring ── */}
         {section.type === "coloring_page" && (
-          <ColoringPageSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <ColoringPageSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
         {section.type === "color_by_code" && (
-          <ColorByCodeSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
+          <ColorByCodeSection
+            section={section}
+            onUpdate={(u) => updateSection(section.id, u)}
+          />
         )}
       </div>
 
@@ -479,15 +679,25 @@ export function Result() {
   const [exportOpen, setExportOpen] = useState(false);
 
   const {
-    worksheet, settings, worksheetPageStyle, globalTypography,
-    activeSectionId, setActiveSection,
-    updateSection, reset,
+    worksheet,
+    settings,
+    worksheetPageStyle,
+    globalTypography,
+    activeSectionId,
+    setActiveSection,
+    updateSection,
+    reset,
   } = useBloomStore();
 
   const {
-    createSet, editingVersionId, setEditingVersion,
-    activeSet, updateVersionContent, markManuallyOverridden,
-    pendingLevels, materializePendingSet,
+    createSet,
+    editingVersionId,
+    setEditingVersion,
+    activeSet,
+    updateVersionContent,
+    markManuallyOverridden,
+    pendingLevels,
+    materializePendingSet,
   } = useDifferentiationStore();
 
   const handleDifferentiate = () => {
@@ -501,7 +711,9 @@ export function Result() {
   const handleBreadcrumbBack = () => {
     if (editingVersionId && worksheet) {
       updateVersionContent(editingVersionId, worksheet, []);
-      const editedVersion = activeSet?.versions.find((v) => v.id === editingVersionId);
+      const editedVersion = activeSet?.versions.find(
+        (v) => v.id === editingVersionId,
+      );
       if (editedVersion && !editedVersion.isAnchor) {
         markManuallyOverridden(editingVersionId);
       }
@@ -516,7 +728,10 @@ export function Result() {
 
   useEffect(() => {
     if (worksheet && pendingLevels && pendingLevels.length > 0) {
-      materializePendingSet(worksheet.title || "Differentiated Worksheet", worksheet);
+      materializePendingSet(
+        worksheet.title || "Differentiated Worksheet",
+        worksheet,
+      );
     }
   }, [worksheet, pendingLevels, materializePendingSet]);
 
@@ -529,21 +744,26 @@ export function Result() {
     const target = idx + dir;
     if (target < 0 || target >= sections.length) return;
     const newSections = [...sections];
-    [newSections[idx], newSections[target]] = [newSections[target], newSections[idx]];
+    [newSections[idx], newSections[target]] = [
+      newSections[target],
+      newSections[idx],
+    ];
     useBloomStore.setState((s) => ({
       worksheet: { ...s.worksheet, sections: newSections },
     }));
   };
 
   // Title wrapper for decorative heading style
-  const { containerClass, containerStyle, textStyle: titleTextStyle } = getHeadingCSS(typo.titleHeadingStyle, typo.accentColor);
+  const {
+    containerClass,
+    containerStyle,
+    textStyle: titleTextStyle,
+  } = getHeadingCSS(typo.titleHeadingStyle, typo.accentColor);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
-
       {/* ── Main scroll area ── */}
       <div className="flex-1 min-w-0 overflow-y-auto pb-16">
-
         {/* Action bar */}
         <div className="print:hidden sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
           <div className="max-w-[860px] mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
@@ -559,18 +779,21 @@ export function Result() {
               ) : (
                 <>
                   <button
-                    onClick={() => { reset(); setLocation("/"); }}
+                    onClick={() => {
+                      reset();
+                      setLocation("/");
+                    }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     New
                   </button>
                   <button
-                    onClick={() => setLocation("/settings")}
+                    onClick={() => setLocation("/suggest")}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    Settings
+                    Back to Prompt
                   </button>
                 </>
               )}
@@ -594,11 +817,12 @@ export function Result() {
               </button>
               {!breadcrumbBack && activeSet && (
                 <button
-                  onClick={() => setLocation("/differentiate")}
+                  onClick={() => setLocation(`${BASE}/suggest`)}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary font-bold border border-primary/30 hover:bg-primary/20 transition-colors text-sm animate-pulse"
                 >
                   <Layers className="w-3.5 h-3.5" />
-                  Go to Differentiation Panel ({activeSet.versions.length} versions)
+                  Go to Differentiation Panel ({activeSet.versions.length}{" "}
+                  versions)
                 </button>
               )}
               {!breadcrumbBack && !activeSet && (
@@ -634,7 +858,6 @@ export function Result() {
           onClick={() => setActiveSection(null)}
         >
           <div className="p-8 sm:p-14 print:p-0 space-y-1">
-
             {/* Name / Date header */}
             <div className="flex gap-8 justify-end mb-4">
               {settings.includeName && (
@@ -668,8 +891,14 @@ export function Result() {
             </div>
 
             {/* Worksheet title with decorative heading style */}
-            <div className="pb-5 mb-8 text-center border-b-2" style={{ borderColor: `${typo.accentColor}40` }}>
-              <div className={`${containerClass} inline-block w-full`} style={containerStyle}>
+            <div
+              className="pb-5 mb-8 text-center border-b-2"
+              style={{ borderColor: `${typo.accentColor}40` }}
+            >
+              <div
+                className={`${containerClass} inline-block w-full`}
+                style={containerStyle}
+              >
                 <h1
                   className="text-3xl font-bold"
                   style={{
@@ -685,7 +914,16 @@ export function Result() {
                         worksheet: { ...s.worksheet, title: v },
                       }))
                     }
-                    textStyle={{ bold: true, fontFamily: typo.titleFont, fontSize: 28, fontColor: typo.titleColor, alignment: "center", italic: false, underline: false, listStyle: "none" }}
+                    textStyle={{
+                      bold: true,
+                      fontFamily: typo.titleFont,
+                      fontSize: 28,
+                      fontColor: typo.titleColor,
+                      alignment: "center",
+                      italic: false,
+                      underline: false,
+                      listStyle: "none",
+                    }}
                   />
                 </h1>
               </div>
@@ -694,16 +932,15 @@ export function Result() {
                   className="text-base text-foreground/60 font-medium mt-2"
                   style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
                 >
-                  {[worksheet.subject, worksheet.gradeLevel].filter(Boolean).join(" · ")}
+                  {[worksheet.subject, worksheet.gradeLevel]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               )}
             </div>
 
             {/* Sections */}
-            <div
-              className="space-y-10"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="space-y-10" onClick={(e) => e.stopPropagation()}>
               {sections.map((section: any, i: number) => (
                 <motion.div key={section.id || i} layout>
                   <SectionBlock
@@ -721,31 +958,42 @@ export function Result() {
             </div>
 
             {/* Answer Key */}
-            {settings.generateAnswerKey && worksheet.answer_key && Object.keys(worksheet.answer_key).length > 0 && (
-              <div className="mt-14 pt-8 border-t-2 border-dashed border-foreground/30 space-y-4">
-                <h2
-                  className="text-xl font-bold text-foreground flex items-center gap-2"
-                  style={{ fontFamily: `'${typo.headingFont}', sans-serif`, color: typo.headingColor }}
-                >
-                  <Check className="w-5 h-5 text-green-600" />
-                  Answer Key
-                </h2>
-                <div className="space-y-2 text-sm" style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}>
-                  {Object.entries(worksheet.answer_key).map(([k, v]) => (
-                    <div key={k} className="flex gap-2">
-                      <span className="font-semibold w-8">{k}.</span>
-                      <span className="text-foreground/80">{String(v)}</span>
-                    </div>
-                  ))}
+            {settings.generateAnswerKey &&
+              worksheet.answer_key &&
+              Object.keys(worksheet.answer_key).length > 0 && (
+                <div className="mt-14 pt-8 border-t-2 border-dashed border-foreground/30 space-y-4">
+                  <h2
+                    className="text-xl font-bold text-foreground flex items-center gap-2"
+                    style={{
+                      fontFamily: `'${typo.headingFont}', sans-serif`,
+                      color: typo.headingColor,
+                    }}
+                  >
+                    <Check className="w-5 h-5 text-green-600" />
+                    Answer Key
+                  </h2>
+                  <div
+                    className="space-y-2 text-sm"
+                    style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
+                  >
+                    {Object.entries(worksheet.answer_key).map(([k, v]) => (
+                      <div key={k} className="flex gap-2">
+                        <span className="font-semibold w-8">{k}.</span>
+                        <span className="text-foreground/80">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </div>
 
       {/* ── Editor sidebar ── */}
-      <EditorSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <EditorSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* ── Export modal ── */}
       {exportOpen && (

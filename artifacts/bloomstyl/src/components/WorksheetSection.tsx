@@ -24,28 +24,46 @@ export function WorksheetSectionRenderer({
       )}
 
       <div className="space-y-6">
-        {section.questions.map((q) => {
+        {section.questions.map((q, index) => {
           const questionText =
-            q.text || q.question || q.prompt || `Question ${q.number}`;
+            q.text || q.question || q.prompt || `Question ${q.number ?? index + 1}`;
 
-          const options = Array.isArray(q.options) ? q.options : [];
+          // Support both legacy "options" and new "choices"
+          const rawOptions = Array.isArray(q.options)
+            ? q.options
+            : Array.isArray(q.choices)
+              ? q.choices
+              : [];
+
+          // Respect teacher-controlled display count if present
+          const displayChoiceCount =
+            typeof q.display_choice_count === "number" && q.display_choice_count > 0
+              ? q.display_choice_count
+              : rawOptions.length;
+
+          const options = rawOptions.slice(0, displayChoiceCount);
 
           const lowerText = String(questionText).toLowerCase();
 
           const isTrueFalseQuestion =
+            q.question_type === "true_false" ||
             section.type === "true_false" ||
             lowerText.startsWith("true or false") ||
             lowerText.includes("true/false") ||
-            (options.length === 2 &&
-              options.some((o) => String(o).toLowerCase().trim() === "true") &&
-              options.some((o) => String(o).toLowerCase().trim() === "false"));
+            (rawOptions.length === 2 &&
+              rawOptions.some((o) => String(o).toLowerCase().trim() === "true") &&
+              rawOptions.some((o) => String(o).toLowerCase().trim() === "false"));
 
           const isMultipleChoiceQuestion =
             !isTrueFalseQuestion &&
-            ((section.type === "multiple_choice" && options.length > 0) ||
-              options.length === 4);
+            (
+              q.question_type === "multiple_choice" ||
+              section.type === "multiple_choice" ||
+              options.length >= 2
+            );
 
           const isExplainQuestion =
+            q.question_type === "extended_response" ||
             section.type === "explain" ||
             section.type === "essay" ||
             lowerText.includes("explain why") ||
@@ -60,11 +78,13 @@ export function WorksheetSectionRenderer({
 
           return (
             <div
-              key={q.number}
+              key={q.id ?? q.number ?? index}
               className="text-base text-foreground leading-relaxed"
             >
               <div className="flex gap-2">
-                <span className="font-bold min-w-[24px]">{q.number}.</span>
+                <span className="font-bold min-w-[24px]">
+                  {q.number ?? index + 1}.
+                </span>
                 <div className="flex-1">
                   <p className="mb-2 font-medium">{questionText}</p>
 
