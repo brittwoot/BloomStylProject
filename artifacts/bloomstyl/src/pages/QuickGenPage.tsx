@@ -215,7 +215,7 @@ function LayoutCard({
 }) {
   const ws = layout.data?.worksheet ?? layout.data;
   const sections: any[] = ws?.sections ?? [];
-  const previewColor = label.includes("A") ? "#eef3fb" : label.includes("B") ? "#f3eefb" : "#eefbf3";
+  const previewColor = layout.id === "A" ? "#E0F2FE" : layout.id === "B" ? "#DCFCE7" : "#FCE7F3";
 
   if (layout.status === "error") {
     return (
@@ -251,6 +251,13 @@ function LayoutCard({
           style={{ backgroundColor: previewColor }}
         >
         <div className="text-[10px] uppercase text-muted-foreground mb-2 font-semibold">
+          <div className="text-xs font-semibold text-foreground/70 mb-2">
+            {layout.id === "A"
+              ? "Reading / response"
+              : layout.id === "B"
+              ? "Question stack"
+              : "Organizer / columns"}
+          </div>
           Layout Preview
         </div>
 
