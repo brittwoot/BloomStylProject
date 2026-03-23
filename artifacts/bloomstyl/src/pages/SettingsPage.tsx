@@ -61,10 +61,10 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 
 export function SettingsPage() {
   const [_, setLocation] = useLocation();
-  const { blocks, settings, setSettings, setWorksheet, lessonText } = useBloomStore();
+  const { blocks, settings, setSettings, setWorksheet, lessonText, worksheet, hasEdited } = useBloomStore();
 
   useEffect(() => {
-    if (!lessonText) setLocation("/quickgen");
+    if (!lessonText) setLocation("/");
   }, [lessonText, setLocation]);
 
   const { mutate: generate, isPending } = useGenerateWorksheet({
@@ -80,6 +80,13 @@ export function SettingsPage() {
   });
 
   const handleGenerate = () => {
+    if (worksheet && hasEdited) {
+      const ok = window.confirm(
+        "You have edits in the current worksheet. Generating a new worksheet will replace your changes. Continue?"
+      );
+      if (!ok) return;
+    }
+
     generate({
       data: {
         blocks: blocks as any,
@@ -168,6 +175,9 @@ export function SettingsPage() {
           onClick={() => setLocation("/detect")}
           className="flex items-center gap-2 px-5 py-3 rounded-xl border border-border font-semibold text-foreground hover:bg-muted/50 transition-colors"
         >
+          <Button variant="outline" onClick={() => setLocation("/detect")}>
+  Back
+</Button>
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>

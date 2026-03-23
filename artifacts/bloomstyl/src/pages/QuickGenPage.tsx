@@ -58,8 +58,8 @@ const ACTIVITY_CHIPS: Partial<Record<SubjectId, { typeId: string; label: string 
     { typeId: "acrostic",        label: "Acrostic Poem"    },
   ],
   math: [
-    { typeId: "writing_prompt", label: "Practice Problems" },
-    { typeId: "writing_prompt", label: "Word Problems"     },
+    { typeId: "math_practice", label: "Practice Problems" },
+    { typeId: "math_word_problems", label: "Word Problems"     },
     { typeId: "number_bond",    label: "Number Bonds"      },
     { typeId: "graph_page",     label: "Graphing"          },
     { typeId: "measurement",    label: "Measurement"       },
@@ -110,6 +110,59 @@ const ACTIVITY_CHIPS: Partial<Record<SubjectId, { typeId: string; label: string 
 };
 
 const GRADES = ["Pre-K","K","1","2","3","4","5","6","7","8"];
+
+// Smart default activity type per subject (used when no chip is selected)
+const DEFAULT_ACTIVITY_BY_SUBJECT: Partial<Record<SubjectId, string>> = {
+  reading:  "story_map",
+  writing:  "writing_prompt",
+  math:     "math_practice",
+  science:  "observation_sheet",
+  social:   "sequence_chart",
+  phonics:  "word_search",
+  art:      "coloring_page",
+  sel:      "writing_prompt",
+  ell:      "sentence_frames",
+  holiday:  "writing_prompt",
+  general:  "writing_prompt",
+  custom:   "writing_prompt",
+};
+
+// Human-readable labels for activity types shown in layout cards
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  math_practice:     "Math Practice",
+  math_word_problems:"Word Problems",
+  number_bond:       "Number Bonds",
+  ten_frame:         "Ten Frame",
+  graph_page:        "Graphing",
+  measurement:       "Measurement",
+  clock_practice:    "Clock Practice",
+  writing_prompt:    "Writing Prompt",
+  acrostic:          "Acrostic Poem",
+  sentence_frames:   "Sentence Frames",
+  mini_book:         "Mini Book",
+  story_map:         "Story Map",
+  frayer_model:      "Frayer Model",
+  mind_map:          "Mind Map",
+  kwl_chart:         "KWL Chart",
+  venn_diagram:      "Venn Diagram",
+  sequence_chart:    "Sequence Chart",
+  timeline:          "Timeline",
+  label_diagram:     "Label Diagram",
+  observation_sheet: "Observation Sheet",
+  word_search:       "Word Search",
+  word_practice:     "Word Practice",
+  coloring_page:     "Coloring Page",
+  color_by_code:     "Color by Code",
+  trace_and_color:   "Tracing",
+  cut_and_sort:      "Cut & Sort",
+  line_matching:     "Matching",
+  bingo_card:        "Bingo",
+  dice_activity:     "Dice Activity",
+  spinner:           "Spinner",
+  crossword:         "Crossword",
+  picture_sort:      "Picture Sort",
+  map_activity:      "Map Activity",
+};
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -206,16 +259,17 @@ function LayoutCard({
   layout,
   label,
   selected,
+  subject,
   onSelect,
 }: {
   layout: Layout;
   label: string;
   selected: boolean;
+  subject?: SubjectId | "";
   onSelect: () => void;
 }) {
   const ws = layout.data?.worksheet ?? layout.data;
   const sections: any[] = ws?.sections ?? [];
-  const previewColor = layout.id === "A" ? "#E0F2FE" : layout.id === "B" ? "#DCFCE7" : "#FCE7F3";
 
   if (layout.status === "error") {
     return (
@@ -245,37 +299,8 @@ function LayoutCard({
           ? "border-primary bg-primary/5 shadow-lg shadow-primary/12 scale-[1.02]"
           : "border-border bg-white hover:border-primary/40 hover:shadow-md"
         }`}
-      style={{ cursor: "pointer" }}>
-        <div
-          className="border rounded-md p-3 mb-3"
-          style={{ backgroundColor: previewColor }}
-        >
-        <div className="text-[10px] uppercase text-muted-foreground mb-2 font-semibold">
-          <div className="text-xs font-semibold text-foreground/70 mb-2">
-            {layout.id === "A"
-              ? "Reading / response"
-              : layout.id === "B"
-              ? "Question stack"
-              : "Organizer / columns"}
-          </div>
-          Layout Preview
-        </div>
-
-        <div className="space-y-2">
-          <div className="h-2 bg-white/70 rounded w-1/2"></div>
-
-          <div className="space-y-1">
-            <div className="h-1.5 bg-white/50 rounded"></div>
-            <div className="h-1.5 bg-white/50 rounded w-5/6"></div>
-            <div className="h-1.5 bg-white/50 rounded w-4/6"></div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="h-6 border rounded bg-gray-100"></div>
-            <div className="h-6 border rounded bg-gray-100"></div>
-          </div>
-        </div>
-      </div>
+      style={{ cursor: "pointer" }}
+    >
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           {label}
@@ -286,6 +311,12 @@ function LayoutCard({
           </span>
         )}
       </div>
+
+      {(ws?.settings?.templateType || ws?.template_type) && (
+        <p className="text-[11px] font-semibold text-primary/70 mb-1">
+          {ACTIVITY_TYPE_LABELS[ws?.settings?.templateType ?? ws?.template_type] ?? (ws?.settings?.templateType ?? ws?.template_type ?? "").replace(/_/g, " ")}
+        </p>
+      )}
 
       {ws?.title ? (
         <p className="text-sm font-bold text-foreground mb-2 truncate">{ws.title}</p>
@@ -614,7 +645,7 @@ export function QuickGenPage() {
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            activityType: activityTypeId || "writing_prompt",
+            activityType: activityTypeId || DEFAULT_ACTIVITY_BY_SUBJECT[subject as SubjectId] || "writing_prompt",
             originalPrompt: topic.trim(),
             parsedPromptData: {
               topic: topic.trim(),
@@ -622,7 +653,7 @@ export function QuickGenPage() {
               skillFocus: subjectObj?.label ?? subject,
             },
             options: {
-              title: activityTypeLabel || `${subjectObj?.label || subject} Worksheet`,
+              title: `${topic.trim()} — ${activityTypeLabel || subjectObj?.label || "Worksheet"}`,
               gradeLevel: grade || "General",
               includeName: custom.nameLine,
               includeDate: custom.dateLine,
@@ -711,14 +742,8 @@ export function QuickGenPage() {
     if (selectedLayout === id && phase === "done") {
       // Second click: open editor
       const ws = layout.data?.worksheet ?? layout.data;
-      const previewColor =
-        layout.id === "A"
-          ? "#E0F2FE" // blue
-          : layout.id === "B"
-          ? "#DCFCE7" // green
-          : "#FCE7F3"; // pink
       if (ws) setWorksheet(ws);
-      setLocation("/result");;
+      setLocation("/result");
       return;
     }
     setSelectedLayout(id);
@@ -982,6 +1007,7 @@ export function QuickGenPage() {
                           layout={layout}
                           label={`Layout ${layout.id}`}
                           selected={selectedLayout === layout.id}
+                          subject={subject}
                           onSelect={() => layout.status === "error" ? retryLayout(layout.id) : handleCardClick(layout.id)}
                         />
                       )}

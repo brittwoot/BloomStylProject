@@ -17,12 +17,46 @@ function safeParseJSON(str: string): any | null {
   }
 }
 
-// Layout variant instructions — vary structure/focus between A/B/C
-const VARIANT_INSTRUCTIONS: Record<string, string> = {
-  A: "Generate the most straightforward, classic layout for this activity type. Clear structure, standard organization.",
-  B: "Generate a slightly more visual/graphic layout. Add more structure boxes, use headers creatively, consider columns or visual dividers.",
-  C: "Generate a more scaffolded, step-by-step layout. Break tasks into smaller sub-steps, add more guidance/sentence starters if applicable.",
+// Grade level calibration descriptions
+const GRADE_DESCRIPTIONS: Record<string, string> = {
+  "Pre-K": "Pre-Kindergarten (ages 4–5): extremely simple, visual, 1-word answers only, large text, lots of pictures",
+  "K": "Kindergarten (age 5–6): beginning readers, single short sentences, trace/circle tasks, large print",
+  "1": "Grade 1 (age 6–7): early readers, 2–3 word answers, phonics-level vocabulary, very short sentences",
+  "2": "Grade 2 (age 7–8): developing readers, 4–6 word answers, simple paragraphs, grade 2 sight words",
+  "3": "Grade 3 (age 8–9): independent readers, multi-sentence answers, basic inference, third-grade vocabulary",
+  "4": "Grade 4 (age 9–10): fluent readers, paragraph-length answers, grade-appropriate idioms, moderate difficulty",
+  "5": "Grade 5 (age 10–11): proficient readers, analytical thinking, multi-paragraph responses, challenging vocabulary",
+  "6": "Grade 6 (age 11–12): middle-school level, abstract thinking, textual evidence required, complex sentences",
+  "7": "Grade 7 (age 12–13): advanced middle school, critical analysis, multi-paragraph essays, sophisticated vocabulary",
+  "8": "Grade 8 (age 13–14): pre-high school, thesis-level thinking, deep analysis, advanced vocabulary",
 };
+
+// Subject-aware, activity-aware variant instructions
+function getVariantInstructions(variant: string, activityType: string, subject?: string): string {
+  const isMath = activityType === "math_practice" || activityType === "math_word_problems" || activityType === "number_bond" || activityType === "ten_frame";
+  const isWriting = activityType === "writing_prompt" || activityType === "acrostic" || activityType === "sentence_frames" || activityType === "mini_book";
+  const isReading = activityType === "story_map" || activityType === "kwl_chart" || activityType === "sequence_chart" || activityType === "venn_diagram";
+
+  if (variant === "A") {
+    if (isMath) return "Layout A (Classic): Generate a clean, straightforward set of problems. Use standard format with clear answer blanks. Moderate quantity (6–8 problems). Balanced difficulty for the grade.";
+    if (isWriting) return "Layout A (Classic): Generate a focused, structured prompt. Single clear prompt sentence, standard lined writing space, name/date header. Classic worksheet format.";
+    if (isReading) return "Layout A (Classic): Standard graphic organizer format. Clear labeled boxes, straightforward questions, typical reading comprehension structure.";
+    return "Layout A (Classic): Straightforward, standard layout. Clear headers, typical organization for this activity type. Most familiar format for students.";
+  }
+  if (variant === "B") {
+    if (isMath) return "Layout B (Extended): Generate 8–10 problems with slightly higher challenge. Include a 'Show Your Work' box for 2–3 problems. Add a bonus challenge problem at the end if appropriate.";
+    if (isWriting) return "Layout B (Creative): Generate an open-ended, imaginative prompt. Add a pre-writing brainstorm bubble/box. Include a 6-word word bank of interesting vocabulary relevant to the topic.";
+    if (isReading) return "Layout B (Visual): More visual organizer layout. Use icons or visual cues in headers. Include a 'My Thinking' box for student reflection. Add a vocabulary section.";
+    return "Layout B (Visual): More visual, graphic layout. Add creative headers, visual dividers, and more structural boxes. Slightly more engaging visually than the classic format.";
+  }
+  if (variant === "C") {
+    if (isMath) return "Layout C (Scaffolded): Start with 2–3 worked/guided examples, then 6 practice problems increasing in difficulty. Add a 'Remember:' tip box at the top. Ideal for intervention or ELL students.";
+    if (isWriting) return "Layout C (Scaffolded): Highly guided writing experience. Break the task into step-by-step instructions. Include sentence frame starters like 'First, ___ Then, ___ Finally, ___'. Add a drawing box for pre-writers. ELL-friendly.";
+    if (isReading) return "Layout C (Scaffolded): Step-by-step reading guide. Include sentence starters for each response. Add a vocabulary support box with key terms pre-filled. Use numbered steps instead of open boxes.";
+    return "Layout C (Scaffolded): Step-by-step, heavily guided layout. Break each task into smaller sub-steps. Add sentence starters, hint boxes, or graphic cues. Designed for struggling learners and ELL students.";
+  }
+  return "";
+}
 
 router.post("/", async (req: Request, res: Response) => {
   try {
@@ -39,18 +73,19 @@ router.post("/", async (req: Request, res: Response) => {
     const grade = options?.gradeLevel || parsedPromptData?.gradeLevel || "General";
     const topic = parsedPromptData?.topic || originalPrompt || title;
     const targetWord = parsedPromptData?.targetWord;
-    const variantInstruction = layoutVariant ? (VARIANT_INSTRUCTIONS[layoutVariant] ?? "") : "";
+    const variantInstruction = layoutVariant ? getVariantInstructions(layoutVariant, activityType, subject) : "";
+    const gradeDescription = GRADE_DESCRIPTIONS[grade] || `Grade ${grade}`;
     const detailsNote = details ? `\nTeacher's specific request: "${details}"` : "";
 
     // Build sections based on activity type
-    const systemPrompt = `You are an expert elementary school worksheet content generator.
-Given an activity type and options, generate the specific content for a worksheet.
+    const systemPrompt = `You are an expert K-8 worksheet content generator for teachers.
+Generate specific, grade-appropriate content for a classroom worksheet.
 Return ONLY valid JSON with this structure:
 {
   "worksheet": {
     "worksheet_id": "${randomUUID()}",
     "title": "Worksheet title",
-    "subject": "subject area",
+    "subject": "${subject || "General"}",
     "gradeLevel": "${grade}",
     "language": "English",
     "template_type": "${activityType}",
@@ -60,10 +95,13 @@ Return ONLY valid JSON with this structure:
 
 Activity type: ${activityType}
 Title: ${title}
-Grade: ${grade}
+Grade calibration: ${gradeDescription}
 Topic: ${topic}
+Subject area: ${subject || "General"}
 ${targetWord ? `Target word: ${targetWord}` : ""}
 Options: ${JSON.stringify(options || {})}
+
+IMPORTANT: All content MUST be appropriate for ${gradeDescription}. Adjust vocabulary, sentence complexity, number ranges, and question depth accordingly.
 
 SECTION GENERATION RULES BY TYPE:
 
@@ -153,6 +191,36 @@ Generate sections: [{ "id":"s1", "type":"graph_page", "title":"${title}", "graph
 
 For measurement:
 Generate sections: [{ "id":"s1", "type":"measurement", "title":"${title}", "unit":"${options?.unit || 'Inches'}", "itemCount":${options?.itemCount || 6}, "items":["pencil","crayon","eraser","book","ruler","paper clip"] }]
+
+For math_practice:
+Generate EXACTLY ${options?.problemCount || 6} question objects in the questions array with ids q1..qN.
+Each question must have:
+{"id":"q#","question_type":"short_answer","text":"<equation with blanks>","lines":3}
+Equations must be solvable and reflect the operation implied by "${topic}". Use grade ${grade} for number size.
+When "${topic}" is addition, use addition equations; when subtraction, use subtraction; when multiplication, use multiplication; when division, use division.
+
+Generate sections: [{
+  "id":"s1",
+  "type":"math_practice",
+  "title":"${title}",
+  "instructions":"Solve each equation and write the answer in the blank.",
+  "questions":[]
+}]
+
+For math_word_problems:
+Generate EXACTLY ${options?.problemCount || 6} question objects in the questions array with ids q1..qN.
+Each question must have:
+{"id":"q#","question_type":"short_answer","text":"<scenario ending with answer blank>","lines":3}
+Use scenario-based word problems based on "${topic}" (addition/subtraction/multiplication/division) and tune phrasing/number size to grade ${grade}.
+Use subject "${subject}" to pick a context flavor when appropriate (e.g., classroom/real-life framing).
+
+Generate sections: [{
+  "id":"s1",
+  "type":"math_word_problems",
+  "title":"${title}",
+  "instructions":"Read each scenario and solve. Write the answer in the blank.",
+  "questions":[]
+}]
 
 For map_activity:
 Generate sections: [{ "id":"s1", "type":"map_activity", "title":"${title}", "mapType":"${options?.mapType || 'Community'}", "includeCompass":${options?.includeCompass !== false}, "includeKey":${options?.includeKey !== false} }]

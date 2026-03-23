@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Sparkles, RotateCcw, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { useBloomStore } from "../store";
 import { TYPE_MAP, CATEGORY_META, WORKSHEET_TYPES, type WorksheetTypeOption } from "../types/worksheetTypes";
 
@@ -10,27 +10,6 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 // ── Common options every worksheet type shows ─────────────────────────────────
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6+", "General"];
-
-const FONT_STYLES = [
-  { id: "clean", label: "Clean", style: { fontFamily: "DM Sans, sans-serif", fontWeight: 500 } },
-  { id: "playful", label: "Playful", style: { fontFamily: "Outfit, sans-serif", fontWeight: 700 } },
-  { id: "cursive", label: "Cursive", style: { fontFamily: "Pacifico, cursive" } },
-  { id: "bold", label: "Bold", style: { fontFamily: "DM Sans, sans-serif", fontWeight: 900 } },
-];
-
-const BORDER_STYLES = [
-  { id: "none", label: "None", preview: "—" },
-  { id: "simple", label: "Simple", preview: "▭" },
-  { id: "dashed", label: "Dashed", preview: "⬚" },
-  { id: "heavy", label: "Heavy", preview: "■" },
-  { id: "decorative", label: "Decorative", preview: "❋" },
-];
-
-const COLOR_SCHEMES = [
-  { id: "black & white", label: "B&W", bg: "#fff", accent: "#000" },
-  { id: "light pastel", label: "Pastel", bg: "#fef9f0", accent: "#7c3aed" },
-  { id: "full color", label: "Color", bg: "#f0f4ff", accent: "#2563eb" },
-];
 
 // ── Type-specific option renderers ────────────────────────────────────────────
 
@@ -285,6 +264,8 @@ export function CustomizePage() {
     parsedPromptData,
     originalPrompt,
     setWorksheet,
+    worksheet,
+    hasEdited,
   } = useBloomStore();
 
   const [generating, setGenerating] = useState(false);
@@ -305,6 +286,14 @@ export function CustomizePage() {
   const setOpt = (key: string, value: any) => setCustomizeOptions({ [key]: value });
 
   const handleCreate = async () => {
+    // If there is an existing, edited worksheet, confirm before overwriting it.
+    if (worksheet && hasEdited) {
+      const ok = window.confirm(
+        "You have edits in the current worksheet. Creating a new worksheet will replace your changes. Continue?"
+      );
+      if (!ok) return;
+    }
+
     setGenerating(true);
     setError("");
     try {
@@ -483,80 +472,9 @@ export function CustomizePage() {
               </label>
             </div>
 
-            {/* Font style — visual samples */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Font Style</label>
-              <div className="grid grid-cols-2 gap-2">
-                {FONT_STYLES.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setOpt("fontStyle", f.id)}
-                    className={`px-3 py-2 rounded-lg border text-sm transition-all ${
-                      opts.fontStyle === f.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-white hover:border-primary/40"
-                    }`}
-                    style={f.style}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Border style */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Border Style</label>
-              <div className="flex gap-2 flex-wrap">
-                {BORDER_STYLES.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => setOpt("borderStyle", b.id)}
-                    title={b.label}
-                    className={`w-10 h-10 rounded-lg border text-base transition-all ${
-                      opts.borderStyle === b.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-white hover:border-primary/40"
-                    }`}
-                  >
-                    {b.preview}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Color scheme */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Color Scheme</label>
-              <div className="flex gap-2">
-                {COLOR_SCHEMES.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setOpt("colorScheme", c.id)}
-                    className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-lg border text-xs font-semibold transition-all ${
-                      opts.colorScheme === c.id
-                        ? "border-primary"
-                        : "border-border hover:border-primary/40"
-                    }`}
-                  >
-                    <div
-                      className="w-8 h-5 rounded border border-gray-200"
-                      style={{ backgroundColor: c.bg }}
-                    >
-                      <div
-                        className="w-3 h-full rounded-r"
-                        style={{ backgroundColor: c.accent, marginLeft: "auto" }}
-                      />
-                    </div>
-                    <span>{c.label}</span>
-                    {opts.colorScheme === c.id && <Check className="w-3 h-3 text-primary" />}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Fonts, colors, and borders can be adjusted in the worksheet editor after creation.
+            </p>
 
             {/* Teacher info */}
             <div className="space-y-1.5">

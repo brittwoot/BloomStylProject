@@ -7,6 +7,7 @@ interface EditableTextBlockProps {
   onChange: (v: string) => void;
   textStyle?: Partial<TextStyle>;
   multiline?: boolean;
+  alwaysEditing?: boolean;
   placeholder?: string;
   className?: string;
   onFocus?: () => void;
@@ -32,6 +33,7 @@ export function EditableTextBlock({
   onChange,
   textStyle,
   multiline = false,
+  alwaysEditing = false,
   placeholder = "Click to edit…",
   className = "",
   onFocus,
@@ -65,6 +67,33 @@ export function EditableTextBlock({
   const listStyle = textStyle?.listStyle;
   const wrapList = listStyle && listStyle !== "none";
   const lines = safeValue.split("\n").filter(Boolean);
+
+  // Always-editing mode: render input/textarea directly
+  if (alwaysEditing) {
+    if (multiline) {
+      return (
+        <textarea
+          ref={ref as React.RefObject<HTMLTextAreaElement>}
+          value={draft}
+          rows={Math.max(3, draft.split("\n").length + 1)}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          style={css}
+          className={`w-full resize-none rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
+        />
+      );
+    }
+    return (
+      <input
+        ref={ref as React.RefObject<HTMLInputElement>}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        style={css}
+        className={`w-full rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
+      />
+    );
+  }
 
   if (editing) {
     if (multiline) {

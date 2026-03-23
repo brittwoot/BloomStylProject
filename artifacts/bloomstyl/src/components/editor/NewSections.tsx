@@ -96,16 +96,41 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
     <div className="space-y-2">
       {/* Labels row */}
       <div className="grid grid-cols-3 text-center gap-2">
-        <p className="font-bold text-sm text-gray-700">{leftLabel}</p>
-        <p className="font-bold text-sm text-gray-500">{centerLabel}</p>
-        <p className="font-bold text-sm text-gray-700">{rightLabel}</p>
+        <EditableTextBlock
+          value={leftLabel}
+          onChange={(v) => onUpdate({ leftLabel: v })}
+          className="font-bold text-sm text-gray-700"
+          placeholder="Topic A"
+        />
+        <EditableTextBlock
+          value={centerLabel}
+          onChange={(v) => onUpdate({ centerLabel: v })}
+          className="font-bold text-sm text-gray-500"
+          placeholder="Both"
+        />
+        <EditableTextBlock
+          value={rightLabel}
+          onChange={(v) => onUpdate({ rightLabel: v })}
+          className="font-bold text-sm text-gray-700"
+          placeholder="Topic B"
+        />
       </div>
 
       {/* Three columns representing Venn areas */}
       <div className="grid grid-cols-3 gap-0 border-2 border-gray-300 rounded-xl overflow-hidden min-h-48">
         <div className="p-3 border-r border-gray-200 space-y-2">
           {leftItems.map((item, i) => (
-            <div key={i} className="text-xs text-gray-600 border-b border-gray-100 pb-1">{item}</div>
+            <EditableTextBlock
+              key={i}
+              value={item}
+              onChange={(v) => {
+                const next = [...leftItems];
+                next[i] = v;
+                onUpdate({ leftItems: next });
+              }}
+              className="text-xs text-gray-600 border-b border-gray-100 pb-1 block"
+              placeholder="Left idea"
+            />
           ))}
           {Array.from({ length: Math.max(0, 5 - leftItems.length) }).map((_, i) => (
             <div key={`empty-l-${i}`} className="h-5 border-b border-gray-100" />
@@ -113,7 +138,17 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
         </div>
         <div className="p-3 bg-gray-50 border-r border-gray-200 space-y-2">
           {centerItems.map((item, i) => (
-            <div key={i} className="text-xs text-gray-600 border-b border-gray-100 pb-1 text-center">{item}</div>
+            <EditableTextBlock
+              key={i}
+              value={item}
+              onChange={(v) => {
+                const next = [...centerItems];
+                next[i] = v;
+                onUpdate({ centerItems: next });
+              }}
+              className="text-xs text-gray-600 border-b border-gray-100 pb-1 text-center block"
+              placeholder="Both"
+            />
           ))}
           {Array.from({ length: Math.max(0, 5 - centerItems.length) }).map((_, i) => (
             <div key={`empty-c-${i}`} className="h-5 border-b border-gray-100" />
@@ -121,7 +156,17 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
         </div>
         <div className="p-3 space-y-2">
           {rightItems.map((item, i) => (
-            <div key={i} className="text-xs text-gray-600 border-b border-gray-100 pb-1">{item}</div>
+            <EditableTextBlock
+              key={i}
+              value={item}
+              onChange={(v) => {
+                const next = [...rightItems];
+                next[i] = v;
+                onUpdate({ rightItems: next });
+              }}
+              className="text-xs text-gray-600 border-b border-gray-100 pb-1 block"
+              placeholder="Right idea"
+            />
           ))}
           {Array.from({ length: Math.max(0, 5 - rightItems.length) }).map((_, i) => (
             <div key={`empty-r-${i}`} className="h-5 border-b border-gray-100" />
@@ -141,17 +186,26 @@ export function KWLChartSection({ section, onUpdate }: { section: any; onUpdate:
   const is4col = variant.includes("4");
   const rowCount = section.rowCount || 8;
   const cols = is4col
-    ? ["K — What I Know", "W — Want to Know", "H — How to Find Out", "L — Learned"]
-    : ["K — What I Know", "W — Want to Know", "L — Learned"];
+    ? (section.columns || ["K — What I Know", "W — Want to Know", "H — How to Find Out", "L — Learned"])
+    : (section.columns || ["K — What I Know", "W — Want to Know", "L — Learned"]);
 
   return (
     <div>
       <div className={`grid divide-x divide-gray-300 border border-gray-300 rounded-xl overflow-hidden`}
         style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)` }}>
-        {cols.map((col) => (
-          <div key={col}>
+        {cols.map((col, ci) => (
+          <div key={ci}>
             <div className="bg-gray-100 px-3 py-2 border-b border-gray-300">
-              <p className="text-xs font-bold text-gray-700 text-center">{col}</p>
+              <EditableTextBlock
+                value={col}
+                onChange={(v) => {
+                  const next = [...cols];
+                  next[ci] = v;
+                  onUpdate({ columns: next });
+                }}
+                className="text-xs font-bold text-gray-700 text-center"
+                placeholder="Column label"
+              />
             </div>
             <div className="p-2">
               {Array.from({ length: rowCount }).map((_, i) => (
@@ -181,12 +235,27 @@ export function SequenceChartSection({ section, onUpdate }: { section: any; onUp
           </div>
           {/* Step box */}
           <div className="flex-1 border border-gray-300 rounded-lg p-3 space-y-1.5">
-            {step.title ? (
-              <p className="text-sm font-bold text-gray-700">{step.title}</p>
-            ) : null}
-            {step.content ? (
-              <p className="text-xs text-gray-500">{step.content}</p>
-            ) : null}
+            <EditableTextBlock
+              value={step.title || ""}
+              onChange={(v) => {
+                const next = [...steps];
+                next[i] = { ...next[i], title: v };
+                onUpdate({ steps: next });
+              }}
+              className="text-sm font-bold text-gray-700 block"
+              placeholder={`Step ${i + 1} title`}
+            />
+            <EditableTextBlock
+              value={step.content || ""}
+              onChange={(v) => {
+                const next = [...steps];
+                next[i] = { ...next[i], content: v };
+                onUpdate({ steps: next });
+              }}
+              className="text-xs text-gray-500 block"
+              multiline
+              placeholder="Step details…"
+            />
             {Array.from({ length: linesPerStep }).map((_, li) => (
               <div key={li} className="border-b border-gray-200 h-5" />
             ))}
@@ -217,10 +286,27 @@ export function FrayerModelSection({ section, onUpdate }: { section: any; onUpda
         <div className="grid grid-cols-2 divide-x-2 divide-y-2 divide-gray-400" style={{ minHeight: 256 }}>
           {quadrants.map((q, i) => (
             <div key={q.key} className="p-3 space-y-2">
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide border-b pb-1">{q.label}</p>
-              {q.content ? (
-                <p className="text-xs text-gray-600">{q.content}</p>
-              ) : null}
+              <EditableTextBlock
+                value={q.label}
+                onChange={(v) => {
+                  const key = q.key;
+                  const labelKey = `${key}Label`;
+                  onUpdate({ [labelKey]: v });
+                }}
+                className="text-xs font-bold text-gray-600 uppercase tracking-wide border-b pb-1 block"
+                placeholder="Label"
+              />
+              <EditableTextBlock
+                value={q.content}
+                onChange={(v) => {
+                  const key = q.key;
+                  const contentKey = `${key}Content`;
+                  onUpdate({ [contentKey]: v });
+                }}
+                className="text-xs text-gray-600 block"
+                multiline
+                placeholder="Notes…"
+              />
               {Array.from({ length: 4 }).map((_, li) => (
                 <div key={li} className="border-b border-gray-200 h-5" />
               ))}
@@ -256,7 +342,17 @@ export function StoryMapSection({ section, onUpdate }: { section: any; onUpdate:
       <div className="grid grid-cols-3 gap-2">
         {fields.slice(0, 3).map((f, i) => (
           <SectionBox key={i} label={f.label}>
-            {f.content ? <p className="text-xs text-gray-600">{f.content}</p> : null}
+            <EditableTextBlock
+              value={f.content || ""}
+              onChange={(v) => {
+                const next = [...fields];
+                next[i] = { ...next[i], content: v };
+                onUpdate({ fields: next });
+              }}
+              className="text-xs text-gray-600 block"
+              multiline
+              placeholder={f.label}
+            />
             <WritingLines count={3} />
           </SectionBox>
         ))}
@@ -264,7 +360,18 @@ export function StoryMapSection({ section, onUpdate }: { section: any; onUpdate:
       {/* Event boxes */}
       {fields.slice(3).map((f, i) => (
         <SectionBox key={i + 3} label={f.label}>
-          {f.content ? <p className="text-xs text-gray-600">{f.content}</p> : null}
+          <EditableTextBlock
+            value={f.content || ""}
+            onChange={(v) => {
+              const idx = i + 3;
+              const next = [...fields];
+              next[idx] = { ...next[idx], content: v };
+              onUpdate({ fields: next });
+            }}
+            className="text-xs text-gray-600 block"
+            multiline
+            placeholder={f.label}
+          />
           <WritingLines count={2} />
         </SectionBox>
       ))}
@@ -568,7 +675,16 @@ export function LabelDiagramSection({ section, onUpdate }: { section: any; onUpd
             <span className="w-5 h-5 rounded-full bg-primary/10 border border-primary text-[10px] font-bold text-primary flex items-center justify-center shrink-0">
               {i + 1}
             </span>
-            <div className="flex-1 border-b border-gray-300 h-6" />
+            <EditableTextBlock
+              value={part}
+              onChange={(v) => {
+                const next = [...parts];
+                next[i] = v;
+                onUpdate({ parts: next });
+              }}
+              className="flex-1 text-xs text-gray-700 border-b border-gray-300 h-6 flex items-center"
+              placeholder={`Label ${i + 1}`}
+            />
           </div>
         ))}
       </div>
@@ -623,8 +739,27 @@ export function TimelineSection({ section, onUpdate }: { section: any; onUpdate:
               {/* Event box */}
               <div className="flex flex-col items-center gap-2" style={{ width: 120 }}>
                 <div className="w-full border border-gray-300 rounded-lg p-2 min-h-16 text-center">
-                  <p className="text-[10px] font-bold text-gray-500 mb-1">{event.label}</p>
-                  {event.content ? <p className="text-[11px] text-gray-600">{event.content}</p> : null}
+                  <EditableTextBlock
+                    value={event.label || ""}
+                    onChange={(v) => {
+                      const next = [...events];
+                      next[i] = { ...next[i], label: v };
+                      onUpdate({ events: next });
+                    }}
+                    className="text-[10px] font-bold text-gray-500 mb-1 block"
+                    placeholder={`Event ${i + 1}`}
+                  />
+                  <EditableTextBlock
+                    value={event.content || ""}
+                    onChange={(v) => {
+                      const next = [...events];
+                      next[i] = { ...next[i], content: v };
+                      onUpdate({ events: next });
+                    }}
+                    className="text-[11px] text-gray-600 block"
+                    multiline
+                    placeholder="Event details…"
+                  />
                   <div className="border-b border-gray-200 h-4" />
                 </div>
                 {/* Dot on timeline */}
@@ -659,8 +794,27 @@ export function TimelineSection({ section, onUpdate }: { section: any; onUpdate:
       <div className="flex-1 space-y-2">
         {events.map((event, i) => (
           <div key={event.id || i} className="border border-gray-300 rounded-lg p-3 min-h-14">
-            <p className="text-xs font-bold text-gray-500 mb-1">{event.label}</p>
-            {event.content ? <p className="text-xs text-gray-600">{event.content}</p> : null}
+            <EditableTextBlock
+              value={event.label || ""}
+              onChange={(v) => {
+                const next = [...events];
+                next[i] = { ...next[i], label: v };
+                onUpdate({ events: next });
+              }}
+              className="text-xs font-bold text-gray-500 mb-1 block"
+              placeholder={`Event ${i + 1}`}
+            />
+            <EditableTextBlock
+              value={event.content || ""}
+              onChange={(v) => {
+                const next = [...events];
+                next[i] = { ...next[i], content: v };
+                onUpdate({ events: next });
+              }}
+              className="text-xs text-gray-600 block"
+              multiline
+              placeholder="Event details…"
+            />
             <div className="border-b border-gray-200 h-4 mt-1" />
           </div>
         ))}

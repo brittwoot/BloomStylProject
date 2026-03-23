@@ -182,6 +182,7 @@ type BloomStore = {
   updateQuestion: (sectionId: string, qId: string, updates: Partial<any>) => void;
 
   // Step 4 — Editor state
+  hasEdited: boolean;
   activeSectionId: string | null;
   sectionStyles: Record<string, SectionStyle>;
   sectionClipart: Record<string, ClipartItem[]>;
@@ -272,7 +273,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
   setSettings: (s) => set((state) => ({ settings: { ...state.settings, ...s } })),
 
   worksheet: null,
-  setWorksheet: (worksheet) => set({ worksheet }),
+  setWorksheet: (worksheet) => set({ worksheet, hasEdited: false }),
   updateSection: (id, updates) =>
     set((state) => ({
       worksheet: {
@@ -281,6 +282,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
           s.id === id ? { ...s, ...updates } : s
         ),
       },
+      hasEdited: true,
     })),
   updateQuestion: (sectionId, qId, updates) =>
     set((state) => ({
@@ -297,9 +299,11 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
             : s
         ),
       },
+      hasEdited: true,
     })),
 
   // Editor state
+  hasEdited: false,
   activeSectionId: null,
   sectionStyles: {},
   sectionClipart: {},
@@ -322,6 +326,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
           ...updates,
         },
       },
+      hasEdited: true,
     })),
 
   setTextStyle: (sectionId, updates) =>
@@ -335,17 +340,20 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
             textStyle: { ...current.textStyle, ...updates },
           },
         },
+        hasEdited: true,
       };
     }),
 
   setWorksheetPageStyle: (updates) =>
     set((state) => ({
       worksheetPageStyle: { ...state.worksheetPageStyle, ...updates },
+      hasEdited: true,
     })),
 
   setGlobalTypography: (updates) =>
     set((state) => ({
       globalTypography: { ...state.globalTypography, ...updates },
+      hasEdited: true,
     })),
 
   applyGlobalTypography: (typo) =>
@@ -359,6 +367,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
           bodyFont: merged.bodyFont,
           bgColor: state.worksheetPageStyle.bgColor,
         },
+        hasEdited: true,
       };
     }),
 
@@ -371,6 +380,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
           { ...item, id: nanoid(6) },
         ],
       },
+      hasEdited: true,
     })),
 
   removeClipart: (sectionId, itemId) =>
@@ -381,6 +391,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
           (c) => c.id !== itemId
         ),
       },
+      hasEdited: true,
     })),
 
   layoutVariations: null,
@@ -425,6 +436,7 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
       safetyFlags: [],
       settings: DEFAULT_SETTINGS,
       worksheet: null,
+      hasEdited: false,
       activeSectionId: null,
       sectionStyles: {},
       sectionClipart: {},

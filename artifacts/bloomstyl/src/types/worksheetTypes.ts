@@ -33,6 +33,8 @@ export type WorksheetTypeId =
   | "frayer_model"
   // Math
   | "number_bond"
+  | "math_practice"
+  | "math_word_problems"
   | "ten_frame"
   | "graph_page"
   | "clock_practice"
@@ -374,6 +376,34 @@ export const WORKSHEET_TYPES: WorksheetTypeDef[] = [
       { key: "bondCount", label: "Number of Bonds", type: "chips", options: ["4", "6", "8", "10", "12"], default: "6" },
       { key: "focus", label: "Focus", type: "chips", options: ["Addition", "Subtraction", "Mixed"], default: "Addition" },
       { key: "numberRange", label: "Number Range", type: "chips", options: ["1–5", "1–10", "1–20", "Custom"], default: "1–10" },
+    ],
+  },
+  {
+    id: "math_practice",
+    label: "Math Practice (Equations)",
+    shortLabel: "Math Practice",
+    category: "math",
+    icon: "➗",
+    description: "Multiple solvable equation-style problems with answer blanks.",
+    gradeRange: "K – 6",
+    previewRows: ["➕ ➖ ✚ Equation problems", "Write each answer in the blank"],
+    typeOptions: [
+      { key: "problemCount", label: "Number of Problems", type: "number", default: 6 },
+      { key: "difficulty", label: "Difficulty", type: "chips", options: ["easy", "medium", "challenge"], default: "easy" },
+    ],
+  },
+  {
+    id: "math_word_problems",
+    label: "Math Word Problems",
+    shortLabel: "Word Problems",
+    category: "math",
+    icon: "📚",
+    description: "Scenario-based word problems with answer blanks.",
+    gradeRange: "K – 6",
+    previewRows: ["🏫 Real-world scenarios", "Solve and write the answer"],
+    typeOptions: [
+      { key: "problemCount", label: "Number of Problems", type: "number", default: 6 },
+      { key: "difficulty", label: "Difficulty", type: "chips", options: ["easy", "medium", "challenge"], default: "easy" },
     ],
   },
   {

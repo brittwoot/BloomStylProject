@@ -58,7 +58,9 @@ export function WordPracticeSection({ section, onUpdate }: { section: any; onUpd
     <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
       {/* Column headers */}
       <div className="grid grid-cols-3 border-b-2 border-gray-300 bg-gray-50 text-sm font-bold">
-        <div className="p-2 text-center border-r border-gray-300">Read the word.</div>
+        <div className="p-2 text-center border-r border-gray-300">
+          Read the word.
+        </div>
         <div className="p-2 text-center border-r border-gray-300 flex items-center justify-center gap-1">
           <span>🖍️</span> Color the word.
         </div>
@@ -71,16 +73,12 @@ export function WordPracticeSection({ section, onUpdate }: { section: any; onUpd
       <div className="grid grid-cols-3 min-h-[120px]">
         {/* Read */}
         <div className="p-4 flex flex-col items-center justify-center border-r border-gray-200">
-          <span
-            className="text-5xl font-black text-gray-900 leading-none cursor-pointer hover:opacity-70 transition-opacity"
-            title="Click to edit target word"
-            onClick={() => {
-              const v = prompt("Edit target word:", word);
-              if (v !== null) handleWordChange(v.trim().toLowerCase());
-            }}
-          >
-            {editWord || "word"}
-          </span>
+          <EditableTextBlock
+            value={editWord || "word"}
+            onChange={(v) => handleWordChange(v.trim().toLowerCase())}
+            className="text-5xl font-black text-gray-900 leading-none text-center"
+            placeholder="word"
+          />
         </div>
 
         {/* Color (hollow outline for coloring) */}
@@ -196,7 +194,11 @@ export function FillBlanksSection({ section, onUpdate }: { section: any; onUpdat
   return (
     <div className="space-y-3">
       <p className="text-sm font-bold text-center">
-        {section.instructions || "Fill in and complete the missing letters."}
+        <EditableTextBlock
+          value={section.instructions ?? "Fill in and complete the missing letters."}
+          onChange={(v) => onUpdate({ instructions: v })}
+          placeholder="Fill-in instructions…"
+        />
       </p>
       <div className="grid grid-cols-3 gap-4">
         {patterns.map((pattern, i) => (
