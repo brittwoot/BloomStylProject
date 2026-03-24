@@ -4,6 +4,34 @@ import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
 
+const ACTIVITY_TO_LAYOUT: Record<string, string> = {
+  label_diagram: "diagram_label",
+  observation_sheet: "diagram_label",
+  sequence_chart: "sequence_organizer",
+  timeline: "sequence_organizer",
+  line_matching: "matching",
+  cut_and_sort: "matching",
+  word_search: "matching",
+  bingo_card: "matching",
+  science_concept_practice: "concept_practice",
+  math_practice: "concept_practice",
+  math_word_problems: "concept_practice",
+  number_bond: "concept_practice",
+  ten_frame: "concept_practice",
+  graph_page: "concept_practice",
+  frayer_model: "concept_practice",
+  kwl_chart: "concept_practice",
+  mind_map: "concept_practice",
+  venn_diagram: "concept_practice",
+  writing_prompt: "concept_practice",
+  sentence_frames: "concept_practice",
+};
+
+function layoutTypeForActivity(activityType: string | undefined): string {
+  const key = String(activityType ?? "").trim();
+  return ACTIVITY_TO_LAYOUT[key] || "default";
+}
+
 function safeParseJSON(str: string): any | null {
   try {
     const cleaned = str
@@ -17,75 +45,349 @@ function safeParseJSON(str: string): any | null {
   }
 }
 
-// Grade level calibration descriptions
-const GRADE_DESCRIPTIONS: Record<string, string> = {
-  "Pre-K": "Pre-Kindergarten (ages 4–5): extremely simple, visual, 1-word answers only, large text, lots of pictures",
-  "K": "Kindergarten (age 5–6): beginning readers, single short sentences, trace/circle tasks, large print",
-  "1": "Grade 1 (age 6–7): early readers, 2–3 word answers, phonics-level vocabulary, very short sentences",
-  "2": "Grade 2 (age 7–8): developing readers, 4–6 word answers, simple paragraphs, grade 2 sight words",
-  "3": "Grade 3 (age 8–9): independent readers, multi-sentence answers, basic inference, third-grade vocabulary",
-  "4": "Grade 4 (age 9–10): fluent readers, paragraph-length answers, grade-appropriate idioms, moderate difficulty",
-  "5": "Grade 5 (age 10–11): proficient readers, analytical thinking, multi-paragraph responses, challenging vocabulary",
-  "6": "Grade 6 (age 11–12): middle-school level, abstract thinking, textual evidence required, complex sentences",
-  "7": "Grade 7 (age 12–13): advanced middle school, critical analysis, multi-paragraph essays, sophisticated vocabulary",
-  "8": "Grade 8 (age 13–14): pre-high school, thesis-level thinking, deep analysis, advanced vocabulary",
+// Layout variant instructions — vary structure/focus between A/B/C
+const VARIANT_INSTRUCTIONS: Record<string, string> = {
+  A: "Generate the most straightforward, classic layout for this activity type. Clear structure, standard organization.",
+  B: "Generate a slightly more visual/graphic layout. Add more structure boxes, use headers creatively, consider columns or visual dividers.",
+  C: "Generate a more scaffolded, step-by-step layout. Break tasks into smaller sub-steps, add more guidance/sentence starters if applicable.",
 };
 
-// Subject-aware, activity-aware variant instructions
-function getVariantInstructions(variant: string, activityType: string, subject?: string): string {
-  const isMath = activityType === "math_practice" || activityType === "math_word_problems" || activityType === "number_bond" || activityType === "ten_frame";
-  const isWriting = activityType === "writing_prompt" || activityType === "acrostic" || activityType === "sentence_frames" || activityType === "mini_book";
-  const isReading = activityType === "story_map" || activityType === "kwl_chart" || activityType === "sequence_chart" || activityType === "venn_diagram";
+const SCIENCE_SUBJECT_BLOCK = `
+SCIENCE MODE (when subject is Science):
+- Use grade-appropriate science vocabulary and accurate concepts for the topic.
+- Prioritize labeling, models/diagrams, sequencing processes, observation, and short explanations using domain terms.
+- Do NOT replace science tasks with unrelated narrative fiction unless the activity type explicitly requires a brief evidence-based explanation.
+`;
 
-  if (variant === "A") {
-    if (isMath) return "Layout A (Classic): Generate a clean, straightforward set of problems. Use standard format with clear answer blanks. Moderate quantity (6–8 problems). Balanced difficulty for the grade.";
-    if (isWriting) return "Layout A (Classic): Generate a focused, structured prompt. Single clear prompt sentence, standard lined writing space, name/date header. Classic worksheet format.";
-    if (isReading) return "Layout A (Classic): Standard graphic organizer format. Clear labeled boxes, straightforward questions, typical reading comprehension structure.";
-    return "Layout A (Classic): Straightforward, standard layout. Clear headers, typical organization for this activity type. Most familiar format for students.";
-  }
-  if (variant === "B") {
-    if (isMath) return "Layout B (Extended): Generate 8–10 problems with slightly higher challenge. Include a 'Show Your Work' box for 2–3 problems. Add a bonus challenge problem at the end if appropriate.";
-    if (isWriting) return "Layout B (Creative): Generate an open-ended, imaginative prompt. Add a pre-writing brainstorm bubble/box. Include a 6-word word bank of interesting vocabulary relevant to the topic.";
-    if (isReading) return "Layout B (Visual): More visual organizer layout. Use icons or visual cues in headers. Include a 'My Thinking' box for student reflection. Add a vocabulary section.";
-    return "Layout B (Visual): More visual, graphic layout. Add creative headers, visual dividers, and more structural boxes. Slightly more engaging visually than the classic format.";
-  }
-  if (variant === "C") {
-    if (isMath) return "Layout C (Scaffolded): Start with 2–3 worked/guided examples, then 6 practice problems increasing in difficulty. Add a 'Remember:' tip box at the top. Ideal for intervention or ELL students.";
-    if (isWriting) return "Layout C (Scaffolded): Highly guided writing experience. Break the task into step-by-step instructions. Include sentence frame starters like 'First, ___ Then, ___ Finally, ___'. Add a drawing box for pre-writers. ELL-friendly.";
-    if (isReading) return "Layout C (Scaffolded): Step-by-step reading guide. Include sentence starters for each response. Add a vocabulary support box with key terms pre-filled. Use numbered steps instead of open boxes.";
-    return "Layout C (Scaffolded): Step-by-step, heavily guided layout. Break each task into smaller sub-steps. Add sentence starters, hint boxes, or graphic cues. Designed for struggling learners and ELL students.";
-  }
-  return "";
+const READING_SUBJECT_BLOCK = `
+READING MODE (when subject is Reading): Align content to literacy goals—comprehension, vocabulary in context, and text-based responses appropriate to the activity type.
+`;
+
+/** Call inside the request handler after `topic` is known — do not use module-level templates with ${topic}. */
+function buildMathSubjectBlock(topic: string): string {
+  const t = (topic || "the topic").trim();
+  return `
+MATHEMATICS MODE (when subject is Math): Use grade-appropriate numbers and operations implied by the topic; keep problems coherent with "${t}".
+`;
+}
+
+function buildSocialSubjectBlock(topic: string): string {
+  const t = (topic || "the topic").trim();
+  return `
+SOCIAL STUDIES MODE (when subject is Social Studies): Emphasize chronology, geography, civics, or historical thinking as fits "${t}" and this activity type.
+`;
+}
+
+type OptionMetadata = {
+  id: string;
+  layoutType: string;
+  title: string;
+  shortDescription: string;
+  includedComponents: string[];
+  skillFocus: string;
+  pedagogicalIntent: string;
+};
+
+function buildOptionMetadata(input: {
+  activityType: string;
+  topic: string;
+  subject?: string;
+  subjectId?: string;
+  familyLabel?: string;
+  layoutVariant?: string;
+}): OptionMetadata {
+  const t = (input.topic || "the topic").trim();
+  const title = input.familyLabel?.trim() || `Option: ${input.activityType}`;
+  const sci = input.subjectId === "science";
+  const lv = (input.layoutVariant || "").toUpperCase();
+
+  const fallback: OptionMetadata = {
+    id: lv ? `${lv}_mixed_practice` : "opt_mixed_practice",
+    layoutType: layoutTypeForActivity(input.activityType),
+    title,
+    shortDescription: `Practice and tasks about ${t} using a ${input.activityType} layout.`,
+    includedComponents: ["Multiple sections", "Topic-specific prompts", "Grade-appropriate tasks"],
+    skillFocus: "Apply understanding of the topic",
+    pedagogicalIntent: "Reinforce key ideas through structured practice",
+  };
+
+  const map: Record<string, OptionMetadata> = {
+    label_diagram: {
+      id: lv ? `${lv}_diagram_label` : "diagram_label",
+      layoutType: "diagram_label",
+      title: sci ? "Label & Diagram" : title,
+      shortDescription: sci
+        ? `Science diagram for ${t} with accurate parts to identify and label.`
+        : `Visual diagram for ${t} with parts to label and vocabulary support.`,
+      includedComponents: [
+        "Diagram / model frame",
+        "Word bank or part list",
+        "Arrows or blanks for labels",
+      ],
+      skillFocus: sci
+        ? "Identify structures and use domain vocabulary correctly"
+        : "Connect visuals to vocabulary",
+      pedagogicalIntent: "Model-based understanding",
+    },
+    science_concept_practice: {
+      id: lv ? `${lv}_concept_practice` : "concept_practice",
+      layoutType: "concept_practice",
+      title: sci ? "Concept & Vocabulary" : title,
+      shortDescription: sci
+        ? `Key science terms and short-response questions about ${t} — no storytelling.`
+        : `Vocabulary support and questions for ${t}.`,
+      includedComponents: [
+        "Vocabulary word bank",
+        "Short-response questions",
+        "Directions to use domain vocabulary",
+      ],
+      skillFocus: sci ? "Define terms and explain science ideas in your own words" : "Vocabulary and concept recall",
+      pedagogicalIntent: "Conceptual understanding",
+    },
+    line_matching: {
+      id: lv ? `${lv}_matching` : "matching",
+      layoutType: "matching",
+      title: sci ? "Vocabulary & Concepts" : title,
+      shortDescription: sci
+        ? `Match science terms to definitions or processes for ${t}.`
+        : `Match vocabulary to meanings for ${t}.`,
+      includedComponents: ["Term–definition or process pairs", "Two columns to connect", "Science-accurate wording"],
+      skillFocus: sci ? "Define and apply key science terms" : "Vocabulary in context",
+      pedagogicalIntent: "Concept precision",
+    },
+    sequence_chart: {
+      id: lv ? `${lv}_sequence_organizer` : "sequence_organizer",
+      layoutType: "sequence_organizer",
+      title: sci ? "Sequence & Process" : title,
+      shortDescription: sci
+        ? `Order and explain steps of ${t} as a science process or cycle.`
+        : `Sequence steps or events for ${t}.`,
+      includedComponents: ["Numbered stages", "Short explanations per step", "Process reflection"],
+      skillFocus: sci ? "Explain how and why the process unfolds" : "Sequencing and summarizing",
+      pedagogicalIntent: "Systems thinking",
+    },
+    math_practice: {
+      id: lv ? `${lv}_concept_practice` : "math_concept_practice",
+      layoutType: "concept_practice",
+      title: "Skills Practice",
+      shortDescription: `Computational practice aligned to ${t}.`,
+      includedComponents: ["Equations / blanks", "Workspace lines", "Clear directions"],
+      skillFocus: "Fluency and accuracy",
+      pedagogicalIntent: "Procedural practice",
+    },
+    math_word_problems: {
+      id: lv ? `${lv}_word_problems` : "word_problems",
+      layoutType: "word_problems",
+      title: "Word Problems",
+      shortDescription: `Context problems based on ${t}.`,
+      includedComponents: ["Scenario prompts", "Answer blanks", "Grade-appropriate numbers"],
+      skillFocus: "Model with mathematics / explain reasoning briefly",
+      pedagogicalIntent: "Application",
+    },
+    graph_page: {
+      id: lv ? `${lv}_data_representation` : "data_representation",
+      layoutType: "data_representation",
+      title: "Graph & Data",
+      shortDescription: `Data or categories related to ${t}.`,
+      includedComponents: ["Graph frame", "Categories / scale", "Prompts to interpret"],
+      skillFocus: "Represent and interpret quantitative information",
+      pedagogicalIntent: "Data literacy",
+    },
+    story_map: {
+      id: lv ? `${lv}_comprehension` : "comprehension",
+      layoutType: "comprehension",
+      title: "Story Map",
+      shortDescription: `Story elements and comprehension for ${t}.`,
+      includedComponents: ["Characters, setting, plot", "Problem & solution", "Reflection"],
+      skillFocus: "Retell and analyze narrative structure",
+      pedagogicalIntent: "Reading comprehension",
+    },
+    frayer_model: {
+      id: lv ? `${lv}_vocabulary_review` : "vocabulary_review",
+      layoutType: "vocabulary_review",
+      title: "Vocabulary Deep Dive",
+      shortDescription: `One key term from ${t} explored in depth.`,
+      includedComponents: ["Definition", "Examples / non-examples", "Visual or sentence use"],
+      skillFocus: "Precision of meaning",
+      pedagogicalIntent: "Academic vocabulary",
+    },
+    kwl_chart: {
+      id: lv ? `${lv}_inquiry_chart` : "inquiry_chart",
+      layoutType: "inquiry_chart",
+      title: "K-W-L",
+      shortDescription: `What you know, want to know, and will learn about ${t}.`,
+      includedComponents: ["K / W / L columns", "Guiding questions", "Reflection"],
+      skillFocus: "Activate prior knowledge and set purpose",
+      pedagogicalIntent: "Inquiry-based reading",
+    },
+    writing_prompt: {
+      id: lv ? `${lv}_constructed_response` : "constructed_response",
+      layoutType: "constructed_response",
+      title: "Writing",
+      shortDescription: `Written response about ${t}.`,
+      includedComponents: ["Prompt", "Lined space", "Optional word bank"],
+      skillFocus: "Express ideas in complete writing",
+      pedagogicalIntent: "Written communication",
+    },
+    sentence_frames: {
+      id: lv ? `${lv}_scaffolded_writing` : "scaffolded_writing",
+      layoutType: "scaffolded_writing",
+      title: "Sentence Frames",
+      shortDescription: `Scaffolded stems for ${t}.`,
+      includedComponents: ["Multiple stems", "Short writing lines", "Academic language support"],
+      skillFocus: "Use academic language patterns",
+      pedagogicalIntent: "Scaffolded expression",
+    },
+    mini_book: {
+      id: lv ? `${lv}_multi_page_project` : "multi_page_project",
+      layoutType: "multi_page_project",
+      title: "Mini Book",
+      shortDescription: `Short pages on ${t}.`,
+      includedComponents: ["Panel prompts", "Illustration space", "Simple booklet layout"],
+      skillFocus: "Organize ideas across pages",
+      pedagogicalIntent: "Publishing format",
+    },
+    timeline: {
+      id: lv ? `${lv}_process_explanation` : "process_explanation",
+      layoutType: "process_explanation",
+      title: "Timeline",
+      shortDescription: `Events or stages for ${t}.`,
+      includedComponents: ["Ordered events", "Dates or sequence", "Brief captions"],
+      skillFocus: "Chronological reasoning",
+      pedagogicalIntent: "Historical thinking",
+    },
+    venn_diagram: {
+      id: lv ? `${lv}_compare_contrast` : "compare_contrast",
+      layoutType: "compare_contrast",
+      title: "Compare & Contrast",
+      shortDescription: `Compare ideas related to ${t}.`,
+      includedComponents: ["Two circles", "Shared and unique ideas", "Prompts"],
+      skillFocus: "Analyze similarities and differences",
+      pedagogicalIntent: "Comparative reasoning",
+    },
+    cut_and_sort: {
+      id: lv ? `${lv}_sorting` : "sorting",
+      layoutType: "sorting",
+      title: "Cut & Sort",
+      shortDescription: `Sort items for ${t} into categories.`,
+      includedComponents: ["Category headers", "Items to cut/sort", "Glue or write area"],
+      skillFocus: "Classify using criteria",
+      pedagogicalIntent: "Categorization",
+    },
+    color_by_code: {
+      id: lv ? `${lv}_visual_practice` : "visual_practice",
+      layoutType: "visual_practice",
+      title: "Color by Code",
+      shortDescription: `Color-coding practice for ${t}.`,
+      includedComponents: ["Code key", "Picture or grid", "Words or patterns"],
+      skillFocus: "Decode and recognize patterns",
+      pedagogicalIntent: "Phonics / attention to detail",
+    },
+    word_search: {
+      id: lv ? `${lv}_word_hunt` : "word_hunt",
+      layoutType: "word_hunt",
+      title: "Word Search",
+      shortDescription: `Find vocabulary for ${t}.`,
+      includedComponents: ["Letter grid", "Word list", "Directions"],
+      skillFocus: "Spelling pattern recognition",
+      pedagogicalIntent: "Word form practice",
+    },
+    mind_map: {
+      id: lv ? `${lv}_graphic_organizer` : "graphic_organizer",
+      layoutType: "graphic_organizer",
+      title: "Mind Map",
+      shortDescription: `Branches of ideas about ${t}.`,
+      includedComponents: ["Central concept", "Branches", "Child ideas"],
+      skillFocus: "Organize and connect ideas",
+      pedagogicalIntent: "Concept mapping",
+    },
+    coloring_page: {
+      id: lv ? `${lv}_visual_activity` : "visual_activity",
+      layoutType: "visual_activity",
+      title: "Coloring",
+      shortDescription: `Illustration activity for ${t}.`,
+      includedComponents: ["Large outline art", "Optional short response", "Directions"],
+      skillFocus: "Fine motor + topic connection",
+      pedagogicalIntent: "Engagement",
+    },
+    bingo_card: {
+      id: lv ? `${lv}_game_grid` : "game_grid",
+      layoutType: "game_grid",
+      title: "Bingo",
+      shortDescription: `Game grid for ${t}.`,
+      includedComponents: ["5×5 grid", "Call list", "Rules"],
+      skillFocus: "Review vocabulary or facts",
+      pedagogicalIntent: "Gamified review",
+    },
+  };
+
+  const base = map[input.activityType] ?? fallback;
+  const lvKey = (input.layoutVariant || "").toUpperCase();
+  /** Canonical editor shell — always derived from activityType, not from copy-pasted map rows. */
+  const layoutType = layoutTypeForActivity(input.activityType);
+  return {
+    ...base,
+    layoutType,
+    id: lvKey ? `${lvKey}_${input.activityType}` : base.id,
+  };
 }
 
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { activityType, options, originalPrompt, parsedPromptData, layoutVariant, subject, details } = req.body;
+    const {
+      activityType,
+      options,
+      originalPrompt,
+      parsedPromptData,
+      layoutVariant,
+      /** Quick Gen option label (A/B/C) — used for metadata ids only; not structural prompts */
+      generationSlot,
+      subject,
+      details,
+      subjectId,
+      structuralVariants,
+      variantFamilyLabel,
+    } = req.body;
 
     if (!activityType) {
       res.status(400).json({ error: "BAD_REQUEST", message: "activityType is required" });
       return;
     }
 
-    console.log(`[GEN] Layout ${layoutVariant ?? "–"}: Starting (type=${activityType})`);
+    const optionSlot = (generationSlot ?? layoutVariant) as string | undefined;
+
+    console.log(`[GEN] Slot ${optionSlot ?? "–"}: Starting (type=${activityType})`);
 
     const title = options?.title || parsedPromptData?.topic || activityType;
     const grade = options?.gradeLevel || parsedPromptData?.gradeLevel || "General";
     const topic = parsedPromptData?.topic || originalPrompt || title;
     const targetWord = parsedPromptData?.targetWord;
-    const variantInstruction = layoutVariant ? getVariantInstructions(layoutVariant, activityType, subject) : "";
-    const gradeDescription = GRADE_DESCRIPTIONS[grade] || `Grade ${grade}`;
+    const scienceMode = subjectId === "science" || String(subject || "").toLowerCase().includes("science");
+    const sid = String(subjectId || "").toLowerCase();
+    // Only legacy callers that send layoutVariant + structuralVariants get the old A/B/C prompt.
+    // Quick Gen uses distinct activityType per slot and should omit layoutVariant / structuralVariants.
+    const variantInstruction = layoutVariant
+      ? structuralVariants
+        ? `This is option ${layoutVariant} of THREE DIFFERENT WORKSHEET FORMATS. Follow ONLY the rules for activity type "${activityType}". Produce complete, topic-specific content. Do not substitute a different activity type.`
+        : VARIANT_INSTRUCTIONS[layoutVariant] ?? ""
+      : "";
     const detailsNote = details ? `\nTeacher's specific request: "${details}"` : "";
+    const subjectModeBlocks: string[] = [];
+    if (scienceMode) subjectModeBlocks.push(SCIENCE_SUBJECT_BLOCK);
+    if (sid === "reading") subjectModeBlocks.push(READING_SUBJECT_BLOCK);
+    if (sid === "math") subjectModeBlocks.push(buildMathSubjectBlock(String(topic)));
+    if (sid === "social") subjectModeBlocks.push(buildSocialSubjectBlock(String(topic)));
+    const subjectBlock = subjectModeBlocks.length ? `\n${subjectModeBlocks.join("\n")}\n` : "";
 
     // Build sections based on activity type
-    const systemPrompt = `You are an expert K-8 worksheet content generator for teachers.
-Generate specific, grade-appropriate content for a classroom worksheet.
+    const systemPrompt = `You are an expert elementary school worksheet content generator.
+Given an activity type and options, generate the specific content for a worksheet.
 Return ONLY valid JSON with this structure:
 {
   "worksheet": {
     "worksheet_id": "${randomUUID()}",
     "title": "Worksheet title",
-    "subject": "${subject || "General"}",
+    "subject": "subject area",
     "gradeLevel": "${grade}",
     "language": "English",
     "template_type": "${activityType}",
@@ -95,14 +397,11 @@ Return ONLY valid JSON with this structure:
 
 Activity type: ${activityType}
 Title: ${title}
-Grade calibration: ${gradeDescription}
+Grade: ${grade}
 Topic: ${topic}
-Subject area: ${subject || "General"}
 ${targetWord ? `Target word: ${targetWord}` : ""}
 Options: ${JSON.stringify(options || {})}
-
-IMPORTANT: All content MUST be appropriate for ${gradeDescription}. Adjust vocabulary, sentence complexity, number ranges, and question depth accordingly.
-
+${subjectBlock}
 SECTION GENERATION RULES BY TYPE:
 
 For mind_map:
@@ -116,6 +415,7 @@ Generate sections: [{ "id":"s1", "type":"kwl_chart", "title":"${title}", "varian
 
 For sequence_chart:
 Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${title}", "steps": [{"id":"step1","number":1,"title":"Step title","content":"Description"},{"id":"step2","number":2,"title":"Step title","content":"Description"},{"id":"step3","number":3,"title":"Step title","content":"Description"},{"id":"step4","number":4,"title":"Step title","content":"Description"}] }]
+If the subject is Science, steps must describe a real process or cycle (e.g., water moving through stages), not a fictional plot or story sequence.
 
 For frayer_model:
 Generate sections: [{ "id":"s1", "type":"frayer_model", "title":"${title}", "centerTerm":"${targetWord || topic}", "q1Label":"${options?.q1Label || 'Definition'}", "q2Label":"${options?.q2Label || 'Example'}", "q3Label":"${options?.q3Label || 'Non-Example'}", "q4Label":"${options?.q4Label || 'Draw It'}", "q1Content":"Clear definition of ${targetWord || topic}", "q2Content":"Example sentence or use", "q3Content":"What it is NOT", "q4Content":"" }]
@@ -151,6 +451,21 @@ Generate sections: [{ "id":"s1", "type":"color_by_code", "title":"${title}", "co
 
 For label_diagram:
 Generate sections: [{ "id":"s1", "type":"label_diagram", "title":"${title}", "subject":"${options?.diagramSubject || topic}", "parts":["part1","part2","part3","part4","part5","part6"], "wordBank":${options?.wordBank !== false} }]
+If the subject is Science, parts must be real structures or stages for the topic (e.g., water cycle: evaporation, condensation, precipitation, collection, runoff, groundwater, energy from the sun) — not story elements.
+
+For science_concept_practice:
+Generate EXACTLY two sections (no other section types):
+1) word_bank: 8-12 real science vocabulary words for the topic (strings only in "words").
+2) science_short_response: 4-6 short_answer questions asking students to explain processes, compare stages, or use vocabulary — NOT creative writing, NOT a story, NOT "imagine you are...".
+sections: [
+  { "id":"s1", "type":"word_bank", "title":"Key vocabulary: ${topic}", "words":["term1","term2","term3","term4","term5","term6","term7","term8"] },
+  { "id":"s2", "type":"science_short_response", "title":"Show what you know", "instructions":"Use the vocabulary words above. Write in complete sentences using science ideas.", "questions":[
+    { "id":"q1","question_type":"short_answer","text":"Explain ...","lines":4 },
+    { "id":"q2","question_type":"short_answer","text":"Compare ...","lines":4 },
+    { "id":"q3","question_type":"short_answer","text":"What causes ...","lines":4 },
+    { "id":"q4","question_type":"short_answer","text":"Define ... in your own words","lines":4 }
+  ]}
+]
 
 For observation_sheet:
 Generate sections: [{ "id":"s1", "type":"observation_sheet", "title":"${title}", "sections":["My Hypothesis:","What I Observed:","What I Learned:"], "includeDrawing":${options?.includeDrawing !== false} }]
@@ -204,7 +519,14 @@ Generate sections: [{
   "type":"math_practice",
   "title":"${title}",
   "instructions":"Solve each equation and write the answer in the blank.",
-  "questions":[]
+  "questions":[
+    { "id":"q1","question_type":"short_answer","text":"2 + 3 = ____","lines":3 },
+    { "id":"q2","question_type":"short_answer","text":"4 + 6 = ____","lines":3 },
+    { "id":"q3","question_type":"short_answer","text":"7 + 5 = ____","lines":3 },
+    { "id":"q4","question_type":"short_answer","text":"10 + 9 = ____","lines":3 },
+    { "id":"q5","question_type":"short_answer","text":"12 + 4 = ____","lines":3 },
+    { "id":"q6","question_type":"short_answer","text":"15 + 7 = ____","lines":3 }
+  ]
 }]
 
 For math_word_problems:
@@ -219,7 +541,14 @@ Generate sections: [{
   "type":"math_word_problems",
   "title":"${title}",
   "instructions":"Read each scenario and solve. Write the answer in the blank.",
-  "questions":[]
+  "questions":[
+    { "id":"q1","question_type":"short_answer","text":"Tammy has 5 apples and gets 3 more. How many apples does she have? ____","lines":3 },
+    { "id":"q2","question_type":"short_answer","text":"Jamal collects 8 stickers and receives 4 more. How many stickers does he have now? ____","lines":3 },
+    { "id":"q3","question_type":"short_answer","text":"There are 6 books on the table. The teacher adds 7 more books. How many books are there? ____","lines":3 },
+    { "id":"q4","question_type":"short_answer","text":"Mia has 10 crayons. She buys 2 more packs with 5 crayons each. How many crayons does Mia have? ____","lines":3 },
+    { "id":"q5","question_type":"short_answer","text":"A class has 9 students. 6 more students join. How many students are in the class now? ____","lines":3 },
+    { "id":"q6","question_type":"short_answer","text":"Leah is making bracelets. She starts with 7 beads and adds 8 more beads. How many beads does she have? ____","lines":3 }
+  ]
 }]
 
 For map_activity:
@@ -248,9 +577,23 @@ Fill in ALL placeholder content with real, grade-appropriate content for "${topi
 ${variantInstruction}${detailsNote}
 Return ONLY valid JSON.`;
 
+    const topicExtra =
+      scienceMode && /water\s*cycle/i.test(String(topic))
+        ? " Emphasize evaporation, condensation, precipitation, collection/runoff, energy from the sun, water vapor, and changes of state; use those terms in labels, vocabulary, and process steps."
+        : "";
+
+    const scienceActivityExtra =
+      scienceMode && activityType === "science_concept_practice"
+        ? " Word bank must use real domain terms. Questions must require science explanations only—no narrative or story prompts."
+        : scienceMode && activityType === "sequence_chart"
+        ? " Steps must be science process stages, not story events or characters."
+        : scienceMode && activityType === "label_diagram"
+        ? " Diagram parts must be scientifically accurate for the topic."
+        : "";
+
     const userMsg = layoutVariant
-      ? `Generate Layout ${layoutVariant} worksheet content. Activity: "${activityType}". Topic: "${topic}". Grade: ${grade}. Return ONLY valid JSON.`
-      : `Generate the worksheet content for activity type "${activityType}" about "${topic}". Return ONLY valid JSON.`;
+      ? `Generate Layout ${layoutVariant} worksheet content. Activity: "${activityType}". Topic: "${topic}". Grade: ${grade}.${topicExtra}${scienceActivityExtra} Return ONLY valid JSON.`
+      : `Generate one worksheet for activity type "${activityType}" about "${topic}". Grade: ${grade}.${topicExtra}${scienceActivityExtra} Follow the SECTION GENERATION RULES for this activity type exactly. Return ONLY valid JSON.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-5.2",
@@ -264,12 +607,12 @@ Return ONLY valid JSON.`;
 
     const rawContent = completion.choices[0]?.message?.content;
     if (!rawContent) {
-      console.error(`[GEN] Layout ${layoutVariant ?? "–"}: No content from AI`);
+      console.error(`[GEN] Slot ${optionSlot ?? "–"}: No content from AI`);
       res.status(500).json({ error: "AI_ERROR", message: "No response from AI" });
       return;
     }
 
-    console.log(`[GEN] Layout ${layoutVariant ?? "–"}: Parsing response...`);
+    console.log(`[GEN] Slot ${optionSlot ?? "–"}: Parsing response...`);
     let result: any;
     try {
       result = JSON.parse(rawContent);
@@ -277,7 +620,7 @@ Return ONLY valid JSON.`;
       result = safeParseJSON(rawContent);
     }
     if (!result) {
-      console.error(`[GEN] Layout ${layoutVariant ?? "–"}: JSON parse failed`);
+      console.error(`[GEN] Slot ${optionSlot ?? "–"}: JSON parse failed`);
       res.status(500).json({ error: "PARSE_FAILED", message: "AI returned malformed JSON" });
       return;
     }
@@ -307,10 +650,29 @@ Return ONLY valid JSON.`;
       };
     }
 
-    console.log(`[GEN] Layout ${layoutVariant ?? "–"}: Done ✓`);
+    const optionMetadata = buildOptionMetadata({
+      activityType,
+      topic,
+      subject,
+      subjectId,
+      familyLabel: variantFamilyLabel,
+      layoutVariant: optionSlot,
+    });
+    if (result.worksheet) {
+      const layoutType = ACTIVITY_TO_LAYOUT[activityType] || "default";
+      result.worksheet.quickGenMeta = {
+        ...(result.worksheet.quickGenMeta || {}),
+        activityType,
+        layoutType,
+      };
+    }
+    result.optionMetadata = optionMetadata;
+
+    console.log(`[GEN] Slot ${optionSlot ?? "–"}: Done ✓`);
     res.json(result);
   } catch (err) {
-    console.error(`[GEN] Layout ${layoutVariant ?? "–"}: Error —`, err);
+    const lv = (req as Request).body?.layoutVariant;
+    console.error(`[GEN] Layout ${lv ?? "–"}: Error —`, err);
     res.status(500).json({ error: "GENERATION_FAILED", message: "Failed to generate worksheet" });
   }
 });

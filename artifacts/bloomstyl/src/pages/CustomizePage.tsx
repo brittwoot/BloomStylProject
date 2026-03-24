@@ -264,8 +264,6 @@ export function CustomizePage() {
     parsedPromptData,
     originalPrompt,
     setWorksheet,
-    worksheet,
-    hasEdited,
   } = useBloomStore();
 
   const [generating, setGenerating] = useState(false);
@@ -286,14 +284,6 @@ export function CustomizePage() {
   const setOpt = (key: string, value: any) => setCustomizeOptions({ [key]: value });
 
   const handleCreate = async () => {
-    // If there is an existing, edited worksheet, confirm before overwriting it.
-    if (worksheet && hasEdited) {
-      const ok = window.confirm(
-        "You have edits in the current worksheet. Creating a new worksheet will replace your changes. Continue?"
-      );
-      if (!ok) return;
-    }
-
     setGenerating(true);
     setError("");
     try {

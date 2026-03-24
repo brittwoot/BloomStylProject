@@ -57,6 +57,42 @@ export type WorksheetPageStyle = {
   bodyFont: string;
 };
 
+// ── QuickGen Session Types ─────────────────────────────────────────────────────
+
+export type QuickGenLayoutState = {
+  id: "A" | "B" | "C";
+  status: "pending" | "generating" | "done" | "error";
+  data: any | null;
+  error: string | null;
+  resolvedActivityType?: string;
+  meta?: Record<string, any>;
+};
+
+export type QuickGenContentAnalysis = {
+  detectedSubjectId: string | null;
+  detectedTopic: string | null;
+  gradeGuess: string | null;
+  confidenceSubject: number;
+  familySuggestions: string[];
+  defaultFamilyId: string | null;
+};
+
+type QuickGenSession = {
+  sessionId: string;
+  phase: "input" | "generating" | "done";
+  layouts: QuickGenLayoutState[];
+  selectedLayout: "A" | "B" | "C";
+  subject: string;
+  topic: string;
+  grade: string;
+  familyId: string;
+  pastedContent: string;
+  contentAnalysis: QuickGenContentAnalysis | null;
+  activityTypeId: string;
+  activityTypeLabel: string;
+  custom: Record<string, any>;
+};
+
 // ── Global Typography ──────────────────────────────────────────────────────────
 
 export type GlobalTypography = {
@@ -214,7 +250,7 @@ type BloomStore = {
   setParsedPromptData: (data: any) => void;
   setOriginalPrompt: (p: string) => void;
 
-  // Quick gen (3-step flow)
+  // Quick gen (3-step flow) — legacy simple params
   quickGen: {
     subject: string;
     topic: string;
@@ -229,6 +265,15 @@ type BloomStore = {
     dateLine: boolean;
   } | null;
   setQuickGen: (params: Partial<NonNullable<BloomStore["quickGen"]>>) => void;
+
+  // Quick gen session (full 3-layout parallel generation flow)
+  quickGenSession: QuickGenSession | null;
+  setQuickGenSession: (s: QuickGenSession | null) => void;
+  patchQuickGenSession: (patch: Partial<QuickGenSession>) => void;
+
+  // Whether the editor should show "return to Quick Gen" affordance
+  editorReturnToQuickGen: boolean;
+  setEditorReturnToQuickGen: (v: boolean) => void;
 
   // Reset
   reset: () => void;
@@ -425,6 +470,18 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
     set((state) => ({
       quickGen: state.quickGen ? { ...state.quickGen, ...params } : (params as NonNullable<BloomStore["quickGen"]>),
     })),
+
+  quickGenSession: null,
+  setQuickGenSession: (s) => set({ quickGenSession: s }),
+  patchQuickGenSession: (patch) =>
+    set((state) => ({
+      quickGenSession: state.quickGenSession
+        ? { ...state.quickGenSession, ...patch }
+        : (patch as QuickGenSession),
+    })),
+
+  editorReturnToQuickGen: false,
+  setEditorReturnToQuickGen: (v) => set({ editorReturnToQuickGen: v }),
 
   reset: () =>
     set({
