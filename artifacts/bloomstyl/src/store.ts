@@ -79,10 +79,24 @@ export type QuickGenContentAnalysis = {
 
 export type QuickGenDifferentiation = {
   level: "support" | "standard" | "challenge";
+  supports: {
+    wordBank: boolean;
+    sentenceFrames: boolean;
+    visuals: boolean;
+    reducedChoices: boolean;
+  };
+  choiceCount: 2 | 3 | 4;
 };
 
 export const DEFAULT_QUICK_GEN_DIFFERENTIATION: QuickGenDifferentiation = {
   level: "standard",
+  supports: {
+    wordBank: false,
+    sentenceFrames: false,
+    visuals: false,
+    reducedChoices: false,
+  },
+  choiceCount: 4,
 };
 
 type QuickGenSession = {
