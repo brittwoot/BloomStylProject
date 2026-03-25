@@ -1,158 +1,66 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Sparkles,
-  Check,
-  RefreshCw,
-  ArrowRight,
-  Loader2,
-  FileText,
-} from "lucide-react";
+import { Sparkles, Check, RefreshCw, ArrowRight, Loader2, FileText } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
   useBloomStore,
   type QuickGenLayoutState,
   type QuickGenContentAnalysis,
+  type QuickGenDifferentiation,
+  DEFAULT_QUICK_GEN_DIFFERENTIATION,
 } from "../store";
 import {
-  defaultThreeOptionPlan,
+  getCanonicalActivityPlan,
   getFamiliesForSubject,
   getDefaultFamilyId,
   resolveFamilyIdForSubject,
   type SubjectId as QGSubjectId,
 } from "../lib/quickGenFamilies";
 import {
-  saveQuickGenReturnPath,
-  setQuickGenSessionId,
-} from "../lib/quickGenNavigation";
-import {
-  normalizeDisplayText,
-  normalizeDisplayTopic,
-  normalizeTitle,
-} from "../lib/normalizeTitle";
-import {
   QuickGenOptionMiniPreview,
   resolveQuickGenPreviewKind,
 } from "../components/quickGen/QuickGenOptionPreview";
+import { saveQuickGenReturnPath, setQuickGenSessionId } from "../lib/quickGenNavigation";
+import { normalizeDisplayText, normalizeDisplayTopic, normalizeTitle } from "../lib/normalizeTitle";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // ── Subjects (12) ─────────────────────────────────────────────────────────────
 
 type SubjectId =
-  | "reading"
-  | "writing"
-  | "math"
-  | "science"
-  | "social"
-  | "phonics"
-  | "art"
-  | "sel"
-  | "ell"
-  | "holiday"
-  | "general"
-  | "custom";
+  | "reading" | "writing" | "math" | "science"
+  | "social" | "phonics" | "art" | "sel"
+  | "ell" | "holiday" | "general" | "custom";
 
-const SUBJECTS: {
-  id: SubjectId;
-  label: string;
-  icon: string;
-  color: string;
-  placeholder: string;
-}[] = [
-  {
-    id: "reading",
-    label: "Reading",
-    icon: "📖",
-    color: "#3b82f6",
-    placeholder: "e.g. Main idea, Charlotte's Web, nonfiction text features...",
-  },
-  {
-    id: "writing",
-    label: "Writing",
-    icon: "✏️",
-    color: "#8b5cf6",
-    placeholder:
-      "e.g. Narrative writing, opinion paragraph, descriptive essay...",
-  },
-  {
-    id: "math",
-    label: "Math",
-    icon: "🔢",
-    color: "#f59e0b",
-    placeholder: "e.g. Adding fractions, place value to 1000, word problems...",
-  },
-  {
-    id: "science",
-    label: "Science",
-    icon: "🔬",
-    color: "#10b981",
-    placeholder: "e.g. Water cycle, animal adaptations, states of matter...",
-  },
-  {
-    id: "social",
-    label: "Social Studies",
-    icon: "🌍",
-    color: "#ef4444",
-    placeholder:
-      "e.g. Community helpers, the American Revolution, map skills...",
-  },
-  {
-    id: "phonics",
-    label: "Phonics",
-    icon: "🔤",
-    color: "#06b6d4",
-    placeholder: "e.g. Long vowel sounds, digraphs sh/ch/th, CVC words...",
-  },
-  {
-    id: "art",
-    label: "Art",
-    icon: "🎨",
-    color: "#ec4899",
-    placeholder: "e.g. Color theory, famous artists, elements of art...",
-  },
-  {
-    id: "sel",
-    label: "SEL",
-    icon: "💬",
-    color: "#f97316",
-    placeholder:
-      "e.g. Managing emotions, growth mindset, conflict resolution...",
-  },
-  {
-    id: "ell",
-    label: "ELL / ESL",
-    icon: "🌐",
-    color: "#84cc16",
-    placeholder:
-      "e.g. Vocabulary building, sentence frames, basic conversation...",
-  },
-  {
-    id: "holiday",
-    label: "Holiday",
-    icon: "🎉",
-    color: "#f43f5e",
-    placeholder:
-      "e.g. Halloween, Thanksgiving, end of year, Valentine's Day...",
-  },
-  {
-    id: "general",
-    label: "General",
-    icon: "📋",
-    color: "#6b7280",
-    placeholder: "e.g. Study skills, research project, classroom activity...",
-  },
-  {
-    id: "custom",
-    label: "Custom",
-    icon: "⚡",
-    color: "#7c3aed",
-    placeholder: "Describe exactly what you need...",
-  },
+const SUBJECTS: { id: SubjectId; label: string; icon: string; color: string; placeholder: string }[] = [
+  { id: "reading",  label: "Reading",        icon: "📖", color: "#3b82f6",
+    placeholder: "e.g. Main idea, Charlotte's Web, nonfiction text features..." },
+  { id: "writing",  label: "Writing",        icon: "✏️", color: "#8b5cf6",
+    placeholder: "e.g. Narrative writing, opinion paragraph, descriptive essay..." },
+  { id: "math",     label: "Math",           icon: "🔢", color: "#f59e0b",
+    placeholder: "e.g. Adding fractions, place value to 1000, word problems..." },
+  { id: "science",  label: "Science",        icon: "🔬", color: "#10b981",
+    placeholder: "e.g. Water cycle, animal adaptations, states of matter..." },
+  { id: "social",   label: "Social Studies", icon: "🌍", color: "#ef4444",
+    placeholder: "e.g. Community helpers, the American Revolution, map skills..." },
+  { id: "phonics",  label: "Phonics",        icon: "🔤", color: "#06b6d4",
+    placeholder: "e.g. Long vowel sounds, digraphs sh/ch/th, CVC words..." },
+  { id: "art",      label: "Art",            icon: "🎨", color: "#ec4899",
+    placeholder: "e.g. Color theory, famous artists, elements of art..." },
+  { id: "sel",      label: "SEL",            icon: "💬", color: "#f97316",
+    placeholder: "e.g. Managing emotions, growth mindset, conflict resolution..." },
+  { id: "ell",      label: "ELL / ESL",      icon: "🌐", color: "#84cc16",
+    placeholder: "e.g. Vocabulary building, sentence frames, basic conversation..." },
+  { id: "holiday",  label: "Holiday",        icon: "🎉", color: "#f43f5e",
+    placeholder: "e.g. Halloween, Thanksgiving, end of year, Valentine's Day..." },
+  { id: "general",  label: "General",        icon: "📋", color: "#6b7280",
+    placeholder: "e.g. Study skills, research project, classroom activity..." },
+  { id: "custom",   label: "Custom",         icon: "⚡", color: "#7c3aed",
+    placeholder: "Describe exactly what you need..." },
 ];
 
-const GRADES = ["Pre-K", "K", "1", "2", "3", "4", "5", "6", "7", "8"];
+const GRADES = ["Pre-K","K","1","2","3","4","5","6","7","8"];
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -160,10 +68,23 @@ type Phase = "input" | "generating" | "done";
 type Layout = QuickGenLayoutState;
 
 const DEFAULT_LAYOUTS: Layout[] = [
-  { id: "A", status: "pending", data: null, error: null },
-  { id: "B", status: "pending", data: null, error: null },
-  { id: "C", status: "pending", data: null, error: null },
+  { id: "A", status: "pending", data: null, error: null, layoutVariant: "A" },
+  { id: "B", status: "pending", data: null, error: null, layoutVariant: "B" },
+  { id: "C", status: "pending", data: null, error: null, layoutVariant: "C" },
 ];
+
+/** Same activity type across A/B/C; presentation differs by variant */
+const LAYOUT_VARIANT_UI: Record<"A" | "B" | "C", { title: string; blurb: string }> = {
+  A: { title: "Clean", blurb: "Straightforward layout with clear sections" },
+  B: { title: "Scaffolded", blurb: "More structure, boxes, and guidance" },
+  C: { title: "Compact", blurb: "Tighter, step-by-step use of space" },
+};
+
+const DIFF_LEVEL_BADGE: Record<QuickGenDifferentiation["level"], string> = {
+  support: "Support",
+  standard: "Standard",
+  challenge: "Challenge",
+};
 
 type Customization = {
   colorTheme: string;
@@ -191,12 +112,12 @@ function snapshotQuickGenFromStore(): {
   activityTypeId: string;
   activityTypeLabel: string;
   custom: Customization;
+  differentiation: QuickGenDifferentiation;
+  differentiationStepComplete: boolean;
 } | null {
   const s = useBloomStore.getState().quickGenSession;
   if (!s) return null;
-  const hasResults = s.layouts.some(
-    (l) => l.status === "done" || l.status === "error",
-  );
+  const hasResults = s.layouts.some((l) => l.status === "done" || l.status === "error");
   const phase: Phase =
     s.phase === "generating"
       ? "done"
@@ -217,6 +138,8 @@ function snapshotQuickGenFromStore(): {
     activityTypeId: s.activityTypeId,
     activityTypeLabel: s.activityTypeLabel,
     custom: s.custom as Customization,
+    differentiation: s.differentiation ?? DEFAULT_QUICK_GEN_DIFFERENTIATION,
+    differentiationStepComplete: s.differentiationStepComplete ?? true,
   };
 }
 
@@ -225,10 +148,7 @@ function snapshotQuickGenFromStore(): {
 function safeParseJSON(str: string): any | null {
   try {
     return JSON.parse(
-      str
-        .replace(/^```json\s*/i, "")
-        .replace(/\s*```$/, "")
-        .trim(),
+      str.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim()
     );
   } catch {
     return null;
@@ -259,8 +179,7 @@ function GenerateButton({
         <span
           className="absolute inset-0 pointer-events-none"
           style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
+            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)",
             animation: "shimmerSlide 1.4s infinite linear",
           }}
         />
@@ -279,15 +198,15 @@ function SkeletonCard({
   delay,
   slotId,
   planEntry,
+  differentiationLevel,
 }: {
   delay: number;
   slotId: "A" | "B" | "C";
   planEntry?: { activityType: string; familyLabel: string };
+  differentiationLevel: QuickGenDifferentiation["level"];
 }) {
-  const previewKind = resolveQuickGenPreviewKind(
-    undefined,
-    planEntry?.activityType,
-  );
+  const previewKind = resolveQuickGenPreviewKind(undefined, planEntry?.activityType);
+  const lv = LAYOUT_VARIANT_UI[slotId];
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -295,19 +214,35 @@ function SkeletonCard({
       transition={{ duration: 0.2, delay }}
       className="rounded-xl border-2 border-dashed border-primary/25 bg-white p-4 space-y-2 will-change-transform text-left"
     >
-      <div className="flex items-center justify-between gap-2 mb-1">
+      <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Option {slotId}
         </span>
-        {planEntry && (
+        <div className="flex items-center gap-1.5">
           <span
-            className="text-[9px] font-mono text-primary/90 truncate max-w-[130px]"
-            title={planEntry.activityType}
+            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+              differentiationLevel === "support"
+                ? "bg-sky-100 text-sky-900 border-sky-300"
+                : differentiationLevel === "challenge"
+                  ? "bg-amber-100 text-amber-900 border-amber-300"
+                  : "bg-muted text-foreground border-border"
+            }`}
           >
-            {normalizeDisplayTopic(planEntry.activityType.replace(/_/g, " "))}
+            {DIFF_LEVEL_BADGE[differentiationLevel]}
           </span>
-        )}
+          {planEntry && (
+            <span
+              className="text-[9px] font-mono text-primary/90 truncate max-w-[100px]"
+              title={planEntry.activityType}
+            >
+              {normalizeDisplayTopic(planEntry.activityType.replace(/_/g, " "))}
+            </span>
+          )}
+        </div>
       </div>
+      <p className="text-[10px] font-semibold text-primary/80">
+        Layout: {lv.title} <span className="font-normal text-muted-foreground">— {lv.blurb}</span>
+      </p>
       {planEntry && (
         <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">
           {normalizeDisplayTopic(planEntry.familyLabel)}
@@ -363,10 +298,7 @@ function layoutPreviewAccent(layoutType: string | undefined): string {
 }
 
 /** Prefer planner activityType so e.g. math_practice is not styled like science concept_practice when both use layout concept_practice. */
-function layoutCardAccent(
-  layoutType: string | undefined,
-  activityType: string | undefined,
-): string {
+function layoutCardAccent(layoutType: string | undefined, activityType: string | undefined): string {
   const act = activityType?.trim();
   if (act === "math_practice") {
     return "border-l-[5px] border-l-orange-600 bg-gradient-to-br from-orange-50/75 to-white";
@@ -391,11 +323,15 @@ function LayoutCard({
   label,
   selected,
   onSelect,
+  layoutVariant,
+  differentiationLevel,
 }: {
   layout: Layout;
   label: string;
   selected: boolean;
   onSelect: () => void;
+  layoutVariant: "A" | "B" | "C";
+  differentiationLevel: QuickGenDifferentiation["level"];
 }) {
   const ws = layout.data?.worksheet ?? layout.data;
   const meta = layout.meta;
@@ -426,33 +362,45 @@ function LayoutCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={`w-full text-left rounded-xl border-2 p-4 transition-all will-change-transform ${layoutCardAccent(lt, layout.resolvedActivityType)}
-        ${
-          selected
-            ? "border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/12 scale-[1.02]"
-            : "border-border hover:border-primary/40 hover:shadow-md"
+        ${selected
+          ? "border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/12 scale-[1.02]"
+          : "border-border hover:border-primary/40 hover:shadow-md"
         }`}
       style={{ cursor: "pointer" }}
     >
-      <div className="flex items-center justify-between mb-2 gap-2">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        {selected && (
-          <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-            <Check className="w-3 h-3 text-white" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+              differentiationLevel === "support"
+                ? "bg-sky-100 text-sky-900 border-sky-300"
+                : differentiationLevel === "challenge"
+                  ? "bg-amber-100 text-amber-900 border-amber-300"
+                  : "bg-muted text-foreground border-border"
+            }`}
+          >
+            {DIFF_LEVEL_BADGE[differentiationLevel]}
           </span>
-        )}
+          {selected && (
+            <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+              <Check className="w-3 h-3 text-white" />
+            </span>
+          )}
+        </div>
       </div>
+
+      <p className="text-[11px] font-semibold text-primary/90 mb-1">
+        Layout: {LAYOUT_VARIANT_UI[layoutVariant].title}{" "}
+        <span className="font-normal text-muted-foreground">— {LAYOUT_VARIANT_UI[layoutVariant].blurb}</span>
+      </p>
 
       {(meta?.title || om?.title || layout.resolvedActivityType) && (
         <h3 className="text-sm font-bold text-foreground leading-tight mb-1">
           {normalizeDisplayTopic(
-            String(
-              meta?.title ||
-                om?.title ||
-                layout.resolvedActivityType?.replace(/_/g, " ") ||
-                "",
-            ),
+            String(meta?.title || om?.title || layout.resolvedActivityType?.replace(/_/g, " ") || "")
           )}
         </h3>
       )}
@@ -466,24 +414,17 @@ function LayoutCard({
 
       {(meta?.shortDescription || om?.shortDescription) && (
         <p className="text-[12px] text-foreground leading-snug mb-3">
-          {normalizeDisplayText(
-            String(meta?.shortDescription || om?.shortDescription || ""),
-          )}
+          {normalizeDisplayText(String(meta?.shortDescription || om?.shortDescription || ""))}
         </p>
       )}
 
-      {((meta?.includedComponents?.length ?? 0) > 0 ||
-        (om?.includedComponents?.length ?? 0) > 0) && (
+      {((meta?.includedComponents?.length ?? 0) > 0 || (om?.includedComponents?.length ?? 0) > 0) && (
         <div className="mb-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">
-            Includes
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Includes</p>
           <ul className="text-[11px] text-muted-foreground space-y-1 list-disc pl-4 marker:text-primary/70">
-            {(meta?.includedComponents || om?.includedComponents || []).map(
-              (line: string, i: number) => (
-                <li key={i}>{normalizeDisplayTopic(line)}</li>
-              ),
-            )}
+            {(meta?.includedComponents || om?.includedComponents || []).map((line: string, i: number) => (
+              <li key={i}>{normalizeDisplayTopic(line)}</li>
+            ))}
           </ul>
         </div>
       )}
@@ -491,9 +432,7 @@ function LayoutCard({
       {(meta?.skillFocus || om?.skillFocus) && (
         <p className="text-[11px] leading-snug">
           <span className="font-bold text-foreground">Skill focus: </span>
-          <span className="text-muted-foreground">
-            {meta?.skillFocus || om?.skillFocus}
-          </span>
+          <span className="text-muted-foreground">{meta?.skillFocus || om?.skillFocus}</span>
         </p>
       )}
 
@@ -509,15 +448,15 @@ function LayoutCard({
 // ── Customization panel ────────────────────────────────────────────────────────
 
 const COLOR_OPTS = [
-  { id: "black & white", label: "B&W", dot: "#1a1a2e" },
-  { id: "soft blue", label: "Blue", dot: "#3b82f6" },
-  { id: "warm yellow", label: "Yellow", dot: "#f59e0b" },
-  { id: "soft green", label: "Green", dot: "#10b981" },
-  { id: "soft purple", label: "Purple", dot: "#7c3aed" },
-  { id: "light pastel", label: "Pastel", dot: "#ec4899" },
+  { id: "black & white", label: "B&W",    dot: "#1a1a2e" },
+  { id: "soft blue",     label: "Blue",   dot: "#3b82f6" },
+  { id: "warm yellow",   label: "Yellow", dot: "#f59e0b" },
+  { id: "soft green",    label: "Green",  dot: "#10b981" },
+  { id: "soft purple",   label: "Purple", dot: "#7c3aed" },
+  { id: "light pastel",  label: "Pastel", dot: "#ec4899" },
 ];
-const FONT_OPTS = ["Playful", "Clean", "Handwritten", "Bold"];
-const BORDER_OPTS = ["None", "Simple", "Decorative", "Heavy"];
+const FONT_OPTS  = ["Playful","Clean","Handwritten","Bold"];
+const BORDER_OPTS = ["None","Simple","Decorative","Heavy"];
 
 function CustomizationPanel({
   value,
@@ -527,14 +466,12 @@ function CustomizationPanel({
   onChange: (k: keyof Customization, v: any) => void;
 }) {
   const [contentOpen, setContentOpen] = useState(false);
-  const [formatOpen, setFormatOpen] = useState(false);
+  const [formatOpen,  setFormatOpen]  = useState(false);
 
   return (
     <div className="bg-white rounded-xl border border-border overflow-hidden text-sm">
       <div className="px-4 py-3 border-b border-border bg-muted/30">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          Customize
-        </p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Customize</p>
       </div>
 
       <div className="divide-y divide-border">
@@ -544,9 +481,7 @@ function CustomizationPanel({
 
           {/* Font */}
           <div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">
-              Font Style
-            </p>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Font Style</p>
             <div className="grid grid-cols-2 gap-1.5">
               {FONT_OPTS.map((f) => (
                 <button
@@ -559,13 +494,7 @@ function CustomizationPanel({
                       : "border-border text-foreground hover:border-primary/40"
                   }`}
                 >
-                  {f === "Playful"
-                    ? "Aa Playful"
-                    : f === "Clean"
-                      ? "Aa Clean"
-                      : f === "Handwritten"
-                        ? "Aa Script"
-                        : "Aa Bold"}
+                  {f === "Playful" ? "Aa Playful" : f === "Clean" ? "Aa Clean" : f === "Handwritten" ? "Aa Script" : "Aa Bold"}
                 </button>
               ))}
             </div>
@@ -573,9 +502,7 @@ function CustomizationPanel({
 
           {/* Color */}
           <div>
-            <p className="text-[11px] text-muted-foreground mb-1.5">
-              Color Theme
-            </p>
+            <p className="text-[11px] text-muted-foreground mb-1.5">Color Theme</p>
             <div className="flex flex-wrap gap-2">
               {COLOR_OPTS.map((c) => (
                 <button
@@ -584,9 +511,7 @@ function CustomizationPanel({
                   title={c.label}
                   onClick={() => onChange("colorTheme", c.id)}
                   className={`w-7 h-7 rounded-full border-2 transition-all ${
-                    value.colorTheme === c.id
-                      ? "border-primary scale-110"
-                      : "border-transparent hover:border-border"
+                    value.colorTheme === c.id ? "border-primary scale-110" : "border-transparent hover:border-border"
                   }`}
                   style={{ backgroundColor: c.dot }}
                 />
@@ -617,19 +542,15 @@ function CustomizationPanel({
 
           {/* Name / Date lines */}
           <div className="space-y-2">
-            {(["nameLine", "dateLine"] as const).map((key) => (
+            {(["nameLine","dateLine"] as const).map((key) => (
               <div key={key} className="flex items-center justify-between">
-                <span className="text-xs text-foreground">
-                  {key === "nameLine" ? "Name line" : "Date line"}
-                </span>
+                <span className="text-xs text-foreground">{key === "nameLine" ? "Name line" : "Date line"}</span>
                 <button
                   type="button"
                   onClick={() => onChange(key, !value[key])}
                   className={`w-9 h-5 rounded-full transition-colors relative ${value[key] ? "bg-primary" : "bg-muted"}`}
                 >
-                  <span
-                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value[key] ? "translate-x-4" : "translate-x-0.5"}`}
-                  />
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value[key] ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
               </div>
             ))}
@@ -644,11 +565,7 @@ function CustomizationPanel({
             className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-foreground hover:bg-muted/20 transition-colors"
           >
             Content
-            <span
-              className={`transition-transform duration-150 ${contentOpen ? "rotate-180" : ""}`}
-            >
-              ▾
-            </span>
+            <span className={`transition-transform duration-150 ${contentOpen ? "rotate-180" : ""}`}>▾</span>
           </button>
           <AnimatePresence>
             {contentOpen && (
@@ -661,44 +578,28 @@ function CustomizationPanel({
               >
                 <div className="px-4 pb-4 space-y-3">
                   <div>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">
-                      Answer Space
-                    </p>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">Answer Space</p>
                     <div className="flex gap-1.5">
-                      {["Compact", "Standard", "Spacious"].map((a) => (
-                        <button
-                          key={a}
-                          type="button"
-                          onClick={() =>
-                            onChange("answerSpace", a.toLowerCase())
-                          }
+                      {["Compact","Standard","Spacious"].map((a) => (
+                        <button key={a} type="button"
+                          onClick={() => onChange("answerSpace", a.toLowerCase())}
                           className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg border transition-all ${
                             value.answerSpace === a.toLowerCase()
                               ? "border-primary bg-primary/8 text-primary"
                               : "border-border text-muted-foreground hover:border-primary/40"
                           }`}
-                        >
-                          {a}
-                        </button>
+                        >{a}</button>
                       ))}
                     </div>
                   </div>
-                  {(["wordBank", "directions"] as const).map((key) => (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-xs text-foreground">
-                        {key === "wordBank" ? "Word bank" : "Directions"}
-                      </span>
-                      <button
-                        type="button"
+                  {(["wordBank","directions"] as const).map((key) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-xs text-foreground">{key === "wordBank" ? "Word bank" : "Directions"}</span>
+                      <button type="button"
                         onClick={() => onChange(key, !value[key])}
                         className={`w-9 h-5 rounded-full transition-colors relative ${value[key] ? "bg-primary" : "bg-muted"}`}
                       >
-                        <span
-                          className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value[key] ? "translate-x-4" : "translate-x-0.5"}`}
-                        />
+                        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value[key] ? "translate-x-4" : "translate-x-0.5"}`} />
                       </button>
                     </div>
                   ))}
@@ -716,11 +617,7 @@ function CustomizationPanel({
             className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-foreground hover:bg-muted/20 transition-colors"
           >
             Format
-            <span
-              className={`transition-transform duration-150 ${formatOpen ? "rotate-180" : ""}`}
-            >
-              ▾
-            </span>
+            <span className={`transition-transform duration-150 ${formatOpen ? "rotate-180" : ""}`}>▾</span>
           </button>
           <AnimatePresence>
             {formatOpen && (
@@ -733,18 +630,12 @@ function CustomizationPanel({
               >
                 <div className="px-4 pb-4 space-y-3">
                   <div>
-                    <p className="text-[11px] text-muted-foreground mb-1.5">
-                      Orientation
-                    </p>
+                    <p className="text-[11px] text-muted-foreground mb-1.5">Orientation</p>
                     <div className="flex gap-2">
-                      {["Portrait", "Landscape"].map((o) => (
-                        <button
-                          key={o}
-                          type="button"
+                      {["Portrait","Landscape"].map((o) => (
+                        <button key={o} type="button"
                           className="flex-1 text-[10px] font-semibold py-1.5 rounded-lg border border-border text-muted-foreground hover:border-primary/40 transition-colors"
-                        >
-                          {o}
-                        </button>
+                        >{o}</button>
                       ))}
                     </div>
                   </div>
@@ -765,73 +656,61 @@ export function QuickGenPage() {
   const setWorksheet = useBloomStore((s) => s.setWorksheet);
   const setQuickGenSession = useBloomStore((s) => s.setQuickGenSession);
   const patchQuickGenSession = useBloomStore((s) => s.patchQuickGenSession);
-  const setEditorReturnToQuickGen = useBloomStore(
-    (s) => s.setEditorReturnToQuickGen,
-  );
+  const setEditorReturnToQuickGen = useBloomStore((s) => s.setEditorReturnToQuickGen);
 
   const snap = snapshotQuickGenFromStore();
 
   // ── Form state (lazy init from persisted Quick Gen session so /result → /prompt shows results, not subject picker) ──
-  const [subject, setSubject] = useState<SubjectId | "">(
-    () => snap?.subject ?? "",
-  );
+  const [subject, setSubject] = useState<SubjectId | "">(() => snap?.subject ?? "");
   const [topic, setTopic] = useState(() => snap?.topic ?? "");
   const [grade, setGrade] = useState(() => snap?.grade ?? "");
-  const [activityTypeId, setActivityTypeId] = useState(
-    () => snap?.activityTypeId ?? "",
-  );
-  const [activityTypeLabel, setActivityTypeLabel] = useState(
-    () => snap?.activityTypeLabel ?? "",
-  );
+  const [activityTypeId, setActivityTypeId] = useState(() => snap?.activityTypeId ?? "");
+  const [activityTypeLabel, setActivityTypeLabel] = useState(() => snap?.activityTypeLabel ?? "");
   const [familyId, setFamilyId] = useState(() => {
     if (snap?.familyId) return snap.familyId;
     if (snap?.subject) return getDefaultFamilyId(snap.subject as QGSubjectId);
     return "";
   });
-  const [pastedContent, setPastedContent] = useState(
-    () => snap?.pastedContent ?? "",
-  );
-  const [contentAnalysis, setContentAnalysis] =
-    useState<QuickGenContentAnalysis | null>(
-      () => snap?.contentAnalysis ?? null,
-    );
+  const [pastedContent, setPastedContent] = useState(() => snap?.pastedContent ?? "");
+  const [contentAnalysis, setContentAnalysis] = useState<QuickGenContentAnalysis | null>(() => snap?.contentAnalysis ?? null);
   const [analyzing, setAnalyzing] = useState(false);
 
   // ── Generation state ───────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>(() => snap?.phase ?? "input");
-  const [layouts, setLayouts] = useState<Layout[]>(
-    () => snap?.layouts ?? DEFAULT_LAYOUTS,
-  );
-  const [selectedLayout, setSelectedLayout] = useState<"A" | "B" | "C">(
-    () => snap?.selectedLayout ?? "A",
-  );
+  const [layouts, setLayouts] = useState<Layout[]>(() => snap?.layouts ?? DEFAULT_LAYOUTS);
+  const [selectedLayout, setSelectedLayout] = useState<"A" | "B" | "C">(() => snap?.selectedLayout ?? "A");
   const [error, setError] = useState("");
   const [rehydrated, setRehydrated] = useState(false);
   const sessionIdRef = useRef<string | null>(snap?.sessionId ?? null);
 
   // ── Customization state ────────────────────────────────────────────────────
-  const [custom, setCustom] = useState<Customization>(
-    () =>
-      snap?.custom ?? {
-        colorTheme: "black & white",
-        fontStyle: "clean",
-        border: "none",
-        nameLine: true,
-        dateLine: true,
-        grade: "3",
-        answerSpace: "standard",
-        wordBank: false,
-        directions: true,
-      },
+  const [custom, setCustom] = useState<Customization>(() => snap?.custom ?? {
+    colorTheme: "black & white",
+    fontStyle: "clean",
+    border: "none",
+    nameLine: true,
+    dateLine: true,
+    grade: "3",
+    answerSpace: "standard",
+    wordBank: false,
+    directions: true,
+  });
+
+  const [differentiation, setDifferentiation] = useState<QuickGenDifferentiation>(
+    () => snap?.differentiation ?? DEFAULT_QUICK_GEN_DIFFERENTIATION
+  );
+  const [differentiationStepComplete, setDifferentiationStepComplete] = useState(
+    () => snap?.differentiationStepComplete ?? false
   );
 
   const topicRef = useRef<HTMLInputElement>(null);
   const abortRefs = useRef<Record<string, AbortController>>({});
   const genKey = useRef(0);
-  /** Set in startGeneration so each parallel fetch uses the same resolved A/B/C triple (distinct activity types). */
-  const generationTripleRef = useRef<ReturnType<
-    typeof defaultThreeOptionPlan
-  > | null>(null);
+  /** Set in startGeneration: canonical activity + differentiation for parallel layout variants. */
+  const generationContextRef = useRef<{
+    plan: { activityType: string; familyLabel: string };
+    differentiation: QuickGenDifferentiation;
+  } | null>(null);
 
   const subjectObj = SUBJECTS.find((s) => s.id === subject);
   const families = subject ? getFamiliesForSubject(subject as QGSubjectId) : [];
@@ -839,20 +718,22 @@ export function QuickGenPage() {
   const canGenerate =
     subject !== "" &&
     topic.trim().length >= 3 &&
-    (familyId !== "" || families.length === 0);
+    (familyId !== "" || families.length === 0) &&
+    differentiationStepComplete;
 
-  // Same resolved A/B/C as the generate API (distinct activity types + fallback).
   const resolvedPlannerFamily =
     familyId || (subject ? getDefaultFamilyId(subject as QGSubjectId) : "");
-  const plannerThreeOption = useMemo(() => {
+  /** One activity type per family; three options differ only by layoutVariant A/B/C */
+  const canonicalPlan = useMemo(() => {
     if (!subject || !resolvedPlannerFamily) return null;
-    return defaultThreeOptionPlan(
+    return getCanonicalActivityPlan(
       subject as QGSubjectId,
       resolvedPlannerFamily,
       topic.trim(),
       grade || "General",
+      subject === "custom" ? activityTypeId : undefined
     );
-  }, [subject, resolvedPlannerFamily, topic, grade]);
+  }, [subject, resolvedPlannerFamily, topic, grade, activityTypeId]);
 
   /** Prefer analyze-quick-gen topic when present; display-only (does not change stored topic). */
   const topicDisplaySource = useMemo(() => {
@@ -863,15 +744,15 @@ export function QuickGenPage() {
 
   const topicLabelDisplay = useMemo(
     () => normalizeDisplayTopic(topicDisplaySource),
-    [topicDisplaySource],
+    [topicDisplaySource]
   );
 
-  // Auto-focus topic when subject selected
+  // Auto-focus topic when subject selected and differentiation step done
   useEffect(() => {
-    if (subject && topicRef.current) {
+    if (subject && differentiationStepComplete && topicRef.current) {
       setTimeout(() => topicRef.current?.focus(), 200);
     }
-  }, [subject]);
+  }, [subject, differentiationStepComplete]);
 
   // Restore Quick Gen session (e.g. return from /result)
   useEffect(() => {
@@ -888,6 +769,8 @@ export function QuickGenPage() {
       setActivityTypeId(s.activityTypeId);
       setActivityTypeLabel(s.activityTypeLabel);
       setCustom(s.custom as Customization);
+      setDifferentiation(s.differentiation ?? DEFAULT_QUICK_GEN_DIFFERENTIATION);
+      setDifferentiationStepComplete(s.differentiationStepComplete ?? true);
       setLayouts(s.layouts as Layout[]);
       setSelectedLayout(s.selectedLayout);
       if (s.phase === "generating") {
@@ -902,9 +785,7 @@ export function QuickGenPage() {
   // Persist session whenever results / form change (survives editor navigation)
   useEffect(() => {
     if (!rehydrated) return;
-    const hasResults = layouts.some(
-      (l) => l.status === "done" || l.status === "error",
-    );
+    const hasResults = layouts.some((l) => l.status === "done" || l.status === "error");
     if (phase === "input" && !hasResults) return;
 
     if (!sessionIdRef.current) sessionIdRef.current = nanoid();
@@ -915,6 +796,8 @@ export function QuickGenPage() {
       topic,
       grade,
       familyId: familyId || getDefaultFamilyId(subject as QGSubjectId),
+      differentiation,
+      differentiationStepComplete,
       pastedContent,
       contentAnalysis,
       activityTypeId,
@@ -934,6 +817,8 @@ export function QuickGenPage() {
     topic,
     grade,
     familyId,
+    differentiation,
+    differentiationStepComplete,
     pastedContent,
     contentAnalysis,
     activityTypeId,
@@ -943,14 +828,9 @@ export function QuickGenPage() {
   ]);
 
   // ── Update layout ──────────────────────────────────────────────────────────
-  const updateLayout = useCallback(
-    (id: "A" | "B" | "C", updates: Partial<Layout>) => {
-      setLayouts((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-      );
-    },
-    [],
-  );
+  const updateLayout = useCallback((id: "A" | "B" | "C", updates: Partial<Layout>) => {
+    setLayouts((prev) => prev.map((l) => l.id === id ? { ...l, ...updates } : l));
+  }, []);
 
   // ── Single layout fetch ────────────────────────────────────────────────────
   const fetchLayout = useCallback(
@@ -959,26 +839,24 @@ export function QuickGenPage() {
       abortRefs.current[id] = controller;
       const timer = setTimeout(() => controller.abort(), 30000);
 
-      updateLayout(id, {
-        status: "loading",
-        data: null,
-        error: null,
-        meta: null,
-        resolvedActivityType: undefined,
-      });
+      updateLayout(id, { status: "loading", data: null, error: null, meta: null, resolvedActivityType: undefined, layoutVariant: id });
       const topicTrim = topic.trim();
-      const resolvedFamily =
-        familyId || getDefaultFamilyId(subject as QGSubjectId);
-      const triple =
-        generationTripleRef.current ??
-        defaultThreeOptionPlan(
-          subject as QGSubjectId,
-          resolvedFamily,
-          topicTrim,
-          grade || "General",
-        );
-      const plan = triple[id];
-      console.log(`Slot ${id}:`, plan.activityType);
+      const resolvedFamily = familyId || getDefaultFamilyId(subject as QGSubjectId);
+      const ctx =
+        generationContextRef.current ??
+        ({
+          plan: getCanonicalActivityPlan(
+            subject as QGSubjectId,
+            resolvedFamily,
+            topicTrim,
+            grade || "General",
+            subject === "custom" ? activityTypeId : undefined
+          ),
+          differentiation,
+        } as const);
+      const plan = ctx.plan;
+      const diff = ctx.differentiation;
+      console.log(`Slot ${id}: activityType=${plan.activityType} layoutVariant=${id}`);
 
       try {
         const res = await fetch(`${BASE}/api/worksheet/customize-generate`, {
@@ -987,7 +865,11 @@ export function QuickGenPage() {
           signal: controller.signal,
           body: JSON.stringify({
             activityType: plan.activityType,
+            layoutVariant: id,
             generationSlot: id,
+            differentiation: diff,
+            topic: topicTrim,
+            grade: grade || "General",
             subjectId: subject,
             variantFamilyLabel: plan.familyLabel,
             originalPrompt: topicTrim,
@@ -995,8 +877,7 @@ export function QuickGenPage() {
               topic: topicTrim,
               gradeLevel: grade || "General",
               skillFocus: subjectObj?.label ?? subject,
-              targetWord:
-                topicTrim.split(/\s+/).slice(0, 4).join(" ") || topicTrim,
+              targetWord: topicTrim.split(/\s+/).slice(0, 4).join(" ") || topicTrim,
               worksheetFamilyId: resolvedFamily,
             },
             options: {
@@ -1008,11 +889,9 @@ export function QuickGenPage() {
               fontStyle: custom.fontStyle,
               borderStyle: custom.border,
               diagramSubject: topicTrim,
-              matchType:
-                subject === "science"
-                  ? "Science term → Definition"
-                  : "Term → Definition",
-              pairCount: 6,
+              matchType: subject === "science" ? "Science term → Definition" : "Term → Definition",
+              pairCount: diff.choiceCount === 2 ? 4 : diff.choiceCount === 4 ? 8 : 6,
+              choiceCount: diff.choiceCount,
             },
             subject: subjectObj?.label ?? subject,
             details: "",
@@ -1042,7 +921,9 @@ export function QuickGenPage() {
             ...(ws.quickGenMeta || {}),
             sessionId: sessionIdRef.current,
             layoutSlot: id,
+            layoutVariant: id,
             activityType: plan.activityType,
+            differentiation: diff,
             layoutType: om?.layoutType ?? ws.quickGenMeta?.layoutType,
           };
         }
@@ -1050,6 +931,7 @@ export function QuickGenPage() {
           status: "done",
           data,
           resolvedActivityType: plan.activityType,
+          layoutVariant: id,
           meta: om
             ? {
                 id: om.id,
@@ -1073,7 +955,7 @@ export function QuickGenPage() {
         updateLayout(id, { status: "error", error: err?.message ?? "Failed" });
       }
     },
-    [topic, grade, subject, subjectObj, familyId, custom, updateLayout],
+    [topic, grade, subject, subjectObj, familyId, custom, differentiation, activityTypeId, updateLayout]
   );
 
   // ── Start generation ───────────────────────────────────────────────────────
@@ -1085,31 +967,21 @@ export function QuickGenPage() {
     abortRefs.current = {};
 
     console.log("[GEN] === Starting parallel generation ===");
-    console.log(
-      "[GEN] Subject:",
-      subject,
-      "| Topic:",
-      topic,
-      "| Grade:",
-      grade,
-    );
+    console.log("[GEN] Subject:", subject, "| Topic:", topic, "| Grade:", grade);
     const fam = familyId || getDefaultFamilyId(subject as QGSubjectId);
-    const triple = defaultThreeOptionPlan(
+    const plan = getCanonicalActivityPlan(
       subject as QGSubjectId,
       fam,
       topic.trim(),
       grade || "General",
+      subject === "custom" ? activityTypeId : undefined
     );
-    generationTripleRef.current = triple;
-    console.log("[GEN] Planner A/B/C (distinct activity types):", triple);
+    generationContextRef.current = { plan, differentiation };
+    console.log("[GEN] Same activityType for A/B/C:", plan.activityType, "| layouts: Clean / Scaffolded / Compact");
 
     sessionIdRef.current = nanoid();
     setQuickGenSessionId(sessionIdRef.current);
-    setLayouts([
-      { id: "A", status: "pending", data: null, error: null },
-      { id: "B", status: "pending", data: null, error: null },
-      { id: "C", status: "pending", data: null, error: null },
-    ]);
+    setLayouts([...DEFAULT_LAYOUTS]);
     setError("");
     setPhase("generating");
 
@@ -1117,15 +989,13 @@ export function QuickGenPage() {
     fetchLayout("A", key);
     fetchLayout("B", key);
     fetchLayout("C", key);
-  }, [canGenerate, subject, topic, grade, familyId, fetchLayout]);
+  }, [canGenerate, subject, topic, grade, familyId, activityTypeId, differentiation, fetchLayout]);
 
   // Watch for all done → switch to done phase
   useEffect(() => {
     if (phase === "generating") {
-      const allSettled = layouts.every(
-        (l) => l.status === "done" || l.status === "error",
-      );
-      const anyDone = layouts.some((l) => l.status === "done");
+      const allSettled = layouts.every((l) => l.status === "done" || l.status === "error");
+      const anyDone    = layouts.some((l)  => l.status === "done");
       if (allSettled && anyDone) {
         setPhase("done");
       }
@@ -1147,11 +1017,10 @@ export function QuickGenPage() {
             ...(ws.quickGenMeta || {}),
             sessionId: sessionIdRef.current,
             layoutSlot: id,
+            layoutVariant: id,
             activityType: layout.resolvedActivityType,
-            layoutType:
-              layout.meta?.layoutType ??
-              om?.layoutType ??
-              ws.quickGenMeta?.layoutType,
+            differentiation,
+            layoutType: layout.meta?.layoutType ?? om?.layoutType ?? ws.quickGenMeta?.layoutType,
           };
         }
         setWorksheet(ws);
@@ -1178,12 +1047,8 @@ export function QuickGenPage() {
     fetchLayout(id, genKey.current);
   };
 
-  const allDone = layouts.every(
-    (l) => l.status === "done" || l.status === "error",
-  );
-  const anyLoading = layouts.some(
-    (l) => l.status === "loading" || l.status === "pending",
-  );
+  const allDone    = layouts.every((l) => l.status === "done" || l.status === "error");
+  const anyLoading = layouts.some((l) => l.status === "loading" || l.status === "pending");
 
   const runAnalyzeContent = useCallback(async () => {
     const t = pastedContent.trim();
@@ -1208,27 +1073,18 @@ export function QuickGenPage() {
         detectedSubjectId: data.detectedSubjectId ?? null,
         detectedTopic: data.detectedTopic ?? null,
         gradeGuess: data.gradeGuess ?? null,
-        confidenceSubject:
-          typeof data.confidenceSubject === "number"
-            ? data.confidenceSubject
-            : 0,
-        familySuggestions: Array.isArray(data.familySuggestions)
-          ? data.familySuggestions
-          : [],
+        confidenceSubject: typeof data.confidenceSubject === "number" ? data.confidenceSubject : 0,
+        familySuggestions: Array.isArray(data.familySuggestions) ? data.familySuggestions : [],
         defaultFamilyId: data.defaultFamilyId ?? null,
       };
       setContentAnalysis(analysis);
-      if (
-        analysis.detectedSubjectId &&
-        SUBJECTS.some((x) => x.id === analysis.detectedSubjectId)
-      ) {
+      if (analysis.detectedSubjectId && SUBJECTS.some((x) => x.id === analysis.detectedSubjectId)) {
         setSubject(analysis.detectedSubjectId as SubjectId);
       }
       if (analysis.detectedTopic) setTopic(analysis.detectedTopic);
       if (analysis.gradeGuess) setGrade(analysis.gradeGuess);
       const subj = (
-        analysis.detectedSubjectId &&
-        SUBJECTS.some((x) => x.id === analysis.detectedSubjectId)
+        analysis.detectedSubjectId && SUBJECTS.some((x) => x.id === analysis.detectedSubjectId)
           ? analysis.detectedSubjectId
           : subject
       ) as QGSubjectId | "";
@@ -1255,10 +1111,10 @@ export function QuickGenPage() {
       `}</style>
 
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
         {/* ── FORM AREA ── */}
-        <div
-          className={`transition-all duration-300 ${phase !== "input" ? "mb-6" : "mb-0"}`}
-        >
+        <div className={`transition-all duration-300 ${phase !== "input" ? "mb-6" : "mb-0"}`}>
+
           {/* Compact summary bar shown during/after generation */}
           {phase !== "input" && (
             <motion.div
@@ -1268,23 +1124,16 @@ export function QuickGenPage() {
             >
               <span className="text-lg">{subjectObj?.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">
-                  {topicLabelDisplay}
-                </p>
+                <p className="text-sm font-bold text-foreground truncate">{topicLabelDisplay}</p>
                 <p className="text-xs text-muted-foreground">
                   {subjectObj?.label}
                   {grade ? ` · Grade ${grade}` : ""}
-                  {selectedFamily
-                    ? ` · ${normalizeTitle(selectedFamily.label)}`
-                    : ""}
+                  {selectedFamily ? ` · ${normalizeTitle(selectedFamily.label)}` : ""}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setPhase("input");
-                  Object.values(abortRefs.current).forEach((c) => c.abort());
-                }}
+                onClick={() => { setPhase("input"); Object.values(abortRefs.current).forEach((c) => c.abort()); }}
                 className="text-xs font-semibold text-primary hover:text-primary/80 shrink-0"
               >
                 ← Edit
@@ -1307,12 +1156,8 @@ export function QuickGenPage() {
                     <Sparkles className="w-3.5 h-3.5" />
                     AI Worksheet Generator
                   </div>
-                  <h1 className="text-3xl font-bold text-foreground">
-                    What subject?
-                  </h1>
-                  <p className="text-muted-foreground text-sm">
-                    Pick a subject to get started.
-                  </p>
+                  <h1 className="text-3xl font-bold text-foreground">What subject?</h1>
+                  <p className="text-muted-foreground text-sm">Pick a subject to get started.</p>
                 </div>
 
                 {/* ── Subject grid (12 buttons, 3 col) ── */}
@@ -1328,22 +1173,18 @@ export function QuickGenPage() {
                           setActivityTypeId("");
                           setActivityTypeLabel("");
                           setFamilyId(getDefaultFamilyId(s.id as QGSubjectId));
+                          setDifferentiationStepComplete(false);
                         }}
                         className="relative flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all will-change-transform"
                         style={{
                           borderColor: isSelected ? s.color : undefined,
-                          backgroundColor: isSelected
-                            ? `${s.color}14`
-                            : undefined,
+                          backgroundColor: isSelected ? `${s.color}14` : undefined,
                           transform: isSelected ? "scale(1.03)" : "scale(1)",
-                          transition:
-                            "transform 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
+                          transition: "transform 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
                         }}
                       >
                         <span className="text-xl shrink-0">{s.icon}</span>
-                        <span
-                          className={`text-sm font-bold leading-tight ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
-                        >
+                        <span className={`text-sm font-bold leading-tight ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
                           {s.label}
                         </span>
                         {isSelected && (
@@ -1359,9 +1200,103 @@ export function QuickGenPage() {
                   })}
                 </div>
 
-                {/* ── Step 2: Topic input (slides in when subject selected) ── */}
+                {/* ── Step 2a: Differentiation (before worksheet family) ── */}
                 <AnimatePresence>
-                  {subject && (
+                  {subject && !differentiationStepComplete && (
+                    <motion.div
+                      key="diff-step"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="max-w-2xl mx-auto space-y-5"
+                    >
+                      <div className="rounded-xl border-2 border-primary/25 bg-primary/5 p-5 space-y-4">
+                        <div>
+                          <h2 className="text-lg font-bold text-foreground">Differentiation</h2>
+                          <p className="text-[12px] text-muted-foreground mt-1">
+                            Set difficulty first. Next you will choose the worksheet type and topic—then we generate three layout versions (Clean, Scaffolded, Compact) of the same activity.
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Level</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(["support", "standard", "challenge"] as const).map((lvl) => (
+                              <button
+                                key={lvl}
+                                type="button"
+                                onClick={() => setDifferentiation((d) => ({ ...d, level: lvl }))}
+                                className={`px-4 py-2.5 rounded-xl border-2 text-xs font-bold capitalize transition-all ${
+                                  differentiation.level === lvl
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border text-foreground hover:border-primary/35"
+                                }`}
+                              >
+                                {lvl === "support" ? "Support" : lvl === "standard" ? "Standard" : "Challenge"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Supports</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {(
+                              [
+                                ["wordBank", "Word bank"],
+                                ["sentenceFrames", "Sentence frames"],
+                                ["visuals", "Visual scaffolds"],
+                                ["reducedChoices", "Fewer answer choices"],
+                              ] as const
+                            ).map(([k, lab]) => (
+                              <label key={k} className="flex items-center gap-2 cursor-pointer rounded-lg border border-border/80 px-3 py-2 hover:bg-white/80">
+                                <input
+                                  type="checkbox"
+                                  checked={differentiation.supports[k]}
+                                  onChange={(e) =>
+                                    setDifferentiation((d) => ({
+                                      ...d,
+                                      supports: { ...d.supports, [k]: e.target.checked },
+                                    }))
+                                  }
+                                  className="rounded border-border"
+                                />
+                                <span>{lab}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                            Choices per question <span className="normal-case font-normal">(when multiple-choice applies)</span>
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {([2, 3, 4] as const).map((n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setDifferentiation((d) => ({ ...d, choiceCount: n }))}
+                                className={`min-w-[3rem] px-4 py-2 rounded-lg border-2 text-xs font-bold ${
+                                  differentiation.choiceCount === n
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border hover:border-primary/35"
+                                }`}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDifferentiationStepComplete(true)}
+                          className="w-full rounded-xl px-6 py-3.5 bg-primary text-white text-sm font-bold hover:opacity-95 shadow-lg shadow-primary/20"
+                        >
+                          Continue to worksheet type & topic →
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                  {subject && differentiationStepComplete && (
                     <motion.div
                       key="step2"
                       initial={{ opacity: 0, y: -8 }}
@@ -1372,6 +1307,13 @@ export function QuickGenPage() {
                     >
                       {/* Topic input */}
                       <div>
+                        <button
+                          type="button"
+                          onClick={() => setDifferentiationStepComplete(false)}
+                          className="text-[11px] font-semibold text-primary hover:text-primary/80 mb-3"
+                        >
+                          ← Back to differentiation
+                        </button>
                         <label className="block text-sm font-bold text-foreground mb-2">
                           What are you teaching?
                         </label>
@@ -1380,26 +1322,15 @@ export function QuickGenPage() {
                           type="text"
                           value={topic}
                           onChange={(e) => setTopic(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && canGenerate)
-                              startGeneration();
-                          }}
-                          placeholder={
-                            subjectObj?.placeholder ??
-                            "e.g. topic or concept..."
-                          }
+                          onKeyDown={(e) => { if (e.key === "Enter" && canGenerate) startGeneration(); }}
+                          placeholder={subjectObj?.placeholder ?? "e.g. topic or concept..."}
                           className="w-full rounded-xl border-2 border-border bg-white px-4 py-3.5 text-base font-medium placeholder:text-muted-foreground/55 focus:border-primary focus:outline-none transition-colors"
                         />
                       </div>
 
                       {/* Grade pills */}
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                          Grade Level{" "}
-                          <span className="normal-case font-normal tracking-normal">
-                            (optional)
-                          </span>
-                        </p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Grade Level <span className="normal-case font-normal tracking-normal">(optional)</span></p>
                         <div className="flex flex-wrap gap-1.5">
                           {GRADES.map((g) => (
                             <button
@@ -1425,9 +1356,7 @@ export function QuickGenPage() {
                           Lesson text (optional)
                         </div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          Paste standards, a reading passage, or notes. We will
-                          suggest worksheet families—then pick one below and
-                          generate three layouts.
+                          Paste standards, a reading passage, or notes. We will suggest worksheet families—then pick one below and generate three layout versions of that type.
                         </p>
                         <textarea
                           value={pastedContent}
@@ -1438,86 +1367,47 @@ export function QuickGenPage() {
                         />
                         <button
                           type="button"
-                          disabled={
-                            analyzing || pastedContent.trim().length < 20
-                          }
+                          disabled={analyzing || pastedContent.trim().length < 20}
                           onClick={runAnalyzeContent}
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/40 text-primary text-xs font-bold hover:bg-primary/5 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          {analyzing ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3.5 h-3.5" />
-                          )}
-                          {analyzing
-                            ? "Analyzing…"
-                            : "Suggest families from content"}
+                          {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                          {analyzing ? "Analyzing…" : "Suggest families from content"}
                         </button>
-                        {contentAnalysis &&
-                          contentAnalysis.familySuggestions.length > 0 && (
-                            <div className="pt-2 space-y-1.5 border-t border-border/60">
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
-                                Suggested from your text
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {contentAnalysis.familySuggestions.map(
-                                  (sug, i) => (
-                                    <button
-                                      key={`${sug.familyId}-${i}`}
-                                      type="button"
-                                      onClick={() =>
-                                        subject &&
-                                        setFamilyId(
-                                          resolveFamilyIdForSubject(
-                                            subject as QGSubjectId,
-                                            sug.familyId,
-                                          ),
-                                        )
-                                      }
-                                      className={`text-left px-2.5 py-1.5 rounded-lg border text-[11px] max-w-full ${
-                                        familyId ===
-                                        resolveFamilyIdForSubject(
-                                          (subject || "general") as QGSubjectId,
-                                          sug.familyId,
-                                        )
-                                          ? "border-primary bg-primary/8 text-primary"
-                                          : "border-border hover:border-primary/40"
-                                      }`}
-                                    >
-                                      <span className="font-semibold">
-                                        {sug.label}
-                                      </span>
-                                      {sug.reason && (
-                                        <span className="block text-muted-foreground font-normal mt-0.5 line-clamp-2">
-                                          {sug.reason}
-                                        </span>
-                                      )}
-                                    </button>
-                                  ),
-                                )}
-                              </div>
-                              {typeof contentAnalysis.confidenceSubject ===
-                                "number" && (
-                                <p className="text-[10px] text-muted-foreground">
-                                  Subject guess confidence:{" "}
-                                  {Math.round(
-                                    contentAnalysis.confidenceSubject * 100,
-                                  )}
-                                  %
-                                </p>
-                              )}
+                        {contentAnalysis && contentAnalysis.familySuggestions.length > 0 && (
+                          <div className="pt-2 space-y-1.5 border-t border-border/60">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">Suggested from your text</p>
+                            <div className="flex flex-wrap gap-2">
+                              {contentAnalysis.familySuggestions.map((sug, i) => (
+                                <button
+                                  key={`${sug.familyId}-${i}`}
+                                  type="button"
+                                  onClick={() => subject && setFamilyId(resolveFamilyIdForSubject(subject as QGSubjectId, sug.familyId))}
+                                  className={`text-left px-2.5 py-1.5 rounded-lg border text-[11px] max-w-full ${
+                                    familyId === resolveFamilyIdForSubject((subject || "general") as QGSubjectId, sug.familyId)
+                                      ? "border-primary bg-primary/8 text-primary"
+                                      : "border-border hover:border-primary/40"
+                                  }`}
+                                >
+                                  <span className="font-semibold">{sug.label}</span>
+                                  {sug.reason && <span className="block text-muted-foreground font-normal mt-0.5 line-clamp-2">{sug.reason}</span>}
+                                </button>
+                              ))}
                             </div>
-                          )}
+                            {typeof contentAnalysis.confidenceSubject === "number" && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Subject guess confidence: {Math.round(contentAnalysis.confidenceSubject * 100)}%
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Worksheet activity family — drives the 3 distinct layout types */}
+                      {/* Worksheet activity family — same activity type; A/B/C differ by layout only */}
                       {families.length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                            Worksheet focus{" "}
-                            <span className="normal-case font-normal tracking-normal">
-                              (pick one)
-                            </span>
+                            Worksheet focus <span className="normal-case font-normal tracking-normal">(pick one)</span>
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {families.map((f) => {
@@ -1533,12 +1423,8 @@ export function QuickGenPage() {
                                       : "border-border bg-white hover:border-primary/35"
                                   }`}
                                 >
-                                  <p className="text-xs font-bold text-foreground">
-                                    {f.label}
-                                  </p>
-                                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                                    {f.description}
-                                  </p>
+                                  <p className="text-xs font-bold text-foreground">{f.label}</p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{f.description}</p>
                                 </button>
                               );
                             })}
@@ -1549,12 +1435,7 @@ export function QuickGenPage() {
                       {/* Optional: override first generated option (custom / general) */}
                       {subject === "custom" && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                            Override option A type{" "}
-                            <span className="normal-case font-normal tracking-normal">
-                              (optional)
-                            </span>
-                          </p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Override option A type <span className="normal-case font-normal tracking-normal">(optional)</span></p>
                           <input
                             type="text"
                             value={activityTypeId}
@@ -1572,14 +1453,7 @@ export function QuickGenPage() {
                           animate={{ opacity: 1 }}
                           className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3"
                         >
-                          {error}{" "}
-                          <button
-                            type="button"
-                            onClick={startGeneration}
-                            className="font-bold underline ml-1"
-                          >
-                            Try Again
-                          </button>
+                          {error} <button type="button" onClick={startGeneration} className="font-bold underline ml-1">Try Again</button>
                         </motion.p>
                       )}
 
@@ -1619,32 +1493,12 @@ export function QuickGenPage() {
                     <div className="absolute inset-0 flex items-center px-4">
                       <Sparkles className="w-4 h-4 text-primary mr-2 animate-pulse" />
                       <span className="text-xs font-semibold text-primary">
-                        Creating{" "}
-                        {
-                          layouts.filter(
-                            (l) => l.status !== "done" && l.status !== "error",
-                          ).length
-                        }{" "}
-                        layout
-                        {layouts.filter(
-                          (l) => l.status !== "done" && l.status !== "error",
-                        ).length !== 1
-                          ? "s"
-                          : ""}
-                        ...
+                        Creating {layouts.filter((l) => l.status !== "done" && l.status !== "error").length} layout{layouts.filter((l) => l.status !== "done" && l.status !== "error").length !== 1 ? "s" : ""}...
                       </span>
                       <div className="ml-auto flex gap-4">
                         {layouts.map((l) => (
-                          <span
-                            key={l.id}
-                            className={`text-xs font-semibold ${l.status === "done" ? "text-green-600" : l.status === "error" ? "text-red-500" : "text-primary"}`}
-                          >
-                            {l.id}{" "}
-                            {l.status === "done"
-                              ? "✓"
-                              : l.status === "error"
-                                ? "✕"
-                                : "⏳"}
+                          <span key={l.id} className={`text-xs font-semibold ${l.status === "done" ? "text-green-600" : l.status === "error" ? "text-red-500" : "text-primary"}`}>
+                            {l.id} {l.status === "done" ? "✓" : l.status === "error" ? "✕" : "⏳"}
                           </span>
                         ))}
                       </div>
@@ -1655,23 +1509,25 @@ export function QuickGenPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {layouts.map((layout, i) => (
                     <div key={layout.id}>
-                      {layout.status === "pending" ||
-                      layout.status === "loading" ? (
+                      {(layout.status === "pending" || layout.status === "loading") ? (
                         <SkeletonCard
                           delay={i * 0.04}
                           slotId={layout.id}
-                          planEntry={plannerThreeOption?.[layout.id]}
+                          planEntry={
+                            canonicalPlan
+                              ? { activityType: canonicalPlan.activityType, familyLabel: canonicalPlan.familyLabel }
+                              : undefined
+                          }
+                          differentiationLevel={differentiation.level}
                         />
                       ) : (
                         <LayoutCard
                           layout={layout}
                           label={`Option ${layout.id}`}
                           selected={selectedLayout === layout.id}
-                          onSelect={() =>
-                            layout.status === "error"
-                              ? retryLayout(layout.id)
-                              : handleCardClick(layout.id)
-                          }
+                          onSelect={() => layout.status === "error" ? retryLayout(layout.id) : handleCardClick(layout.id)}
+                          layoutVariant={layout.id}
+                          differentiationLevel={differentiation.level}
                         />
                       )}
                     </div>
@@ -1689,9 +1545,7 @@ export function QuickGenPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const chosen = layouts.find(
-                          (l) => l.id === selectedLayout && l.status === "done",
-                        );
+                        const chosen = layouts.find((l) => l.id === selectedLayout && l.status === "done");
                         const ws = chosen?.data?.worksheet ?? chosen?.data;
                         if (ws) {
                           if (sessionIdRef.current) {
@@ -1700,11 +1554,10 @@ export function QuickGenPage() {
                               ...(ws.quickGenMeta || {}),
                               sessionId: sessionIdRef.current,
                               layoutSlot: selectedLayout,
+                              layoutVariant: selectedLayout,
                               activityType: chosen?.resolvedActivityType,
-                              layoutType:
-                                chosen?.meta?.layoutType ??
-                                om?.layoutType ??
-                                ws.quickGenMeta?.layoutType,
+                              differentiation,
+                              layoutType: chosen?.meta?.layoutType ?? om?.layoutType ?? ws.quickGenMeta?.layoutType,
                             };
                           }
                           setWorksheet(ws);
@@ -1713,8 +1566,7 @@ export function QuickGenPage() {
                         setEditorReturnToQuickGen(true);
                         saveQuickGenReturnPath();
                         const q = new URLSearchParams();
-                        if (sessionIdRef.current)
-                          q.set("sessionId", sessionIdRef.current);
+                        if (sessionIdRef.current) q.set("sessionId", sessionIdRef.current);
                         q.set("layoutId", selectedLayout);
                         setLocation(`${BASE}/result?${q.toString()}`);
                       }}
@@ -1737,10 +1589,7 @@ export function QuickGenPage() {
 
               {/* Right: customization panel */}
               <div className="lg:w-64 shrink-0">
-                <CustomizationPanel
-                  value={custom}
-                  onChange={handleCustomChange}
-                />
+                <CustomizationPanel value={custom} onChange={handleCustomChange} />
               </div>
             </motion.div>
           )}

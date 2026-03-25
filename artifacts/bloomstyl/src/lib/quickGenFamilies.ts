@@ -73,6 +73,20 @@ export function getResolvedThreeOptionPlan(
   return defaultThreeOptionPlan(subject, familyId, topic, grade);
 }
 
+export function getCanonicalActivityPlan(
+  subject: SubjectId,
+  familyId: string,
+  topic: string,
+  grade: string,
+  customActivityType?: string,
+): PlanOption {
+  if (customActivityType) {
+    return { activityType: customActivityType, familyLabel: "Custom" };
+  }
+  const plan = defaultThreeOptionPlan(subject, familyId, topic, grade);
+  return plan.A;
+}
+
 export function getDefaultFamilyId(subject: SubjectId): string {
   switch (subject) {
     case "math":

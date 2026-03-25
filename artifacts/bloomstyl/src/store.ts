@@ -77,6 +77,14 @@ export type QuickGenContentAnalysis = {
   defaultFamilyId: string | null;
 };
 
+export type QuickGenDifferentiation = {
+  level: "support" | "standard" | "challenge";
+};
+
+export const DEFAULT_QUICK_GEN_DIFFERENTIATION: QuickGenDifferentiation = {
+  level: "standard",
+};
+
 type QuickGenSession = {
   sessionId: string;
   phase: "input" | "generating" | "done";
@@ -91,6 +99,8 @@ type QuickGenSession = {
   activityTypeId: string;
   activityTypeLabel: string;
   custom: Record<string, any>;
+  differentiation: QuickGenDifferentiation;
+  differentiationStepComplete: boolean;
 };
 
 // ── Global Typography ──────────────────────────────────────────────────────────
