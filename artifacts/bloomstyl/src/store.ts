@@ -299,6 +299,12 @@ type BloomStore = {
   editorReturnToQuickGen: boolean;
   setEditorReturnToQuickGen: (v: boolean) => void;
 
+  // Merge edited worksheet data back into a specific quick gen layout slot
+  mergeWorksheetIntoQuickGenOption: (
+    slot: "A" | "B" | "C",
+    worksheet: any,
+  ) => void;
+
   // Reset
   reset: () => void;
 };
@@ -506,6 +512,15 @@ export const useBloomStore = create<BloomStore>((set, get) => ({
 
   editorReturnToQuickGen: false,
   setEditorReturnToQuickGen: (v) => set({ editorReturnToQuickGen: v }),
+
+  mergeWorksheetIntoQuickGenOption: (slot, worksheet) =>
+    set((state) => {
+      if (!state.quickGenSession) return {};
+      const layouts = state.quickGenSession.layouts.map((l) =>
+        l.id === slot ? { ...l, data: worksheet } : l,
+      );
+      return { quickGenSession: { ...state.quickGenSession, layouts } };
+    }),
 
   reset: () =>
     set({
