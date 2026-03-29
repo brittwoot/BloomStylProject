@@ -1,14 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Download, ArrowLeft, ChevronDown, ChevronUp, PanelRight, Check, RotateCcw, Pencil, Layers } from "lucide-react";
-import { useBloomStore, DEFAULT_SECTION_STYLE, type SectionStyle, type GlobalTypography } from "../store";
+import {
+  Download,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  PanelRight,
+  Check,
+  RotateCcw,
+  Pencil,
+  Layers,
+} from "lucide-react";
+import {
+  useBloomStore,
+  DEFAULT_SECTION_STYLE,
+  type SectionStyle,
+  type GlobalTypography,
+} from "../store";
 import { StepIndicator } from "./UploadPage";
 import { EditorSidebar } from "../components/editor/EditorSidebar";
 import { EditableTextBlock } from "../components/editor/EditableTextBlock";
+import { MathInlineText } from "../components/math/StackedFraction";
 import { ExportModal } from "../components/ExportModal";
 import { getHeadingCSS } from "../components/editor/fontData";
 import { useDifferentiationStore } from "../stores/differentiationStore";
+import {
+  consumeQuickGenReturnPath,
+  getQuickGenSessionId,
+} from "../lib/quickGenNavigation";
+import { normalizeFormalLabel } from "../lib/normalizeTitle";
 import {
   WordPracticeSection,
   WordSightRow,
@@ -48,10 +69,271 @@ import {
   CrosswordSection,
 } from "../components/editor/NewSections";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// ── Inlined math practice templates (Quick Gen A/B/C) — self-contained, no extra modules
+type MathPracticeVisualId =
+  | "clean_practice"
+  | "fun_classroom_practice"
+  | "scaffolded_support_practice";
+
+function resolveMathPracticeVisual(
+  layoutVariant: string | undefined,
+): MathPracticeVisualId {
+  const lv = (layoutVariant || "A").toUpperCase();
+  if (lv === "B") return "fun_classroom_practice";
+  if (lv === "C") return "scaffolded_support_practice";
+  return "clean_practice";
+}
+
+const mathWorkGridStyle: React.CSSProperties = {
+  backgroundImage: `
+    linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)
+  `,
+  backgroundSize: "12px 12px",
+};
+
+type MathPracticeAccent = {
+  border: string;
+  bg: string;
+  header: string;
+  ring: string;
+};
+
+const MATH_PRACTICE_ACCENTS: Record<MathPracticeVisualId, MathPracticeAccent> =
+  {
+    clean_practice: {
+      border: "border-slate-200",
+      bg: "bg-white",
+      header: "bg-slate-50 border-slate-200 text-slate-800",
+      ring: "ring-1 ring-slate-200/80",
+    },
+    fun_classroom_practice: {
+      border: "border-amber-200",
+      bg: "bg-gradient-to-br from-amber-50/90 to-orange-50/50",
+      header: "bg-amber-100/90 border-amber-200 text-amber-950",
+      ring: "ring-1 ring-amber-200/90",
+    },
+    scaffolded_support_practice: {
+      border: "border-indigo-200",
+      bg: "bg-indigo-50/40",
+      header: "bg-indigo-100/80 border-indigo-200 text-indigo-950",
+      ring: "ring-1 ring-indigo-200/80",
+    },
+  };
+function normalizeQuickGenLayoutType(layoutType?: string): string {
+  return String(layoutType || "")
+    .trim()
+    .toLowerCase();
+}
+
+function renderQuickGenLayoutShell(
+  _layoutType: string | undefined,
+  content: React.ReactNode,
+) {
+  return <>{content}</>;
+}
+function MathPracticeSectionBanner({
+  visual,
+  children,
+}: {
+  visual: MathPracticeVisualId;
+  children: React.ReactNode;
+}) {
+  const a = MATH_PRACTICE_ACCENTS[visual];
+  if (visual === "fun_classroom_practice") {
+    return (
+      <div
+        className={`rounded-2xl border-2 ${a.border} ${a.bg} ${a.ring} overflow-hidden print:break-inside-avoid`}
+      >
+        <div
+          className={`flex items-center justify-between gap-2 px-3 py-2 border-b ${a.header}`}
+        >
+          <span className="text-[11px] font-extrabold uppercase tracking-widest">
+            Math practice
+          </span>
+          <span className="text-sm" aria-hidden>
+            ✨
+          </span>
+        </div>
+        <div className="p-3 sm:p-4">{children}</div>
+      </div>
+    );
+  }
+  if (visual === "scaffolded_support_practice") {
+    return (
+      <div
+        className={`rounded-2xl border-2 ${a.border} ${a.bg} ${a.ring} overflow-hidden print:break-inside-avoid`}
+      >
+        <div className={`px-3 py-2 border-b ${a.header}`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide">
+            Practice with support
+          </p>
+          <p className="text-[10px] text-indigo-800/80 mt-0.5">
+            Use the answer line first, then the grid for work.
+          </p>
+        </div>
+        <div className="p-3 sm:p-4">{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`rounded-2xl border-2 ${a.border} ${a.bg} ${a.ring} overflow-hidden print:break-inside-avoid`}
+    >
+      <div
+        className={`px-3 py-2 border-b ${a.header} flex items-center justify-between gap-2`}
+      >
+        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-700">
+          Practice
+        </span>
+        <span
+          className="text-[10px] font-mono text-slate-500/90 tabular-nums"
+          aria-hidden
+        >
+          + − × ÷
+        </span>
+      </div>
+      <div className="p-3 sm:p-4">{children}</div>
+    </div>
+  );
+}
+
+function MathPracticeProblemCard({
+  visual,
+  index,
+  children,
+}: {
+  visual: MathPracticeVisualId;
+  index: number;
+  children: React.ReactNode;
+}) {
+  const a = MATH_PRACTICE_ACCENTS[visual];
+  const deco =
+    visual === "fun_classroom_practice" ? (
+      <span className="absolute -top-1.5 -right-1 w-6 h-6 rounded-full bg-amber-200/90 text-[10px] font-bold flex items-center justify-center text-amber-900 border border-amber-300 shadow-sm">
+        {index}
+      </span>
+    ) : null;
+
+  return (
+    <div
+      className={`relative rounded-xl border ${a.border} ${visual === "clean_practice" ? "bg-white" : "bg-white/80"} shadow-sm print:break-inside-avoid`}
+    >
+      {deco}
+      <div
+        className={`p-3 sm:p-4 ${visual !== "fun_classroom_practice" ? "pt-3" : ""}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MathAnswerAndWork({
+  visual,
+  accentColor,
+  lines,
+}: {
+  visual: MathPracticeVisualId;
+  accentColor?: string;
+  lines: number;
+}) {
+  const border = accentColor ? `${accentColor}55` : undefined;
+  if (visual === "scaffolded_support_practice") {
+    return (
+      <div className="mt-3 space-y-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-800/90 mb-1">
+            Answer
+          </p>
+          <div
+            className="h-9 rounded-lg border-2 border-dashed border-indigo-300/80 bg-white"
+            style={{ borderColor: border }}
+          />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-800/90 mb-1">
+            Show your work
+          </p>
+          <div
+            className="rounded-lg border border-indigo-200/90 bg-white min-h-[88px] p-2"
+            style={mathWorkGridStyle}
+          >
+            <div className="space-y-4">
+              {Array.from({ length: Math.max(3, Math.min(lines, 6)) }).map(
+                (_, i) => (
+                  <div key={i} className="border-b border-indigo-200/40 h-5" />
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (visual === "fun_classroom_practice") {
+    return (
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <p className="text-[10px] font-bold text-amber-900/80 mb-1">Answer</p>
+          <div className="h-8 rounded-lg border-2 border-amber-300/70 bg-white border-dashed" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-amber-900/80 mb-1">
+            How I solved it
+          </p>
+          <div className="space-y-2">
+            {Array.from({ length: Math.max(2, lines - 1) }).map((_, i) => (
+              <div
+                key={i}
+                className="border-b-2 border-amber-200/80 h-6"
+                style={{ borderColor: border }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex items-end gap-2">
+        <span className="text-[11px] font-semibold text-slate-600 shrink-0">
+          Answer
+        </span>
+        <div
+          className="flex-1 h-8 border-b-2 border-slate-300"
+          style={{ borderColor: border }}
+        />
+      </div>
+      <div className="space-y-2.5">
+        {Array.from({ length: lines }).map((_, i) => (
+          <div
+            key={i}
+            className="border-b border-slate-200 h-7"
+            style={{ borderColor: border ? `${border}` : undefined }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function mathPracticeQuestionsStackClass(visual: MathPracticeVisualId): string {
+  if (visual === "fun_classroom_practice") return "space-y-5";
+  if (visual === "scaffolded_support_practice") return "space-y-6";
+  return "space-y-8";
+}
+
 // ── Typography helpers ─────────────────────────────────────────────────────────
 
 function titleStyle(t: GlobalTypography): React.CSSProperties {
-  const { containerStyle, textStyle } = getHeadingCSS(t.titleHeadingStyle, t.accentColor);
+  const { containerStyle, textStyle } = getHeadingCSS(
+    t.titleHeadingStyle,
+    t.accentColor,
+  );
   return {
     fontFamily: `'${t.titleFont}', sans-serif`,
     color: t.titleColor,
@@ -80,12 +362,17 @@ function bodyFontStyle(t: GlobalTypography): React.CSSProperties {
 
 function sectionCSS(style: SectionStyle): React.CSSProperties {
   return {
-    backgroundColor: style.bgColor === "transparent" ? undefined : style.bgColor,
-    border: style.borderStyle !== "none"
-      ? `${style.borderWidth}px ${style.borderStyle} ${style.borderColor}`
-      : undefined,
+    backgroundColor:
+      style.bgColor === "transparent" ? undefined : style.bgColor,
+    border:
+      style.borderStyle !== "none"
+        ? `${style.borderWidth}px ${style.borderStyle} ${style.borderColor}`
+        : undefined,
     borderRadius: style.rounded ? "12px" : undefined,
-    padding: style.bgColor !== "transparent" || style.borderStyle !== "none" ? "16px" : undefined,
+    padding:
+      style.bgColor !== "transparent" || style.borderStyle !== "none"
+        ? "16px"
+        : undefined,
   };
 }
 
@@ -105,10 +392,20 @@ function ClipartRow({ sectionId }: { sectionId: string }) {
           title={`Remove ${c.label} (click to remove)`}
           className="print:pointer-events-none group relative leading-none hover:opacity-80 transition-opacity"
         >
-          <span className={c.size === "sm" ? "text-3xl" : c.size === "lg" ? "text-6xl" : "text-4xl"}>
+          <span
+            className={
+              c.size === "sm"
+                ? "text-3xl"
+                : c.size === "lg"
+                  ? "text-6xl"
+                  : "text-4xl"
+            }
+          >
             {c.emoji}
           </span>
-          <span className="print:hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</span>
+          <span className="print:hidden absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            ✕
+          </span>
         </button>
       ))}
     </div>
@@ -117,59 +414,274 @@ function ClipartRow({ sectionId }: { sectionId: string }) {
 
 // ── WritingLines ──────────────────────────────────────────────────────────────
 
-function WritingLines({ count = 3, accentColor }: { count: number; accentColor?: string }) {
+function WritingLines({
+  count = 3,
+  accentColor,
+  worksheetStyle,
+}: {
+  count: number;
+  accentColor?: string;
+  /** 2–3 gray answer lines (print-friendly worksheet look). */
+  worksheetStyle?: boolean;
+}) {
+  const n = Math.min(Math.max(count, 2), 3);
+  if (worksheetStyle) {
+    return (
+      <div className="mt-2 space-y-2">
+        {Array.from({ length: n }).map((_, i) => (
+          <div key={i} className="border-b border-gray-400 mt-2 w-full" />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="mt-2 space-y-3">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
           className="border-b h-7"
-          style={{ borderColor: accentColor ? `${accentColor}40` : "rgba(0,0,0,0.15)" }}
+          style={{
+            borderColor: accentColor ? `${accentColor}40` : "rgba(0,0,0,0.15)",
+          }}
         />
       ))}
     </div>
   );
 }
 
+function questionBadgeLabel(q: {
+  question_type?: string;
+  type?: string;
+  text?: string;
+  prompt?: string;
+}): string {
+  const t = String(q.question_type || q.type || "short_answer").toLowerCase();
+  const text = String(q.text || q.prompt || "").toLowerCase();
+  if (t === "multiple_choice" || t === "true_false" || t === "fill_in_blank")
+    return "TRY IT";
+  if (t === "essay") return "EXPLAIN";
+  if (
+    /(draw|sketch|label|diagram|model|complete the table|number line)/i.test(
+      text,
+    )
+  )
+    return "DRAW";
+  if (/(explain why|how do you know|justify|reasoning|why do you)/i.test(text))
+    return "EXPLAIN";
+  if (t === "short_answer" || t === "fill_in_blank")
+    return "SHOW YOUR THINKING";
+  return "SHOW YOUR THINKING";
+}
+
+/** Print-friendly, distinct badge colors: TRY IT blue, EXPLAIN green, DRAW purple, SHOW YOUR THINKING orange */
+function badgeClassForLabel(label: string): string {
+  switch (label) {
+    case "TRY IT":
+      return "bg-sky-100 text-sky-900 border border-sky-300/70";
+    case "EXPLAIN":
+      return "bg-emerald-100 text-emerald-900 border border-emerald-300/70";
+    case "DRAW":
+      return "bg-violet-100 text-violet-900 border border-violet-300/70";
+    case "SHOW YOUR THINKING":
+      return "bg-orange-100 text-orange-900 border border-orange-300/70";
+    default:
+      return "bg-slate-100 text-slate-800 border border-slate-300/70";
+  }
+}
+
+/** Light gradients + borders by section type — classroom-ready, printable */
+function sectionCardTheme(sectionType: string | undefined): {
+  border: string;
+  gradient: string;
+  titleBorder: string;
+  titleText: string;
+  emoji: string;
+} {
+  const t = String(sectionType || "").toLowerCase();
+  if (
+    t.includes("math") ||
+    t === "number_bond" ||
+    t === "ten_frame" ||
+    t === "graph_page" ||
+    t === "measurement" ||
+    t === "clock_practice" ||
+    t === "spinner" ||
+    t === "dice_activity"
+  ) {
+    return {
+      border: "border-blue-200/95",
+      gradient: "bg-gradient-to-br from-blue-50/90 via-white to-sky-50/50",
+      titleBorder: "border-blue-400/80",
+      titleText: "text-blue-950",
+      emoji: "🔢",
+    };
+  }
+  if (
+    t.includes("science") ||
+    t === "label_diagram" ||
+    t === "observation_sheet" ||
+    t === "sequence_chart" ||
+    t === "timeline"
+  ) {
+    return {
+      border: "border-emerald-200/95",
+      gradient: "bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/45",
+      titleBorder: "border-emerald-400/75",
+      titleText: "text-emerald-950",
+      emoji: "🧪",
+    };
+  }
+  if (
+    t.includes("read") ||
+    t.includes("writing") ||
+    t === "passage" ||
+    t === "word_practice" ||
+    t === "acrostic" ||
+    t === "sentence_frames" ||
+    t === "kwl_chart"
+  ) {
+    return {
+      border: "border-violet-200/95",
+      gradient:
+        "bg-gradient-to-br from-violet-50/85 via-white to-fuchsia-50/40",
+      titleBorder: "border-violet-400/75",
+      titleText: "text-violet-950",
+      emoji: "📚",
+    };
+  }
+  if (
+    t.includes("match") ||
+    t === "line_matching" ||
+    t === "cut_and_sort" ||
+    t === "picture_sort" ||
+    t === "bingo_card"
+  ) {
+    return {
+      border: "border-cyan-200/90",
+      gradient: "bg-gradient-to-br from-cyan-50/80 via-white to-white",
+      titleBorder: "border-cyan-400/70",
+      titleText: "text-cyan-950",
+      emoji: "🔗",
+    };
+  }
+  return {
+    border: "border-indigo-200/90",
+    gradient: "bg-gradient-to-br from-indigo-50/75 via-white to-white",
+    titleBorder: "border-indigo-400/70",
+    titleText: "text-slate-900",
+    emoji: "✏️",
+  };
+}
+
 // ── QuestionItem ──────────────────────────────────────────────────────────────
 
 function QuestionItem({
-  q, number, sectionId, textStyle, globalTypo,
+  q,
+  number,
+  sectionId,
+  textStyle,
+  globalTypo,
+  mathVisual,
 }: {
-  q: any; number: number; sectionId: string; textStyle: any; globalTypo: GlobalTypography;
+  q: any;
+  number: number;
+  sectionId: string;
+  textStyle: any;
+  globalTypo: GlobalTypography;
+  mathVisual?: MathPracticeVisualId | null;
 }) {
   const { updateQuestion } = useBloomStore();
+  /** Generated worksheets store activity id on worksheet.settings (API customize-generate). */
+  const activityTemplate = useBloomStore(
+    (s) => s.worksheet?.settings?.templateType as string | undefined,
+  );
   const type = q.question_type || q.type || "short_answer";
   const lines = q.lines ?? (type === "essay" ? 8 : 3);
+  const raw = q.text ?? q.prompt ?? "";
+  const stackedMathTemplate =
+    activityTemplate === "math_practice" ||
+    activityTemplate === "math_word_problems" ||
+    activityTemplate === "number_bond" ||
+    activityTemplate === "measurement" ||
+    activityTemplate === "ten_frame";
+  const showStacked = stackedMathTemplate && /\d+\s*\/\s*\d+/.test(raw);
+  const hideListNumber = mathVisual === "fun_classroom_practice";
 
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2 text-sm" style={bodyFontStyle(globalTypo)}>
-        <span className="font-bold shrink-0">{number}.</span>
-        <EditableTextBlock
-          value={q.text ?? q.prompt ?? ""}
-          onChange={(v) => updateQuestion(sectionId, q.id, { text: v, prompt: v })}
-          multiline
-          alwaysEditing
-          textStyle={textStyle}
-          className="flex-1"
-        />
-      </div>
-      {type === "multiple_choice" && Array.isArray(q.options) && q.options.length > 0 && (
-        <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-1 mt-2">
-          {q.options.map((opt: string, i: number) => (
-            <div key={i} className="flex items-start gap-2 text-sm" style={bodyFontStyle(globalTypo)}>
-              <div
-                className="w-4 h-4 rounded-full border shrink-0 mt-0.5"
-                style={{ borderColor: `${globalTypo.accentColor}60` }}
-              />
-              <span>{opt}</span>
+  const badge = questionBadgeLabel(q);
+  const badgeCls = badgeClassForLabel(badge);
+
+  const inner = (
+    <>
+      <div
+        className="flex gap-3 text-sm items-start"
+        style={bodyFontStyle(globalTypo)}
+      >
+        <span
+          className={`text-xs font-bold px-2.5 py-1 rounded-md shrink-0 mt-0.5 shadow-sm ${badgeCls}`}
+        >
+          {badge}
+        </span>
+        {hideListNumber ? (
+          <span className="sr-only">{number}.</span>
+        ) : (
+          <span className="font-bold shrink-0">{number}.</span>
+        )}
+        {showStacked ? (
+          <div className="flex-1 space-y-1">
+            <div className="text-sm leading-relaxed font-medium">
+              <MathInlineText text={raw} />
             </div>
-          ))}
-        </div>
-      )}
+            <textarea
+              value={raw}
+              onChange={(e) =>
+                updateQuestion(sectionId, q.id, {
+                  text: e.target.value,
+                  prompt: e.target.value,
+                })
+              }
+              rows={Math.max(2, raw.split("\n").length + 1)}
+              className="w-full resize-y rounded-lg border border-dashed border-foreground/20 bg-muted/20 px-2 py-1.5 text-xs font-mono text-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Edit text (use 1/2 for fractions)"
+              aria-label="Edit question text"
+            />
+          </div>
+        ) : (
+          <EditableTextBlock
+            value={raw}
+            onChange={(v) =>
+              updateQuestion(sectionId, q.id, { text: v, prompt: v })
+            }
+            multiline
+            alwaysEditing
+            textStyle={textStyle}
+            className="flex-1"
+          />
+        )}
+      </div>
+      {type === "multiple_choice" &&
+        Array.isArray(q.options) &&
+        q.options.length > 0 && (
+          <div className="ml-5 grid grid-cols-1 sm:grid-cols-2 gap-1 mt-2">
+            {q.options.map((opt: string, i: number) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 text-sm"
+                style={bodyFontStyle(globalTypo)}
+              >
+                <div
+                  className="w-4 h-4 rounded-full border shrink-0 mt-0.5"
+                  style={{ borderColor: `${globalTypo.accentColor}60` }}
+                />
+                <span>{opt}</span>
+              </div>
+            ))}
+          </div>
+        )}
       {type === "true_false" && (
-        <div className="ml-5 flex gap-6 text-sm mt-1" style={bodyFontStyle(globalTypo)}>
+        <div
+          className="ml-5 flex gap-6 text-sm mt-1"
+          style={bodyFontStyle(globalTypo)}
+        >
           {["True", "False"].map((opt) => (
             <div key={opt} className="flex items-center gap-2">
               <div
@@ -181,287 +693,650 @@ function QuestionItem({
           ))}
         </div>
       )}
-      {(type === "short_answer" || type === "fill_in_blank" || type === "essay") && (
-        <WritingLines count={lines} accentColor={globalTypo.accentColor} />
-      )}
+      {(type === "short_answer" ||
+        type === "fill_in_blank" ||
+        type === "essay") &&
+        (mathVisual ? (
+          <MathAnswerAndWork
+            visual={mathVisual}
+            accentColor={globalTypo.accentColor}
+            lines={lines}
+          />
+        ) : (
+          <WritingLines
+            count={lines}
+            accentColor={globalTypo.accentColor}
+            worksheetStyle
+          />
+        ))}
+    </>
+  );
+
+  if (mathVisual) {
+    return <div className="space-y-2">{inner}</div>;
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md print:shadow-none print:hover:shadow-none print:break-inside-avoid">
+      <div className="space-y-2">{inner}</div>
     </div>
   );
 }
 
 // ── SectionBlock ──────────────────────────────────────────────────────────────
 
+function quickGenSectionTone(
+  layoutType: string | undefined,
+  sectionType: string | undefined,
+): string {
+  const lt = normalizeQuickGenLayoutType(layoutType);
+  if (!lt || !sectionType) return "";
+  if (lt === "concept_practice" && sectionType === "word_bank") {
+    return "rounded-xl border border-violet-200/80 bg-violet-50/50 p-3 -mx-0.5";
+  }
+  if (lt === "concept_practice" && sectionType === "science_short_response") {
+    return "rounded-xl border border-emerald-200/80 bg-emerald-50/25 p-3 -mx-0.5";
+  }
+  if (lt === "diagram_label" && sectionType === "label_diagram") {
+    return "rounded-xl border border-teal-200/80 bg-teal-50/35 p-3 -mx-0.5";
+  }
+  if (lt === "sequence_organizer" && sectionType === "sequence_chart") {
+    return "rounded-xl border border-amber-200/80 bg-amber-50/30 p-3 -mx-0.5";
+  }
+  if (lt === "matching" && sectionType === "line_matching") {
+    return "rounded-xl border border-sky-200/80 bg-sky-50/35 p-3 -mx-0.5";
+  }
+  return "";
+}
+
+function worksheetPaperShell(layoutType: string | undefined): string {
+  const lt = normalizeQuickGenLayoutType(layoutType);
+  if (lt === "diagram_label") {
+    return "ring-2 ring-teal-500/20 border-l-[6px] border-l-teal-600";
+  }
+  if (lt === "concept_practice") {
+    return "ring-2 ring-violet-500/20 border-l-[6px] border-l-violet-600";
+  }
+  if (lt === "sequence_organizer") {
+    return "ring-2 ring-amber-500/20 border-l-[6px] border-l-amber-600";
+  }
+  if (lt === "matching") {
+    return "ring-2 ring-sky-500/20 border-l-[6px] border-l-sky-600";
+  }
+  if (lt === "default") {
+    return "ring-1 ring-foreground/15 border-l-[5px] border-l-muted-foreground/40";
+  }
+  return "";
+}
+
+/** Quick Gen A/B/C rhythm for math and science_short_response (layoutRhythm mirrors mathPracticeLayout enum). */
+function resolveLayoutRhythm(
+  section: { layoutRhythm?: string; mathPracticeLayout?: string },
+  quickGenVariant: string | undefined,
+): "spacious" | "scaffolded_work_boxes" | "compact_grid" | null {
+  const m = (section?.layoutRhythm || section?.mathPracticeLayout) as
+    | string
+    | undefined;
+  if (m === "spacious" || m === "scaffolded_work_boxes" || m === "compact_grid")
+    return m;
+  const lv = (quickGenVariant || "A").toUpperCase();
+  if (lv === "B") return "scaffolded_work_boxes";
+  if (lv === "C") return "compact_grid";
+  return "spacious";
+}
+
+function worksheetSectionsLayoutClass(
+  layoutType: string | undefined,
+  sectionCount: number,
+  opts?: { layoutVariant?: string; pageTemplateType?: string },
+): string {
+  const lt = normalizeQuickGenLayoutType(layoutType);
+  const tpl = opts?.pageTemplateType;
+  const lv = (opts?.layoutVariant || "A").toUpperCase();
+  if (
+    lt === "concept_practice" &&
+    (tpl === "math_practice" || tpl === "math_word_problems")
+  ) {
+    if (lv === "C") return "max-w-4xl mx-auto";
+    if (lv === "B") return "max-w-3xl mx-auto space-y-2";
+    return "max-w-2xl mx-auto space-y-2";
+  }
+  if (lt === "concept_practice" && sectionCount >= 2) {
+    if (tpl === "science_concept_practice") {
+      if (lv === "C")
+        return "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start";
+      if (lv === "B")
+        return "grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start";
+    }
+    return "grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 items-start";
+  }
+  if (lt === "diagram_label") {
+    if (lv === "B") return "max-w-4xl mx-auto space-y-10";
+    if (lv === "C") return "max-w-3xl mx-auto space-y-8";
+    return "space-y-12 max-w-3xl mx-auto";
+  }
+  if (lt === "sequence_organizer") {
+    if (lv === "C") return "space-y-4 max-w-4xl mx-auto";
+    if (lv === "B") return "space-y-6 max-w-3xl mx-auto";
+    return "space-y-8";
+  }
+  if (lt === "matching") {
+    if (lv === "C") return "max-w-5xl mx-auto space-y-4";
+    if (lv === "B") return "max-w-4xl mx-auto space-y-6";
+    return "max-w-4xl mx-auto space-y-8";
+  }
+  if (lt === "default") {
+    if (lv === "C") return "space-y-5 max-w-4xl mx-auto";
+    if (lv === "B") return "space-y-7 max-w-3xl mx-auto";
+    return "space-y-10 max-w-3xl mx-auto";
+  }
+  return "space-y-10";
+}
+
 function SectionBlock({
-  section, index, total, isActive, onSelect, onMoveUp, onMoveDown, globalTypo,
+  section,
+  index,
+  total,
+  isActive,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  globalTypo,
+  quickGenLayoutType,
 }: {
-  section: any; index: number; total: number;
-  isActive: boolean; onSelect: () => void;
-  onMoveUp: () => void; onMoveDown: () => void;
+  section: any;
+  index: number;
+  total: number;
+  isActive: boolean;
+  onSelect: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   globalTypo: GlobalTypography;
+  quickGenLayoutType?: string;
 }) {
   const { updateSection, updateQuestion, sectionStyles } = useBloomStore();
-  const style: SectionStyle = sectionStyles[section.id] ?? DEFAULT_SECTION_STYLE;
+  const quickGenVariant = useBloomStore(
+    (s) => s.worksheet?.quickGenMeta?.layoutVariant,
+  ) as string | undefined;
+  const useMathVisualTemplate =
+    section.type === "math_practice" || section.type === "math_word_problems";
+  const mathPracticeVisual = useMathVisualTemplate
+    ? resolveMathPracticeVisual(quickGenVariant)
+    : null;
+  const mathLayout =
+    section.type === "science_short_response"
+      ? resolveLayoutRhythm(section, quickGenVariant)
+      : null;
+  const style: SectionStyle =
+    sectionStyles[section.id] ?? DEFAULT_SECTION_STYLE;
   const ts = style.textStyle;
+  const tone = quickGenSectionTone(quickGenLayoutType, section.type);
+  const cardTheme = sectionCardTheme(section.type);
+  const titleColor = ts.fontColor !== "#1a1a2e" ? ts.fontColor : undefined;
 
   return (
     <div
-      className={`relative transition-all cursor-pointer ${
+      className={`relative transition-all cursor-pointer mb-8 print:mb-6 ${
         isActive
-          ? "ring-2 ring-primary/50 ring-offset-2 rounded-xl"
-          : "hover:ring-1 hover:ring-primary/20 hover:ring-offset-1 rounded-xl"
+          ? "ring-2 ring-primary/50 ring-offset-2 rounded-2xl"
+          : "hover:ring-1 hover:ring-primary/20 hover:ring-offset-1 rounded-2xl"
       }`}
       onClick={onSelect}
     >
-      <div style={sectionCSS(style)} className="space-y-4 rounded-xl">
-        {/* Clipart row */}
-        <ClipartRow sectionId={section.id} />
+      <div style={sectionCSS(style)} className={`rounded-2xl ${tone}`}>
+        <div
+          className={`rounded-2xl border-2 shadow-md p-6 sm:p-7 space-y-5 print:shadow-sm ${cardTheme.border} ${cardTheme.gradient}`}
+        >
+          {/* Clipart row */}
+          <ClipartRow sectionId={section.id} />
 
-        {/* Section header */}
-        <div className="flex items-start justify-between gap-3">
-          <h2
-            className="text-lg font-bold"
-            style={{ ...headingStyle(globalTypo), fontFamily: `'${ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont}', sans-serif`, color: ts.fontColor !== "#1a1a2e" ? ts.fontColor : globalTypo.headingColor }}
-          >
-            <EditableTextBlock
-              value={section.title}
-              onChange={(v) => updateSection(section.id, { title: v })}
-              onFocus={onSelect}
-              onClick={onSelect}
-              alwaysEditing
-              textStyle={{ ...ts, bold: true, fontFamily: ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont }}
-            />
-          </h2>
-
-          {/* Reorder controls (print hidden) */}
-          <div className="print:hidden flex gap-1 shrink-0">
-            <button
-              type="button"
-              disabled={index === 0}
-              onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25 transition-colors"
+          {/* Section header */}
+          <div className="flex items-start justify-between gap-3">
+            <h2
+              className={`text-2xl font-bold pb-3 mb-1 border-b-2 flex flex-wrap items-center gap-2 flex-1 min-w-0 ${cardTheme.titleBorder} ${cardTheme.titleText}`}
+              style={{
+                ...headingStyle(globalTypo),
+                fontFamily: `'${ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.headingFont}', sans-serif`,
+                ...(titleColor ? { color: titleColor } : {}),
+              }}
             >
-              <ChevronUp className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              disabled={index === total - 1}
-              onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25 transition-colors"
-            >
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+              <span className="select-none shrink-0" aria-hidden>
+                {cardTheme.emoji}
+              </span>
+              <span className="min-w-0 flex-1">
+                <EditableTextBlock
+                  value={section.title}
+                  onChange={(v) => updateSection(section.id, { title: v })}
+                  onFocus={onSelect}
+                  onClick={onSelect}
+                  alwaysEditing
+                  textStyle={{
+                    ...ts,
+                    bold: true,
+                    fontFamily:
+                      ts.fontFamily !== "DM Sans"
+                        ? ts.fontFamily
+                        : globalTypo.headingFont,
+                  }}
+                />
+              </span>
+            </h2>
 
-        {/* Instructions */}
-        {section.instructions && (
-          <p className="text-sm italic text-foreground/70" style={bodyFontStyle(globalTypo)}>
-            <EditableTextBlock
-              value={section.instructions}
-              onChange={(v) => updateSection(section.id, { instructions: v })}
-              onFocus={onSelect}
-              onClick={onSelect}
-              multiline
-              alwaysEditing
-              textStyle={ts}
-            />
-          </p>
-        )}
-
-        {/* Passage */}
-        {section.type === "passage" && section.passage && (
-          <div
-            className="rounded-xl p-4 text-sm border border-border"
-            style={{
-              backgroundColor: style.bgColor !== "transparent" ? "rgba(255,255,255,0.5)" : "#f9f9f9",
-              ...bodyFontStyle(globalTypo),
-            }}
-          >
-            <EditableTextBlock
-              value={section.passage}
-              onChange={(v) => updateSection(section.id, { passage: v })}
-              onFocus={onSelect}
-              onClick={onSelect}
-              multiline
-              alwaysEditing
-              textStyle={ts}
-            />
-          </div>
-        )}
-
-        {/* Vocabulary */}
-        {Array.isArray(section.vocabulary) && section.vocabulary.length > 0 && (
-          <div className="space-y-2">
-            {section.vocabulary.map((item: any, i: number) => (
-              <div
-                key={item.id || i}
-                className="flex gap-2 text-sm"
-                style={{ fontFamily: `'${globalTypo.vocabFont}', sans-serif`, fontSize: `${14 * globalTypo.baseSize}px`, color: ts.fontColor }}
+            {/* Reorder controls (print hidden) */}
+            <div className="print:hidden flex gap-1 shrink-0">
+              <button
+                type="button"
+                disabled={index === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveUp();
+                }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25 transition-colors"
               >
-                <span className="font-bold shrink-0">{i + 1}.</span>
-                <span className="font-semibold" style={{ color: globalTypo.headingColor }}>{item.word}</span>
-                <span className="text-foreground/70">— {item.definition}</span>
-              </div>
-            ))}
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                disabled={index === total - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown();
+                }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-25 transition-colors"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Questions */}
-        {Array.isArray(section.questions) && section.questions.length > 0 && (
-          <div className="space-y-5 mt-2">
-            {section.questions.map((q: any, qi: number) => (
-              <QuestionItem
-                key={q.id || qi}
-                q={q}
-                number={qi + 1}
-                sectionId={section.id}
-                textStyle={{ ...ts, fontFamily: ts.fontFamily !== "DM Sans" ? ts.fontFamily : globalTypo.questionFont }}
-                globalTypo={globalTypo}
+          {/* Instructions — teacher-note style (print-friendly) */}
+          {section.instructions && (
+            <p
+              className="text-sm bg-amber-50/95 border border-amber-200/90 rounded-xl p-4 italic text-foreground/90 shadow-sm print:bg-amber-50/80 print:border-amber-200"
+              style={bodyFontStyle(globalTypo)}
+            >
+              <EditableTextBlock
+                value={section.instructions}
+                onChange={(v) => updateSection(section.id, { instructions: v })}
+                onFocus={onSelect}
+                onClick={onSelect}
+                multiline
+                alwaysEditing
+                textStyle={ts}
               />
-            ))}
-          </div>
-        )}
+            </p>
+          )}
 
-        {/* ── Activity-specific section renderers ── */}
+          {/* Passage */}
+          {section.type === "passage" && section.passage && (
+            <div
+              className="rounded-xl p-4 text-sm border border-border"
+              style={{
+                backgroundColor:
+                  style.bgColor !== "transparent"
+                    ? "rgba(255,255,255,0.5)"
+                    : "#f9f9f9",
+                ...bodyFontStyle(globalTypo),
+              }}
+            >
+              <EditableTextBlock
+                value={section.passage}
+                onChange={(v) => updateSection(section.id, { passage: v })}
+                onFocus={onSelect}
+                onClick={onSelect}
+                multiline
+                alwaysEditing
+                textStyle={ts}
+              />
+            </div>
+          )}
 
-        {section.type === "word_practice" && (
-          <WordPracticeSection
-            section={section}
-            onUpdate={(updates) => updateSection(section.id, updates)}
-          />
-        )}
+          {/* Vocabulary */}
+          {Array.isArray(section.vocabulary) &&
+            section.vocabulary.length > 0 && (
+              <div className="space-y-2">
+                {section.vocabulary.map((item: any, i: number) => (
+                  <div
+                    key={item.id || i}
+                    className="flex gap-2 text-sm"
+                    style={{
+                      fontFamily: `'${globalTypo.vocabFont}', sans-serif`,
+                      fontSize: `${14 * globalTypo.baseSize}px`,
+                      color: ts.fontColor,
+                    }}
+                  >
+                    <span className="font-bold shrink-0">{i + 1}.</span>
+                    <span
+                      className="font-semibold"
+                      style={{ color: globalTypo.headingColor }}
+                    >
+                      {item.word}
+                    </span>
+                    <span className="text-foreground/70">
+                      — {item.definition}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        {section.type === "word_sight_row" && (
-          <WordSightRow
-            section={section}
-            onUpdate={(updates) => updateSection(section.id, updates)}
-          />
-        )}
+          {/* Questions — math practice uses visual templates (content vs appearance) */}
+          {Array.isArray(section.questions) &&
+          section.questions.length > 0 &&
+          useMathVisualTemplate &&
+          mathPracticeVisual ? (
+            <MathPracticeSectionBanner
+              visual={mathPracticeVisual}
+              children={
+                <div
+                  className={mathPracticeQuestionsStackClass(
+                    mathPracticeVisual,
+                  )}
+                >
+                  {section.questions.map((q: any, qi: number) => (
+                    <React.Fragment key={q.id || qi}>
+                      <MathPracticeProblemCard
+                        visual={mathPracticeVisual}
+                        index={qi + 1}
+                        children={
+                          <QuestionItem
+                            q={q}
+                            number={qi + 1}
+                            sectionId={section.id}
+                            textStyle={{
+                              ...ts,
+                              fontFamily:
+                                ts.fontFamily !== "DM Sans"
+                                  ? ts.fontFamily
+                                  : globalTypo.questionFont,
+                            }}
+                            globalTypo={globalTypo}
+                            mathVisual={mathPracticeVisual}
+                          />
+                        }
+                      />
+                    </React.Fragment>
+                  ))}
+                </div>
+              }
+            />
+          ) : null}
 
-        {section.type === "fill_blanks" && (
-          <FillBlanksSection
-            section={section}
-            onUpdate={(updates) => updateSection(section.id, updates)}
-          />
-        )}
+          {Array.isArray(section.questions) &&
+            section.questions.length > 0 &&
+            !useMathVisualTemplate && (
+              <div
+                className={
+                  mathLayout === "compact_grid"
+                    ? "mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6"
+                    : mathLayout === "spacious"
+                      ? "mt-3 space-y-12"
+                      : mathLayout === "scaffolded_work_boxes"
+                        ? "mt-3 space-y-6"
+                        : "space-y-6 mt-3"
+                }
+              >
+                {section.questions.map((q: any, qi: number) => {
+                  const item = (
+                    <QuestionItem
+                      q={q}
+                      number={qi + 1}
+                      sectionId={section.id}
+                      textStyle={{
+                        ...ts,
+                        fontFamily:
+                          ts.fontFamily !== "DM Sans"
+                            ? ts.fontFamily
+                            : globalTypo.questionFont,
+                      }}
+                      globalTypo={globalTypo}
+                    />
+                  );
+                  if (mathLayout === "scaffolded_work_boxes") {
+                    return (
+                      <div
+                        key={q.id || qi}
+                        className="rounded-xl border border-indigo-200/60 bg-indigo-50/30 p-1 sm:p-1 print:break-inside-avoid"
+                      >
+                        {item}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={q.id || qi} className="print:break-inside-avoid">
+                      {item}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-        {section.type === "sentence_practice" && (
-          <SentencePracticeSection
-            section={section}
-            onUpdate={(updates) => updateSection(section.id, updates)}
-          />
-        )}
+          {/* ── Activity-specific section renderers ── */}
 
-        {section.type === "coloring_activity" && (
-          <ColoringActivitySection
-            section={section}
-            onUpdate={(updates) => updateSection(section.id, updates)}
-          />
-        )}
+          {section.type === "word_practice" && (
+            <WordPracticeSection
+              section={section}
+              onUpdate={(updates) => updateSection(section.id, updates)}
+            />
+          )}
 
-        {section.type === "tracing" && (
-          <TracingSection
-            section={section}
-            onUpdate={(updates) => updateSection(section.id, updates)}
-          />
-        )}
+          {section.type === "word_sight_row" && (
+            <WordSightRow
+              section={section}
+              onUpdate={(updates) => updateSection(section.id, updates)}
+            />
+          )}
 
-        {/* ── Graphic Organizers ── */}
-        {section.type === "mind_map" && (
-          <MindMapSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "venn_diagram" && (
-          <VennDiagramSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "kwl_chart" && (
-          <KWLChartSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "sequence_chart" && (
-          <SequenceChartSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "frayer_model" && (
-          <FrayerModelSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "story_map" && (
-          <StoryMapSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {section.type === "fill_blanks" && (
+            <FillBlanksSection
+              section={section}
+              onUpdate={(updates) => updateSection(section.id, updates)}
+            />
+          )}
 
-        {/* ── Writing ── */}
-        {section.type === "acrostic" && (
-          <AcrosticSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "mini_book" && (
-          <MiniBookSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "writing_prompt_header" && (
-          <WritingPromptHeader section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "word_bank" && (
-          <WordBankSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "sentence_frames" && (
-          <SentenceFramesSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {section.type === "sentence_practice" && (
+            <SentencePracticeSection
+              section={section}
+              onUpdate={(updates) => updateSection(section.id, updates)}
+            />
+          )}
 
-        {/* ── Math ── */}
-        {section.type === "number_bond" && (
-          <NumberBondSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "ten_frame" && (
-          <TenFrameSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "clock_practice" && (
-          <ClockPracticeSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "graph_page" && (
-          <GraphPageSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {section.type === "coloring_activity" && (
+            <ColoringActivitySection
+              section={section}
+              onUpdate={(updates) => updateSection(section.id, updates)}
+            />
+          )}
 
-        {/* ── Science / Social Studies ── */}
-        {section.type === "label_diagram" && (
-          <LabelDiagramSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "observation_sheet" && (
-          <ObservationSheetSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "timeline" && (
-          <TimelineSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {section.type === "tracing" && (
+            <TracingSection
+              section={section}
+              onUpdate={(updates) => updateSection(section.id, updates)}
+            />
+          )}
 
-        {/* ── Matching / Sorting ── */}
-        {section.type === "line_matching" && (
-          <LineMatchingSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "cut_and_sort" && (
-          <CutAndSortSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "picture_sort" && (
-          <PictureSortSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {/* ── Graphic Organizers ── */}
+          {section.type === "mind_map" && (
+            <MindMapSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "venn_diagram" && (
+            <VennDiagramSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "kwl_chart" && (
+            <KWLChartSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "sequence_chart" && (
+            <SequenceChartSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "frayer_model" && (
+            <FrayerModelSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "story_map" && (
+            <StoryMapSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
 
-        {/* ── Games ── */}
-        {section.type === "bingo_card" && (
-          <BingoCardSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "word_search_full" && (
-          <FullWordSearchSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "crossword" && (
-          <CrosswordSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "spinner" && (
-          <SpinnerSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "dice_activity" && (
-          <DiceActivitySection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {/* ── Writing ── */}
+          {section.type === "acrostic" && (
+            <AcrosticSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "mini_book" && (
+            <MiniBookSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "writing_prompt_header" && (
+            <WritingPromptHeader
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "word_bank" && (
+            <WordBankSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "sentence_frames" && (
+            <SentenceFramesSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
 
-        {/* ── Coloring ── */}
-        {section.type === "coloring_page" && (
-          <ColoringPageSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
-        {section.type === "color_by_code" && (
-          <ColorByCodeSection section={section} onUpdate={(u) => updateSection(section.id, u)} />
-        )}
+          {/* ── Math ── */}
+          {section.type === "number_bond" && (
+            <NumberBondSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "ten_frame" && (
+            <TenFrameSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "clock_practice" && (
+            <ClockPracticeSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "graph_page" && (
+            <GraphPageSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+
+          {/* ── Science / Social Studies ── */}
+          {section.type === "label_diagram" && (
+            <LabelDiagramSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "observation_sheet" && (
+            <ObservationSheetSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "timeline" && (
+            <TimelineSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+
+          {/* ── Matching / Sorting ── */}
+          {section.type === "line_matching" && (
+            <LineMatchingSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "cut_and_sort" && (
+            <CutAndSortSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "picture_sort" && (
+            <PictureSortSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+
+          {/* ── Games ── */}
+          {section.type === "bingo_card" && (
+            <BingoCardSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "word_search_full" && (
+            <FullWordSearchSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "crossword" && (
+            <CrosswordSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "spinner" && (
+            <SpinnerSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "dice_activity" && (
+            <DiceActivitySection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+
+          {/* ── Coloring ── */}
+          {section.type === "coloring_page" && (
+            <ColoringPageSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+          {section.type === "color_by_code" && (
+            <ColorByCodeSection
+              section={section}
+              onUpdate={(u) => updateSection(section.id, u)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Active section indicator */}
@@ -483,15 +1358,34 @@ export function Result() {
   const [exportOpen, setExportOpen] = useState(false);
 
   const {
-    worksheet, settings, worksheetPageStyle, globalTypography,
-    activeSectionId, setActiveSection,
-    updateSection, reset,
+    worksheet,
+    settings,
+    worksheetPageStyle,
+    globalTypography,
+    activeSectionId,
+    setActiveSection,
+    updateSection,
+    reset,
   } = useBloomStore();
 
+  const editorReturnToQuickGen = useBloomStore((s) => s.editorReturnToQuickGen);
+  const quickGenSession = useBloomStore((s) => s.quickGenSession);
+  const mergeWorksheetIntoQuickGenOption = useBloomStore(
+    (s) => s.mergeWorksheetIntoQuickGenOption,
+  );
+  const setEditorReturnToQuickGen = useBloomStore(
+    (s) => s.setEditorReturnToQuickGen,
+  );
+
   const {
-    createSet, editingVersionId, setEditingVersion,
-    activeSet, updateVersionContent, markManuallyOverridden,
-    pendingLevels, materializePendingSet,
+    createSet,
+    editingVersionId,
+    setEditingVersion,
+    activeSet,
+    updateVersionContent,
+    markManuallyOverridden,
+    pendingLevels,
+    materializePendingSet,
   } = useDifferentiationStore();
 
   const handleDifferentiate = () => {
@@ -505,7 +1399,9 @@ export function Result() {
   const handleBreadcrumbBack = () => {
     if (editingVersionId && worksheet) {
       updateVersionContent(editingVersionId, worksheet, []);
-      const editedVersion = activeSet?.versions.find((v) => v.id === editingVersionId);
+      const editedVersion = activeSet?.versions.find(
+        (v) => v.id === editingVersionId,
+      );
       if (editedVersion && !editedVersion.isAnchor) {
         markManuallyOverridden(editingVersionId);
       }
@@ -525,9 +1421,34 @@ export function Result() {
 
   useEffect(() => {
     if (worksheet && pendingLevels && pendingLevels.length > 0) {
-      materializePendingSet(worksheet.title || "Differentiated Worksheet", worksheet);
+      materializePendingSet(
+        worksheet.title || "Differentiated Worksheet",
+        worksheet,
+      );
     }
   }, [worksheet, pendingLevels, materializePendingSet]);
+
+  useEffect(() => {
+    if (!worksheet) return;
+    const p = new URLSearchParams(
+      typeof window !== "undefined" ? window.location.search : "",
+    );
+    const sid = p.get("sessionId");
+    const lid = p.get("layoutId");
+    if (!sid && !lid) return;
+    useBloomStore.setState((s) => ({
+      worksheet: s.worksheet
+        ? {
+            ...s.worksheet,
+            quickGenMeta: {
+              ...(s.worksheet.quickGenMeta || {}),
+              ...(sid ? { sessionId: sid } : {}),
+              ...(lid ? { layoutId: lid } : {}),
+            },
+          }
+        : null,
+    }));
+  }, [worksheet?.worksheet_id]);
 
   if (!worksheet) return null;
 
@@ -538,21 +1459,26 @@ export function Result() {
     const target = idx + dir;
     if (target < 0 || target >= sections.length) return;
     const newSections = [...sections];
-    [newSections[idx], newSections[target]] = [newSections[target], newSections[idx]];
+    [newSections[idx], newSections[target]] = [
+      newSections[target],
+      newSections[idx],
+    ];
     useBloomStore.setState((s) => ({
       worksheet: { ...s.worksheet, sections: newSections },
     }));
   };
 
   // Title wrapper for decorative heading style
-  const { containerClass, containerStyle, textStyle: titleTextStyle } = getHeadingCSS(typo.titleHeadingStyle, typo.accentColor);
+  const {
+    containerClass,
+    containerStyle,
+    textStyle: titleTextStyle,
+  } = getHeadingCSS(typo.titleHeadingStyle, typo.accentColor);
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
-
       {/* ── Main scroll area ── */}
       <div className="flex-1 min-w-0 overflow-y-auto pb-16">
-
         {/* Action bar */}
         <div className="print:hidden sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
           <div className="max-w-[860px] mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
@@ -568,18 +1494,46 @@ export function Result() {
               ) : (
                 <>
                   <button
-                    onClick={() => { reset(); setLocation("/"); }}
+                    onClick={() => {
+                      reset();
+                      setLocation("/");
+                    }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     New
                   </button>
                   <button
-                    onClick={() => setLocation("/prompt")}
+                    onClick={() => {
+                      if (
+                        editorReturnToQuickGen &&
+                        quickGenSession &&
+                        worksheet
+                      ) {
+                        mergeWorksheetIntoQuickGenOption(
+                          quickGenSession.selectedLayout,
+                          worksheet,
+                        );
+                        setEditorReturnToQuickGen(false);
+                        const returnPath = consumeQuickGenReturnPath();
+                        if (returnPath) {
+                          setLocation(returnPath);
+                          return;
+                        }
+                        const sid = getQuickGenSessionId();
+                        if (sid && quickGenSession.sessionId === sid) {
+                          window.history.back();
+                          return;
+                        }
+                        setLocation(`${BASE}/prompt`);
+                        return;
+                      }
+                      setLocation(`${BASE}/prompt`);
+                    }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-foreground font-semibold hover:bg-muted/60 border border-border transition-colors text-sm"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    Settings
+                    {editorReturnToQuickGen ? "Back to options" : "Settings"}
                   </button>
                 </>
               )}
@@ -607,7 +1561,8 @@ export function Result() {
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary font-bold border border-primary/30 hover:bg-primary/20 transition-colors text-sm animate-pulse"
                 >
                   <Layers className="w-3.5 h-3.5" />
-                  Go to Differentiation Panel ({activeSet.versions.length} versions)
+                  Go to Differentiation Panel ({activeSet.versions.length}{" "}
+                  versions)
                 </button>
               )}
               {!breadcrumbBack && !activeSet && (
@@ -638,12 +1593,11 @@ export function Result() {
         {/* ── Worksheet paper ── */}
         <div
           id="worksheet-paper"
-          className="max-w-[860px] mx-auto sm:my-4 bg-white sm:rounded-2xl sm:shadow-xl overflow-hidden print:shadow-none print:rounded-none print:my-0"
+          className={`max-w-[860px] mx-auto sm:my-4 bg-white sm:rounded-2xl sm:shadow-xl overflow-hidden print:shadow-none print:rounded-none print:my-0 ${worksheetPaperShell(worksheet.quickGenMeta?.layoutType)}`}
           style={{ backgroundColor: worksheetPageStyle.bgColor }}
           onClick={() => setActiveSection(null)}
         >
           <div className="p-8 sm:p-14 print:p-0 space-y-1">
-
             {/* Name / Date header */}
             <div className="flex gap-8 justify-end mb-4">
               {settings.includeName && (
@@ -677,8 +1631,14 @@ export function Result() {
             </div>
 
             {/* Worksheet title with decorative heading style */}
-            <div className="pb-5 mb-8 text-center border-b-2" style={{ borderColor: `${typo.accentColor}40` }}>
-              <div className={`${containerClass} inline-block w-full`} style={containerStyle}>
+            <div
+              className="pb-5 mb-8 text-center border-b-2"
+              style={{ borderColor: `${typo.accentColor}40` }}
+            >
+              <div
+                className={`${containerClass} inline-block w-full`}
+                style={containerStyle}
+              >
                 <h1
                   className="text-3xl font-bold"
                   style={{
@@ -687,16 +1647,25 @@ export function Result() {
                     ...titleTextStyle,
                   }}
                 >
-              <EditableTextBlock
-                value={worksheet.title}
-                onChange={(v) =>
-                  useBloomStore.setState((s) => ({
-                    worksheet: { ...s.worksheet, title: v },
-                  }))
-                }
-                alwaysEditing
-                textStyle={{ bold: true, fontFamily: typo.titleFont, fontSize: 28, fontColor: typo.titleColor, alignment: "center", italic: false, underline: false, listStyle: "none" }}
-              />
+                  <EditableTextBlock
+                    value={worksheet.title}
+                    onChange={(v) =>
+                      useBloomStore.setState((s) => ({
+                        worksheet: { ...s.worksheet, title: v },
+                      }))
+                    }
+                    alwaysEditing
+                    textStyle={{
+                      bold: true,
+                      fontFamily: typo.titleFont,
+                      fontSize: 28,
+                      fontColor: typo.titleColor,
+                      alignment: "center",
+                      italic: false,
+                      underline: false,
+                      listStyle: "none",
+                    }}
+                  />
                 </h1>
               </div>
               {(worksheet.subject || worksheet.gradeLevel) && (
@@ -704,58 +1673,91 @@ export function Result() {
                   className="text-base text-foreground/60 font-medium mt-2"
                   style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
                 >
-                  {[worksheet.subject, worksheet.gradeLevel].filter(Boolean).join(" · ")}
+                  {[
+                    worksheet.subject
+                      ? normalizeFormalLabel(String(worksheet.subject))
+                      : "",
+                    worksheet.gradeLevel,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               )}
             </div>
 
-            {/* Sections */}
-            <div
-              className="space-y-10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {sections.map((section: any, i: number) => (
-                <motion.div key={section.id || i} layout>
-                  <SectionBlock
-                    section={section}
-                    index={i}
-                    total={sections.length}
-                    isActive={activeSectionId === section.id}
-                    onSelect={() => setActiveSection(section.id)}
-                    onMoveUp={() => moveSection(i, -1)}
-                    onMoveDown={() => moveSection(i, 1)}
-                    globalTypo={typo}
-                  />
-                </motion.div>
-              ))}
-            </div>
+            {/* Sections — layout shell + grid/column rhythm from Quick Gen layoutType */}
+            {renderQuickGenLayoutShell(
+              worksheet.quickGenMeta?.layoutType,
+              <div
+                className={worksheetSectionsLayoutClass(
+                  worksheet.quickGenMeta?.layoutType,
+                  sections.length,
+                  {
+                    layoutVariant: worksheet.quickGenMeta?.layoutVariant,
+                    pageTemplateType: worksheet.settings?.templateType as
+                      | string
+                      | undefined,
+                  },
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {sections.map((section: any, i: number) => (
+                  <motion.div key={section.id || i} layout>
+                    <SectionBlock
+                      section={section}
+                      index={i}
+                      total={sections.length}
+                      isActive={activeSectionId === section.id}
+                      onSelect={() => setActiveSection(section.id)}
+                      onMoveUp={() => moveSection(i, -1)}
+                      onMoveDown={() => moveSection(i, 1)}
+                      globalTypo={typo}
+                      quickGenLayoutType={normalizeQuickGenLayoutType(
+                        worksheet.quickGenMeta?.layoutType,
+                      )}
+                    />
+                  </motion.div>
+                ))}
+              </div>,
+            )}
 
             {/* Answer Key */}
-            {settings.generateAnswerKey && worksheet.answer_key && Object.keys(worksheet.answer_key).length > 0 && (
-              <div className="mt-14 pt-8 border-t-2 border-dashed border-foreground/30 space-y-4">
-                <h2
-                  className="text-xl font-bold text-foreground flex items-center gap-2"
-                  style={{ fontFamily: `'${typo.headingFont}', sans-serif`, color: typo.headingColor }}
-                >
-                  <Check className="w-5 h-5 text-green-600" />
-                  Answer Key
-                </h2>
-                <div className="space-y-2 text-sm" style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}>
-                  {Object.entries(worksheet.answer_key).map(([k, v]) => (
-                    <div key={k} className="flex gap-2">
-                      <span className="font-semibold w-8">{k}.</span>
-                      <span className="text-foreground/80">{String(v)}</span>
-                    </div>
-                  ))}
+            {settings.generateAnswerKey &&
+              worksheet.answer_key &&
+              Object.keys(worksheet.answer_key).length > 0 && (
+                <div className="mt-14 pt-8 border-t-2 border-dashed border-foreground/30 space-y-4">
+                  <h2
+                    className="text-xl font-bold text-foreground flex items-center gap-2"
+                    style={{
+                      fontFamily: `'${typo.headingFont}', sans-serif`,
+                      color: typo.headingColor,
+                    }}
+                  >
+                    <Check className="w-5 h-5 text-green-600" />
+                    Answer Key
+                  </h2>
+                  <div
+                    className="space-y-2 text-sm"
+                    style={{ fontFamily: `'${typo.bodyFont}', sans-serif` }}
+                  >
+                    {Object.entries(worksheet.answer_key).map(([k, v]) => (
+                      <div key={k} className="flex gap-2">
+                        <span className="font-semibold w-8">{k}.</span>
+                        <span className="text-foreground/80">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </div>
 
       {/* ── Editor sidebar ── */}
-      <EditorSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <EditorSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* ── Export modal ── */}
       {exportOpen && (

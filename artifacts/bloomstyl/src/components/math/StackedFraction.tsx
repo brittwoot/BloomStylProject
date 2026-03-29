@@ -14,3 +14,24 @@ export function StackedFraction({
     </span>
   );
 }
+
+/**
+ * Renders a string of math text, automatically converting fraction notation
+ * like "3/4" into stacked fraction visuals while leaving surrounding text intact.
+ */
+export function MathInlineText({ text }: { text: string }) {
+  const parts = text.split(/(\d+\/\d+)/g);
+  return (
+    <span>
+      {parts.map((part, i) => {
+        const match = part.match(/^(\d+)\/(\d+)$/);
+        if (match) {
+          return (
+            <StackedFraction key={i} numerator={match[1]} denominator={match[2]} />
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </span>
+  );
+}
