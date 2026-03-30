@@ -28,6 +28,7 @@ import { useDifferentiationStore } from "../stores/differentiationStore";
 import {
   consumeQuickGenReturnPath,
   getQuickGenSessionId,
+  setQuickGenResumeSession,
 } from "../lib/quickGenNavigation";
 import { normalizeFormalLabel } from "../lib/normalizeTitle";
 import {
@@ -1515,6 +1516,7 @@ export function Result() {
                           worksheet,
                         );
                         setEditorReturnToQuickGen(false);
+                        setQuickGenResumeSession(true);
                         const returnPath = consumeQuickGenReturnPath();
                         if (returnPath) {
                           setLocation(returnPath);
