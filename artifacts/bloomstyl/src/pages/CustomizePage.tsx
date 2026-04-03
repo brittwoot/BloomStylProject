@@ -5,7 +5,7 @@ import { ArrowLeft, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { useBloomStore } from "../store";
 import { TYPE_MAP, CATEGORY_META, WORKSHEET_TYPES, type WorksheetTypeOption } from "../types/worksheetTypes";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const API_BASE = "http://localhost:8080";
 
 // ── Common options every worksheet type shows ─────────────────────────────────
 
@@ -270,7 +270,7 @@ export function CustomizePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!chosenActivityType) setLocation(`${BASE}/prompt`);
+    if (!chosenActivityType) setLocation(`/prompt`)
   }, [chosenActivityType]);
 
   if (!chosenActivityType) return null;
@@ -287,7 +287,7 @@ export function CustomizePage() {
     setGenerating(true);
     setError("");
     try {
-      const res = await fetch(`${BASE}/api/worksheet/customize-generate`, {
+      const res = await fetch(`${API_BASE}/api/worksheet/customize-generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -301,7 +301,7 @@ export function CustomizePage() {
       const data = await res.json();
       if (!data.worksheet) throw new Error("No worksheet in response");
       setWorksheet(data.worksheet);
-      setLocation(`${BASE}/result`);
+      setLocation(`/result`)
     } catch (err) {
       console.error(err);
       setError("Something went wrong. Please try again.");
@@ -342,7 +342,7 @@ export function CustomizePage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setLocation(`${BASE}/suggest`)}
+              onClick={() => setLocation(`${API_BASE}/suggest`)}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4" /> Back

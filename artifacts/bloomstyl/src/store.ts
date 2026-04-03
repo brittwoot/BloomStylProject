@@ -61,11 +61,18 @@ export type WorksheetPageStyle = {
 
 export type QuickGenLayoutState = {
   id: "A" | "B" | "C";
-  status: "pending" | "generating" | "done" | "error";
+  status: "pending" | "loading" | "generating" | "done" | "error";
   data: any | null;
   error: string | null;
   resolvedActivityType?: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, any> | null;
+  layoutVariant?: "A" | "B" | "C";
+};
+
+export type QuickGenFamilySuggestion = {
+  familyId: string;
+  label: string;
+  reason?: string;
 };
 
 export type QuickGenContentAnalysis = {
@@ -73,7 +80,7 @@ export type QuickGenContentAnalysis = {
   detectedTopic: string | null;
   gradeGuess: string | null;
   confidenceSubject: number;
-  familySuggestions: string[];
+  familySuggestions: QuickGenFamilySuggestion[];
   defaultFamilyId: string | null;
 };
 
@@ -112,9 +119,13 @@ type QuickGenSession = {
   contentAnalysis: QuickGenContentAnalysis | null;
   activityTypeId: string;
   activityTypeLabel: string;
-  custom: Record<string, any>;
+  custom?: Record<string, any>;
   differentiation: QuickGenDifferentiation;
   differentiationStepComplete: boolean;
+  topicGradeStepComplete?: boolean;
+  worksheetFocusStepComplete?: boolean;
+  problemCount?: number;
+  updatedAt?: number;
 };
 
 // ── Global Typography ──────────────────────────────────────────────────────────

@@ -25,39 +25,117 @@ import { normalizeDisplayText, normalizeFormalLabel } from "../lib/normalizeTitl
 import { quickGenLayoutVariantCopy } from "../lib/quickGenLayoutCopy";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const API_BASE = "http://localhost:8080";
 
 // ── Subjects (12) ─────────────────────────────────────────────────────────────
 
 type SubjectId =
-  | "reading" | "writing" | "math" | "science"
-  | "social" | "phonics" | "art" | "sel"
-  | "ell" | "holiday" | "general" | "custom";
+  | "reading"
+  | "writing"
+  | "math"
+  | "science"
+  | "social"
+  | "phonics"
+  | "art"
+  | "sel"
+  | "ell"
+  | "holiday"
+  | "general"
+  | "custom";
 
-const SUBJECTS: { id: SubjectId; label: string; icon: string; color: string; placeholder: string }[] = [
-  { id: "reading",  label: "Reading",        icon: "📖", color: "#3b82f6",
-    placeholder: "e.g. Main idea, Charlotte's Web, nonfiction text features..." },
-  { id: "writing",  label: "Writing",        icon: "✏️", color: "#8b5cf6",
-    placeholder: "e.g. Narrative writing, opinion paragraph, descriptive essay..." },
-  { id: "math",     label: "Math",           icon: "🔢", color: "#f59e0b",
-    placeholder: "e.g. Adding fractions, place value to 1000, word problems..." },
-  { id: "science",  label: "Science",        icon: "🔬", color: "#10b981",
-    placeholder: "e.g. Water cycle, animal adaptations, states of matter..." },
-  { id: "social",   label: "Social Studies", icon: "🌍", color: "#ef4444",
-    placeholder: "e.g. Community helpers, the American Revolution, map skills..." },
-  { id: "phonics",  label: "Phonics",        icon: "🔤", color: "#06b6d4",
-    placeholder: "e.g. Long vowel sounds, digraphs sh/ch/th, CVC words..." },
-  { id: "art",      label: "Art",            icon: "🎨", color: "#ec4899",
-    placeholder: "e.g. Color theory, famous artists, elements of art..." },
-  { id: "sel",      label: "SEL",            icon: "💬", color: "#f97316",
-    placeholder: "e.g. Managing emotions, growth mindset, conflict resolution..." },
-  { id: "ell",      label: "ELL / ESL",      icon: "🌐", color: "#84cc16",
-    placeholder: "e.g. Vocabulary building, sentence frames, basic conversation..." },
-  { id: "holiday",  label: "Holiday",        icon: "🎉", color: "#f43f5e",
-    placeholder: "e.g. Halloween, Thanksgiving, end of year, Valentine's Day..." },
-  { id: "general",  label: "General",        icon: "📋", color: "#6b7280",
-    placeholder: "e.g. Study skills, research project, classroom activity..." },
-  { id: "custom",   label: "Custom",         icon: "⚡", color: "#7c3aed",
-    placeholder: "Describe exactly what you need..." },
+type SubjectRow = {
+  id: SubjectId;
+  label: string;
+  icon: string;
+  color: string;
+  placeholder: string;
+};
+
+const SUBJECTS: SubjectRow[] = [
+  {
+    id: "reading",
+    label: "Reading",
+    icon: "📖",
+    color: "#3b82f6",
+    placeholder: "e.g. Main idea, Charlotte's Web, nonfiction text features...",
+  },
+  {
+    id: "writing",
+    label: "Writing",
+    icon: "✏️",
+    color: "#8b5cf6",
+    placeholder: "e.g. Narrative writing, opinion paragraph, descriptive essay...",
+  },
+  {
+    id: "math",
+    label: "Math",
+    icon: "🔢",
+    color: "#f59e0b",
+    placeholder: "e.g. Adding fractions, place value to 1000, word problems...",
+  },
+  {
+    id: "science",
+    label: "Science",
+    icon: "🔬",
+    color: "#10b981",
+    placeholder: "e.g. Water cycle, animal adaptations, states of matter...",
+  },
+  {
+    id: "social",
+    label: "Social Studies",
+    icon: "🌍",
+    color: "#ef4444",
+    placeholder: "e.g. Community helpers, the American Revolution, map skills...",
+  },
+  {
+    id: "phonics",
+    label: "Phonics",
+    icon: "🔤",
+    color: "#06b6d4",
+    placeholder: "e.g. Long vowel sounds, digraphs sh/ch/th, CVC words...",
+  },
+  {
+    id: "art",
+    label: "Art",
+    icon: "🎨",
+    color: "#ec4899",
+    placeholder: "e.g. Color theory, famous artists, elements of art...",
+  },
+  {
+    id: "sel",
+    label: "SEL",
+    icon: "💬",
+    color: "#f97316",
+    placeholder: "e.g. Managing emotions, growth mindset, conflict resolution...",
+  },
+  {
+    id: "ell",
+    label: "ELL / ESL",
+    icon: "🌐",
+    color: "#84cc16",
+    placeholder: "e.g. Vocabulary building, sentence frames, basic conversation...",
+  },
+  {
+    id: "holiday",
+    label: "Holiday",
+    icon: "🎉",
+    color: "#f43f5e",
+    placeholder: "e.g. Halloween, Thanksgiving, end of year, Valentine's Day...",
+  },
+  {
+    id: "general",
+    label: "General",
+    icon: "📋",
+    color: "#6b7280",
+    placeholder: "e.g. Study skills, research project, classroom activity...",
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    icon: "⚡",
+    color: "#7c3aed",
+    placeholder: "Describe exactly what you need...",
+  },
 ];
 
 const GRADES = ["Pre-K","K","1","2","3","4","5","6","7","8"];
@@ -555,7 +633,7 @@ export function QuickGenPage() {
       console.log(`Slot ${id}: activityType=${plan.activityType} layoutVariant=${id}`);
 
       try {
-        const res = await fetch(`${BASE}/api/worksheet/customize-generate`, {
+        const res = await fetch(`${API_BASE}/api/worksheet/customize-generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
@@ -751,7 +829,7 @@ export function QuickGenPage() {
     setError("");
     setAnalyzing(true);
     try {
-      const res = await fetch(`${BASE}/api/worksheet/analyze-quick-gen`, {
+      const res = await fetch(`${API_BASE}/api/worksheet/analyze-quick-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
