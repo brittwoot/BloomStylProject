@@ -193,12 +193,8 @@ export function FillBlanksSection({ section, onUpdate }: { section: any; onUpdat
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-bold text-center">
-        <EditableTextBlock
-          value={section.instructions ?? "Fill in and complete the missing letters."}
-          onChange={(v) => onUpdate({ instructions: v })}
-          placeholder="Fill-in instructions…"
-        />
+      <p className="text-sm font-bold text-center text-gray-700">
+        Fill in each pattern below.
       </p>
       <div className="grid grid-cols-3 gap-4">
         {patterns.map((pattern, i) => (
@@ -263,15 +259,7 @@ export function ColoringActivitySection({ section, onUpdate }: { section: any; o
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-bold text-center">
-        <span>🎨</span>
-        <EditableTextBlock
-          value={section.instructions ?? "Color each picture using the color key below."}
-          onChange={(v) => onUpdate({ instructions: v })}
-          placeholder="Coloring instructions…"
-          multiline
-        />
-      </div>
+      {/* Section directions use the Directions callout in Result; no duplicate instructions here. */}
 
       {/* Color key */}
       <div className="border-2 border-gray-300 rounded-lg p-3">
@@ -306,15 +294,6 @@ export function TracingSection({ section, onUpdate }: { section: any; onUpdate: 
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-bold flex items-center gap-1">
-        ✏️{" "}
-        <EditableTextBlock
-          value={section.instructions ?? `Trace and write the word.`}
-          onChange={(v) => onUpdate({ instructions: v })}
-          placeholder="Tracing instructions…"
-        />
-      </p>
-
       {/* Demonstration row */}
       <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
         <span

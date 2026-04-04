@@ -19,10 +19,16 @@ export function StackedFraction({
  * Renders a string of math text, automatically converting fraction notation
  * like "3/4" into stacked fraction visuals while leaving surrounding text intact.
  */
-export function MathInlineText({ text }: { text: string }) {
+export function MathInlineText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
   const parts = text.split(/(\d+\/\d+)/g);
   return (
-    <span>
+    <span className={className}>
       {parts.map((part, i) => {
         const match = part.match(/^(\d+)\/(\d+)$/);
         if (match) {

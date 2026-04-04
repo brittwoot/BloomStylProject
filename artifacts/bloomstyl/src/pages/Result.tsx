@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  GripVertical,
   PanelRight,
   Check,
   RotateCcw,
@@ -24,6 +25,8 @@ import {
 import { StepIndicator } from "./UploadPage";
 import { EditorSidebar } from "../components/editor/EditorSidebar";
 import { EditableTextBlock } from "../components/editor/EditableTextBlock";
+import { SectionActivationContext } from "../components/editor/SectionActivationContext";
+import { SectionTextStyleContext } from "../components/editor/SectionTextStyleContext";
 import { MathInlineText } from "../components/math/StackedFraction";
 import { ExportModal } from "../components/ExportModal";
 import { getHeadingCSS } from "../components/editor/fontData";
@@ -613,6 +616,21 @@ function sectionCardTheme(sectionType: string | undefined): {
 
 // ── QuestionItem ──────────────────────────────────────────────────────────────
 
+/** Avoid showing the same copy as `section.instructions` in the question stem (directions stay in the Directions callout). */
+function stripQuestionDuplicateOfInstructions(
+  questionText: string | undefined,
+  instructions: string | undefined | null,
+): string {
+  const ins = (instructions ?? "").trim();
+  if (!ins) return (questionText ?? "").trim();
+  const qt = (questionText ?? "").trim();
+  if (!qt) return "";
+  if (qt === ins) return "";
+  if (qt.startsWith(ins + "\n\n")) return qt.slice(ins.length + 2).trim();
+  if (qt.startsWith(ins + "\n")) return qt.slice(ins.length + 1).trim();
+  return questionText ?? "";
+}
+
 function QuestionItem({
   q,
   number,
@@ -620,6 +638,7 @@ function QuestionItem({
   textStyle,
   globalTypo,
   mathVisual,
+  sectionInstructions,
 }: {
   q: any;
   number: number;
@@ -627,6 +646,7 @@ function QuestionItem({
   textStyle: any;
   globalTypo: GlobalTypography;
   mathVisual?: MathPracticeVisualId | null;
+  sectionInstructions?: string | null;
 }) {
   const { updateQuestion } = useBloomStore();
   /** Generated worksheets store activity id on worksheet.settings (API customize-generate). */
@@ -635,7 +655,10 @@ function QuestionItem({
   );
   const type = q.question_type || q.type || "short_answer";
   const lines = q.lines ?? (type === "essay" ? 8 : 3);
-  const raw = q.text ?? q.prompt ?? "";
+  const raw = stripQuestionDuplicateOfInstructions(
+    q.text ?? q.prompt ?? "",
+    sectionInstructions,
+  );
   const stackedMathTemplate =
     activityTemplate === "math_practice" ||
     activityTemplate === "math_word_problems" ||
@@ -656,12 +679,14 @@ function QuestionItem({
       : "text-sm leading-relaxed font-medium text-slate-900";
 
   const stemColStyle: React.CSSProperties | undefined = usePolishedMathStem
-    ? { fontFamily: `'${globalTypo.questionFont}', sans-serif` }
+    ? {
+        fontFamily: `'${textStyle?.fontFamily ?? globalTypo.questionFont}', sans-serif`,
+      }
     : undefined;
 
   const mathStemTextStyle = {
     ...textStyle,
-    fontFamily: globalTypo.questionFont,
+    fontFamily: textStyle?.fontFamily ?? globalTypo.questionFont,
     fontSize: mathVisual != null ? 17 : 15,
     fontColor: textStyle?.fontColor ?? "#0f172a",
     bold: true,
@@ -671,7 +696,11 @@ function QuestionItem({
     <>
       <div
         className={`flex gap-5 sm:gap-7 items-start leading-relaxed ${mathVisual ? "" : "text-sm"}`}
-        style={!usePolishedMathStem ? bodyFontStyle(globalTypo) : undefined}
+        style={
+          !usePolishedMathStem && textStyle?.fontFamily
+            ? { fontFamily: `'${textStyle.fontFamily}', sans-serif` }
+            : undefined
+        }
       >
         <div className="flex items-center gap-3 sm:gap-3.5 shrink-0 pt-1">
           <span className={`shrink-0 ${badgeCls}`}>{badge}</span>
@@ -688,22 +717,23 @@ function QuestionItem({
           style={stemColStyle}
         >
           {usePolishedMathStem ? (
-            <EditableTextBlock
-              value={raw}
-              onChange={(v) =>
-                updateQuestion(sectionId, q.id, { text: v, prompt: v })
-              }
-              multiline
-              textStyle={mathStemTextStyle}
-              renderView={(v) => (
-                <MathInlineText text={v} className={polishedStemClass} />
-              )}
-              subtleEditor
-              hideEditHint
-              className="w-full"
-              onClick={(e) => e.stopPropagation()}
-              placeholder="Click to add problem text…"
-            />
+            <div className="w-full" onClick={(e) => e.stopPropagation()}>
+              <EditableTextBlock
+                value={raw}
+                onChange={(v: string) =>
+                  updateQuestion(sectionId, q.id, { text: v, prompt: v })
+                }
+                multiline
+                textStyle={mathStemTextStyle}
+                renderView={(v: string) => (
+                  <MathInlineText text={v} className={polishedStemClass} />
+                )}
+                subtleEditor
+                hideEditHint
+                className="w-full"
+                placeholder="Click to add problem text…"
+              />
+            </div>
           ) : (
             <EditableTextBlock
               value={raw}
@@ -724,7 +754,10 @@ function QuestionItem({
                   <div
                     key={i}
                     className="flex items-start gap-2 text-sm"
-                    style={bodyFontStyle(globalTypo)}
+                    style={{
+                      fontFamily: `'${textStyle?.fontFamily ?? globalTypo.bodyFont}', sans-serif`,
+                      color: textStyle?.fontColor,
+                    }}
                   >
                     <div
                       className="w-4 h-4 rounded-full border shrink-0 mt-0.5"
@@ -738,7 +771,10 @@ function QuestionItem({
           {type === "true_false" && (
             <div
               className="flex gap-6 text-sm mt-2 pt-4 border-t border-dotted border-slate-300/70"
-              style={bodyFontStyle(globalTypo)}
+              style={{
+                fontFamily: `'${textStyle?.fontFamily ?? globalTypo.bodyFont}', sans-serif`,
+                color: textStyle?.fontColor,
+              }}
             >
               {["True", "False"].map((opt) => (
                 <div key={opt} className="flex items-center gap-2">
@@ -919,6 +955,15 @@ function quickGenVariantPresentation(
   return "relative rounded-[1.25rem] px-1.5 sm:px-3 py-2 sm:py-4 bg-gradient-to-b from-slate-50/45 via-white/30 to-transparent print:bg-transparent print:py-1";
 }
 
+type SectionDragReorder = {
+  onDragHandleStart: (e: React.DragEvent) => void;
+  onSectionDragOver: (e: React.DragEvent) => void;
+  onSectionDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  isDragOver: boolean;
+  isDragging: boolean;
+};
+
 function SectionBlock({
   section,
   index,
@@ -929,6 +974,7 @@ function SectionBlock({
   onMoveDown,
   globalTypo,
   quickGenLayoutType,
+  dragReorder,
 }: {
   section: any;
   index: number;
@@ -939,6 +985,7 @@ function SectionBlock({
   onMoveDown: () => void;
   globalTypo: GlobalTypography;
   quickGenLayoutType?: string;
+  dragReorder?: SectionDragReorder;
 }) {
   const { updateSection, updateQuestion, sectionStyles } = useBloomStore();
   const quickGenVariant = useBloomStore(
@@ -961,13 +1008,19 @@ function SectionBlock({
   const titleColor = ts.fontColor !== "#1a1a2e" ? ts.fontColor : undefined;
 
   return (
+    <SectionActivationContext.Provider value={onSelect}>
+    <SectionTextStyleContext.Provider value={ts}>
     <div
       className={`relative transition-all cursor-pointer mb-12 md:mb-14 print:mb-10 ${
         isActive
           ? "ring-2 ring-primary/50 ring-offset-2 rounded-2xl"
           : "hover:ring-1 hover:ring-primary/20 hover:ring-offset-1 rounded-2xl"
+      } ${dragReorder?.isDragOver ? "ring-2 ring-dashed ring-primary/50 ring-offset-2 rounded-2xl" : ""} ${
+        dragReorder?.isDragging ? "opacity-60" : ""
       }`}
       onClick={onSelect}
+      onDragOver={dragReorder?.onSectionDragOver}
+      onDrop={dragReorder?.onSectionDrop}
     >
       <div style={sectionCSS(style)} className={`rounded-2xl ${tone}`}>
         <div
@@ -1014,7 +1067,27 @@ function SectionBlock({
             </div>
 
             {/* Reorder controls (print hidden) */}
-            <div className="print:hidden flex gap-1 shrink-0">
+            <div className="print:hidden flex gap-1 shrink-0 items-center">
+              {dragReorder && (
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    dragReorder.onDragHandleStart(e);
+                  }}
+                  onDragEnd={(e) => {
+                    e.stopPropagation();
+                    dragReorder.onDragEnd();
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+                  aria-label="Drag to reorder section"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button
                 type="button"
                 disabled={index === 0}
@@ -1062,10 +1135,7 @@ function SectionBlock({
                 >
                   Directions
                 </p>
-                <div
-                  className="text-sm text-foreground/90 leading-relaxed"
-                  style={bodyFontStyle(globalTypo)}
-                >
+                <div className="text-sm text-foreground/90 leading-relaxed">
                   <EditableTextBlock
                     value={section.instructions}
                     onChange={(v) =>
@@ -1091,7 +1161,6 @@ function SectionBlock({
                   style.bgColor !== "transparent"
                     ? "rgba(255,255,255,0.5)"
                     : undefined,
-                ...bodyFontStyle(globalTypo),
               }}
             >
               <EditableTextBlock
@@ -1115,8 +1184,8 @@ function SectionBlock({
                     key={item.id || i}
                     className="flex gap-2 text-sm leading-relaxed py-3 first:pt-0 last:pb-0"
                     style={{
-                      fontFamily: `'${globalTypo.vocabFont}', sans-serif`,
-                      fontSize: `${14 * globalTypo.baseSize}px`,
+                      fontFamily: `'${ts.fontFamily}', sans-serif`,
+                      fontSize: `${(ts.fontSize ?? 14) * globalTypo.baseSize}px`,
                       color: ts.fontColor,
                     }}
                   >
@@ -1158,15 +1227,10 @@ function SectionBlock({
                             q={q}
                             number={qi + 1}
                             sectionId={section.id}
-                            textStyle={{
-                              ...ts,
-                              fontFamily:
-                                ts.fontFamily !== "DM Sans"
-                                  ? ts.fontFamily
-                                  : globalTypo.questionFont,
-                            }}
+                            textStyle={ts}
                             globalTypo={globalTypo}
                             mathVisual={mathPracticeVisual}
+                            sectionInstructions={section.instructions}
                           />
                         }
                       />
@@ -1197,14 +1261,9 @@ function SectionBlock({
                       q={q}
                       number={qi + 1}
                       sectionId={section.id}
-                      textStyle={{
-                        ...ts,
-                        fontFamily:
-                          ts.fontFamily !== "DM Sans"
-                            ? ts.fontFamily
-                            : globalTypo.questionFont,
-                      }}
+                      textStyle={ts}
                       globalTypo={globalTypo}
+                      sectionInstructions={section.instructions}
                     />
                   );
                   if (mathLayout === "scaffolded_work_boxes") {
@@ -1462,6 +1521,8 @@ function SectionBlock({
         </div>
       )}
     </div>
+    </SectionTextStyleContext.Provider>
+    </SectionActivationContext.Provider>
   );
 }
 
@@ -1482,6 +1543,8 @@ export function Result() {
     updateSection,
     reset,
   } = useBloomStore();
+
+  const clearSectionSelection = () => setActiveSection(null);
 
   const editorReturnToQuickGen = useBloomStore((s) => s.editorReturnToQuickGen);
   const quickGenSession = useBloomStore((s) => s.quickGenSession);
@@ -1580,7 +1643,62 @@ export function Result() {
     ];
     useBloomStore.setState((s) => ({
       worksheet: { ...s.worksheet, sections: newSections },
+      hasEdited: true,
     }));
+  };
+
+  const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(
+    null,
+  );
+  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(
+    null,
+  );
+
+  const reorderSection = (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    if (fromIdx < 0 || toIdx < 0) return;
+    if (fromIdx >= sections.length || toIdx >= sections.length) return;
+    const newSections = [...sections];
+    const [item] = newSections.splice(fromIdx, 1);
+    newSections.splice(toIdx, 0, item);
+    useBloomStore.setState((s) => ({
+      worksheet: { ...s.worksheet, sections: newSections },
+      hasEdited: true,
+    }));
+  };
+
+  const handleSectionDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData(
+      "application/x-bloomstyl-section-index",
+      String(index),
+    );
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingSectionIndex(index);
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverSectionIndex(index);
+  };
+
+  const handleSectionDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const fromStr = e.dataTransfer.getData(
+      "application/x-bloomstyl-section-index",
+    );
+    const from = parseInt(fromStr, 10);
+    setDraggingSectionIndex(null);
+    setDragOverSectionIndex(null);
+    if (Number.isNaN(from) || from === dropIndex) return;
+    reorderSection(from, dropIndex);
+  };
+
+  const handleSectionDragEnd = () => {
+    setDraggingSectionIndex(null);
+    setDragOverSectionIndex(null);
   };
 
   // Title wrapper for decorative heading style
@@ -1791,6 +1909,7 @@ export function Result() {
                             worksheet: { ...s.worksheet, title: v },
                           }))
                         }
+                        onFocus={clearSectionSelection}
                         alwaysEditing
                         textStyle={{
                           bold: true,
@@ -1853,6 +1972,16 @@ export function Result() {
                       quickGenLayoutType={normalizeQuickGenLayoutType(
                         worksheet.quickGenMeta?.layoutType,
                       )}
+                      dragReorder={{
+                        onDragHandleStart: (e) =>
+                          handleSectionDragStart(e, i),
+                        onSectionDragOver: (e) =>
+                          handleSectionDragOver(e, i),
+                        onSectionDrop: (e) => handleSectionDrop(e, i),
+                        onDragEnd: handleSectionDragEnd,
+                        isDragOver: dragOverSectionIndex === i,
+                        isDragging: draggingSectionIndex === i,
+                      }}
                     />
                   </motion.div>
                   {i < sections.length - 1 && (

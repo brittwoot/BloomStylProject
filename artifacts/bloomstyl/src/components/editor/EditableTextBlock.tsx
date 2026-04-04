@@ -1,6 +1,8 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Pencil } from "lucide-react";
-import type { TextStyle } from "../../store";
+import { DEFAULT_TEXT_STYLE, type TextStyle } from "../../store";
+import { useSectionActivation } from "./SectionActivationContext";
+import { useSectionTextStyleOptional } from "./SectionTextStyleContext";
 
 interface EditableTextBlockProps {
   value: string;
@@ -13,6 +15,10 @@ interface EditableTextBlockProps {
   onFocus?: () => void;
   onClick?: () => void;
   tag?: "h1" | "h2" | "h3" | "p" | "span";
+  /** When set, used in view mode instead of plain text (e.g. math fraction rendering). */
+  renderView?: (value: string) => React.ReactNode;
+  hideEditHint?: boolean;
+  subtleEditor?: boolean;
 }
 
 function buildStyleCSS(ts?: Partial<TextStyle>): React.CSSProperties {
@@ -38,7 +44,17 @@ export function EditableTextBlock({
   className = "",
   onFocus,
   onClick,
+  renderView,
+  hideEditHint = false,
+  subtleEditor = false,
 }: EditableTextBlockProps) {
+  const activateSection = useSectionActivation();
+  /** Select owning section for sidebar (context) + optional parent onFocus (e.g. explicit handlers). */
+  const handleActivate = () => {
+    onFocus?.();
+    activateSection();
+  };
+
   const safeValue = value ?? "";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(safeValue);
@@ -62,9 +78,20 @@ export function EditableTextBlock({
     setEditing(false);
   };
 
-  const css = buildStyleCSS(textStyle);
+  const sectionTs = useSectionTextStyleOptional();
+  const mergedTextStyle = useMemo(
+    () =>
+      ({
+        ...DEFAULT_TEXT_STYLE,
+        ...(sectionTs ?? {}),
+        ...textStyle,
+      }) as TextStyle,
+    [sectionTs, textStyle],
+  );
 
-  const listStyle = textStyle?.listStyle;
+  const css = buildStyleCSS(mergedTextStyle);
+
+  const listStyle = mergedTextStyle?.listStyle;
   const wrapList = listStyle && listStyle !== "none";
   const lines = safeValue.split("\n").filter(Boolean);
 
@@ -78,8 +105,10 @@ export function EditableTextBlock({
           rows={Math.max(3, draft.split("\n").length + 1)}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
+          onFocus={handleActivate}
+          onMouseDown={handleActivate}
           style={css}
-          className={`w-full resize-none rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
+          className={`w-full resize-none rounded-lg ${subtleEditor ? "border border-slate-200/80 bg-white/90" : "border-2 border-primary/40 bg-primary/5"} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
         />
       );
     }
@@ -89,8 +118,10 @@ export function EditableTextBlock({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
+        onFocus={handleActivate}
+        onMouseDown={handleActivate}
         style={css}
-        className={`w-full rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
+        className={`w-full rounded-lg ${subtleEditor ? "border border-slate-200/80 bg-white/90" : "border-2 border-primary/40 bg-primary/5"} px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
       />
     );
   }
@@ -104,9 +135,11 @@ export function EditableTextBlock({
           rows={Math.max(3, draft.split("\n").length + 1)}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
+          onFocus={handleActivate}
+          onMouseDown={handleActivate}
           onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
           style={css}
-          className={`w-full resize-none rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
+          className={`w-full resize-none rounded-lg ${subtleEditor ? "border border-slate-200/80 bg-white/90" : "border-2 border-primary/40 bg-primary/5"} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
         />
       );
     }
@@ -116,9 +149,11 @@ export function EditableTextBlock({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
+        onFocus={handleActivate}
+        onMouseDown={handleActivate}
         onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
         style={css}
-        className={`w-full rounded-lg border-2 border-primary/40 bg-primary/5 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
+        className={`w-full rounded-lg ${subtleEditor ? "border border-slate-200/80 bg-white/90" : "border-2 border-primary/40 bg-primary/5"} px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/25 ${className}`}
       />
     );
   }
@@ -130,7 +165,8 @@ export function EditableTextBlock({
       tabIndex={0}
       style={css}
       className={`group relative inline cursor-pointer rounded px-0.5 -mx-0.5 hover:bg-primary/8 transition-colors ${className}`}
-      onClick={() => { onClick?.(); onFocus?.(); setDraft(safeValue); setEditing(true); }}
+      onClick={() => { onClick?.(); handleActivate(); setDraft(safeValue); setEditing(true); }}
+      onFocus={handleActivate}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setDraft(safeValue); setEditing(true); } }}
       title="Click to edit"
     >
@@ -144,10 +180,18 @@ export function EditableTextBlock({
             {lines.map((l, i) => <li key={i}>{l}</li>)}
           </ol>
         )
+      ) : renderView ? (
+        safeValue ? (
+          renderView(safeValue)
+        ) : (
+          <span className="text-muted-foreground/40 italic text-sm">{placeholder}</span>
+        )
       ) : (
         safeValue || <span className="text-muted-foreground/40 italic text-sm">{placeholder}</span>
       )}
-      <Pencil className="inline w-3 h-3 ml-1 text-primary/30 group-hover:text-primary/60 transition-colors align-middle" />
+      {!hideEditHint && (
+        <Pencil className="inline w-3 h-3 ml-1 text-primary/30 group-hover:text-primary/60 transition-colors align-middle" />
+      )}
     </span>
   );
 }

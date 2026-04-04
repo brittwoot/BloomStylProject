@@ -1096,10 +1096,26 @@ export function SpinnerSection({ section, onUpdate }: { section: any; onUpdate: 
   );
 }
 
+/** Per-face prompts only when `instructions` is multi-line or an array — never index a string (character-by-character bug). */
+function diceFaceLinesFromSection(instructions: unknown): string[] {
+  if (Array.isArray(instructions)) {
+    return Array.from({ length: 6 }, (_, i) => String(instructions[i] ?? "").trim());
+  }
+  if (typeof instructions === "string" && instructions.trim()) {
+    const s = instructions.trim();
+    if (!/\r|\n/.test(s)) {
+      return Array.from({ length: 6 }, () => "");
+    }
+    const lines = s.split(/\r?\n/).map((line) => line.trim());
+    return Array.from({ length: 6 }, (_, i) => (lines[i] ?? "").trim());
+  }
+  return Array.from({ length: 6 }, () => "");
+}
+
 export function DiceActivitySection({ section, onUpdate }: { section: any; onUpdate: (u: any) => void }) {
   const activityTitle = section.activityTitle || "Write";
   const faces = section.faces || ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
-  const instructions: string[] = section.instructions || Array.from({ length: 6 }, (_, i) => `Action for ${i + 1}`);
+  const faceLines = diceFaceLinesFromSection(section.instructions);
 
   return (
     <div className="space-y-4">
@@ -1109,7 +1125,7 @@ export function DiceActivitySection({ section, onUpdate }: { section: any; onUpd
           <div key={i} className="flex items-center gap-3 border border-gray-300 rounded-xl p-3">
             <span className="text-3xl shrink-0">{face}</span>
             <div className="flex-1">
-              <p className="text-xs text-gray-500 mb-1">{instructions[i] || ""}</p>
+              <p className="text-xs text-gray-500 mb-1 min-h-[1rem]">{faceLines[i] || ""}</p>
               <div className="border-b border-gray-300 h-5" />
             </div>
           </div>
@@ -1170,7 +1186,7 @@ export function GraphPageSection({ section, onUpdate }: { section: any; onUpdate
 export function ColoringPageSection({ section, onUpdate }: { section: any; onUpdate: (u: any) => void }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-400 text-center">{section.instructions || "Color the picture below."}</p>
+      <p className="text-xs text-gray-400 text-center">Color the picture below.</p>
       {/* Big illustration placeholder */}
       <div
         className="border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50 flex items-center justify-center"
