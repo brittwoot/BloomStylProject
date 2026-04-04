@@ -10,7 +10,8 @@ import {
   DEFAULT_QUICK_GEN_DIFFERENTIATION,
 } from "../store";
 import {
-  getCanonicalActivityPlan,
+  getQuickGenActivityPlan,
+  getResolvedThreeOptionPlan,
   getFamiliesForSubject,
   getDefaultFamilyId,
   resolveFamilyIdForSubject,
@@ -472,10 +473,6 @@ export function QuickGenPage() {
   const topicRef = useRef<HTMLInputElement>(null);
   const abortRefs = useRef<Record<string, AbortController>>({});
   const genKey = useRef(0);
-  /** Set in startGeneration: canonical activity for parallel layout variants (neutral baseline diff). */
-  const generationContextRef = useRef<{
-    plan: { activityType: string; familyLabel: string };
-  } | null>(null);
 
   const subjectObj = SUBJECTS.find((s) => s.id === subject);
   const families = subject ? getFamiliesForSubject(subject as QGSubjectId) : [];
@@ -488,16 +485,20 @@ export function QuickGenPage() {
 
   const resolvedPlannerFamily =
     familyId || (subject ? getDefaultFamilyId(subject as QGSubjectId) : "");
-  /** One activity type per family; three options differ only by layoutVariant A/B/C */
-  const canonicalPlan = useMemo(() => {
+  /** Per-slot activity types from the family planner (A/B/C = different worksheet structures). */
+  const previewPlansBySlot = useMemo(() => {
     if (!subject || !resolvedPlannerFamily) return null;
-    return getCanonicalActivityPlan(
-      subject as QGSubjectId,
-      resolvedPlannerFamily,
-      topic.trim(),
-      grade || "General",
-      subject === "custom" ? activityTypeId : undefined
-    );
+    const opts = {
+      familyId: resolvedPlannerFamily,
+      topic: topic.trim(),
+      grade: grade || "General",
+      userPickedTypeId: subject === "custom" ? activityTypeId : undefined,
+    };
+    return {
+      A: getQuickGenActivityPlan(subject as QGSubjectId, "A", opts),
+      B: getQuickGenActivityPlan(subject as QGSubjectId, "B", opts),
+      C: getQuickGenActivityPlan(subject as QGSubjectId, "C", opts),
+    };
   }, [subject, resolvedPlannerFamily, topic, grade, activityTypeId]);
 
   /** Prefer analyze-quick-gen topic when present; display-only (does not change stored topic). */
@@ -616,18 +617,12 @@ export function QuickGenPage() {
       updateLayout(id, { status: "loading", data: null, error: null, meta: null, resolvedActivityType: undefined, layoutVariant: id });
       const topicTrim = topic.trim();
       const resolvedFamily = familyId || getDefaultFamilyId(subject as QGSubjectId);
-      const ctx =
-        generationContextRef.current ??
-        ({
-          plan: getCanonicalActivityPlan(
-            subject as QGSubjectId,
-            resolvedFamily,
-            topicTrim,
-            grade || "General",
-            subject === "custom" ? activityTypeId : undefined
-          ),
-        } as const);
-      const plan = ctx.plan;
+      const plan = getQuickGenActivityPlan(subject as QGSubjectId, id, {
+        familyId: resolvedFamily,
+        topic: topicTrim,
+        grade: grade || "General",
+        userPickedTypeId: subject === "custom" ? activityTypeId : undefined,
+      });
       const diff = DEFAULT_QUICK_GEN_DIFFERENTIATION;
       console.log(`Slot ${id}: activityType=${plan.activityType} layoutVariant=${id}`);
 
@@ -743,15 +738,21 @@ export function QuickGenPage() {
     console.log("[GEN] === Starting parallel generation ===");
     console.log("[GEN] Subject:", subject, "| Topic:", topic, "| Grade:", grade);
     const fam = familyId || getDefaultFamilyId(subject as QGSubjectId);
-    const plan = getCanonicalActivityPlan(
+    const three = getResolvedThreeOptionPlan(
       subject as QGSubjectId,
       fam,
       topic.trim(),
-      grade || "General",
-      subject === "custom" ? activityTypeId : undefined
+      grade || "General"
     );
-    generationContextRef.current = { plan };
-    console.log("[GEN] Same activityType for A/B/C:", plan.activityType, "| layouts: Clean / Scaffolded / Compact");
+    console.log(
+      "[GEN] Distinct activityTypes A/B/C:",
+      three.A.activityType,
+      "/",
+      three.B.activityType,
+      "/",
+      three.C.activityType,
+      "| layoutVariant still drives presentation mode per slot"
+    );
 
     sessionIdRef.current = nanoid();
     setQuickGenSessionId(sessionIdRef.current);
@@ -1253,8 +1254,11 @@ export function QuickGenPage() {
                           delay={i * 0.04}
                           slotId={layout.id}
                           planEntry={
-                            canonicalPlan
-                              ? { activityType: canonicalPlan.activityType, familyLabel: canonicalPlan.familyLabel }
+                            previewPlansBySlot
+                              ? {
+                                  activityType: previewPlansBySlot[layout.id].activityType,
+                                  familyLabel: previewPlansBySlot[layout.id].familyLabel,
+                                }
                               : undefined
                           }
                         />
