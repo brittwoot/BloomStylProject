@@ -25,7 +25,6 @@ import { normalizeDisplayText, normalizeFormalLabel } from "../lib/normalizeTitl
 import { quickGenLayoutVariantCopy } from "../lib/quickGenLayoutCopy";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const API_BASE = "http://localhost:8080";
 
 // ── Subjects (12) ─────────────────────────────────────────────────────────────
 
@@ -633,7 +632,7 @@ export function QuickGenPage() {
       console.log(`Slot ${id}: activityType=${plan.activityType} layoutVariant=${id}`);
 
       try {
-        const res = await fetch(`${API_BASE}/api/worksheet/customize-generate`, {
+        const res = await fetch(`http://localhost:8080/api/worksheet/customize-generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
@@ -829,7 +828,7 @@ export function QuickGenPage() {
     setError("");
     setAnalyzing(true);
     try {
-      const res = await fetch(`${API_BASE}/api/worksheet/analyze-quick-gen`, {
+      const res = await fetch(`http://localhost:8080/api/worksheet/analyze-quick-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

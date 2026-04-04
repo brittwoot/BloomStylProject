@@ -287,7 +287,7 @@ export function CustomizePage() {
     setGenerating(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/worksheet/customize-generate`, {
+      const res = await fetch(`http://localhost:8080/api/worksheet/customize-generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

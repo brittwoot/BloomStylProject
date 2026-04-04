@@ -90,7 +90,7 @@ export default function LeftPanel({ canvasRef, activeTab, onTabChange }: Props) 
     if (!svgDescription.trim()) return;
     setIsGeneratingSvg(true);
     try {
-      const res = await fetch(`${BASE}/api/worksheet/generate-svg`, {
+      const res = await fetch(`http://localhost:8080/api/worksheet/generate-svg`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: svgDescription, regions: svgRegions }),

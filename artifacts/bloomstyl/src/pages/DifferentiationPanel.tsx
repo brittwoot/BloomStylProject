@@ -70,7 +70,7 @@ export function DifferentiationPanel() {
   const generateSingleVersion = useCallback(async (version: { id: string; label: string; scaffoldSettings: any }, anchorContent: any, globalSettings?: any) => {
     updateVersionStatus(version.id, "generating");
     try {
-      const res = await fetch(`${BASE}/api/worksheet/differentiate`, {
+      const res = await fetch(`http://localhost:8080/api/worksheet/differentiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export function DifferentiationPanel() {
     clearSyncFlag(versionId);
 
     try {
-      const res = await fetch(`${BASE}/api/worksheet/differentiate`, {
+      const res = await fetch(`http://localhost:8080/api/worksheet/differentiate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

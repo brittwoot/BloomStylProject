@@ -207,7 +207,7 @@ export function GenerationViewPage() {
 
       try {
         console.log(`[GEN] Layout ${id}: Calling API...`);
-        const res = await fetch(`${BASE}/api/worksheet/customize-generate`, {
+        const res = await fetch(`http://localhost:8080/api/worksheet/customize-generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,

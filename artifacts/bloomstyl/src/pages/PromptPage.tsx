@@ -48,7 +48,7 @@ export function PromptPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${BASE}/api/worksheet/analyze-prompt`, {
+      const res = await fetch(`http://localhost:8080/api/worksheet/analyze-prompt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: p.trim(), clarificationAnswer: clarAnswer }),
