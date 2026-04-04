@@ -57,6 +57,167 @@ function safeParseJSON(str: string): any | null {
   }
 }
 
+/** Prompt block: generation must put task directions in section.instructions only (see hoistInstructionalLanguageToSectionInstructions). */
+const INSTRUCTIONS_VS_STUDENT_CONTENT = `
+INSTRUCTIONS vs STUDENT-FACING FIELDS (CRITICAL — EVERY ACTIVITY TYPE):
+- Put ALL task directions and "how to complete this" language ONLY in each section's "instructions" string (one clear directions block per section that needs it).
+- Student-facing fields must contain ONLY content students interact with: sortable words/cards, category names, question stems, vocabulary, numbers, labels for organizers (short titles), clues, etc.
+- NEVER put meta-directions inside: questions[].text / prompt, cut_and_sort "items", picture_sort "cards", venn leftItems/rightItems/centerItems, Frayer q1Content–q4Content (leave empty or topic notes only), story_map fields[].content, sequence_chart steps[].content, or observation_sheet sections[] when those should be blank for students.
+- Forbidden inside student data arrays and organizer cells: phrases like "Sort these as…", "Sort these into…", "Write in the center…", "Label each part…", "Put each card…", "Draw a picture in this box" (those belong in "instructions" only).
+- Do NOT duplicate the same direction sentence in both "instructions" and a question stem or item string.
+- For cut_and_sort / picture_sort: "categories" are SHORT category names only (e.g. "Clues", "Not clues"). "items" / "cards" are ONLY the movable words or phrases — never a full sentence of directions.
+`;
+
+function stripQuestionDuplicateOfInstructions(
+  questionText: string,
+  instructions: string | undefined | null,
+): string {
+  const ins = (instructions ?? "").trim();
+  if (!ins) return (questionText ?? "").trim();
+  const qt = (questionText ?? "").trim();
+  if (!qt) return "";
+  if (qt === ins) return "";
+  if (qt.startsWith(ins + "\n\n")) return qt.slice(ins.length + 2).trim();
+  if (qt.startsWith(ins + "\n")) return qt.slice(ins.length + 1).trim();
+  return questionText ?? "";
+}
+
+function mergeInstructionStrings(existing: unknown, additions: string[]): string | undefined {
+  const e = typeof existing === "string" ? existing.trim() : "";
+  const extra = [...new Set(additions.map((a) => a.trim()).filter(Boolean))].filter(
+    (p) => p && !e.includes(p),
+  );
+  if (!extra.length) return e || undefined;
+  const tail = extra.join("\n\n");
+  if (!e) return tail;
+  return `${e}\n\n${tail}`;
+}
+
+/** True when a single cell/line is clearly a direction, not vocabulary to sort or classify. */
+function cellLooksLikeInstructionOnly(t: string): boolean {
+  const s = t.trim();
+  if (s.length < 8) return false;
+  return (
+    /^sort\s+these\b/i.test(s) ||
+    /^write\s+in\s+the\s+(center|middle)\b/i.test(s) ||
+    /^label\s+each\s+(part|picture|box|diagram|one|number)\b/i.test(s) ||
+    /^put\s+each\s+(card|item|word)\b/i.test(s) ||
+    /^place\s+each\s+(card|item)\b/i.test(s) ||
+    /^cut\s+out\s+and\s+sort\b/i.test(s) ||
+    /^circle\s+each\b/i.test(s) ||
+    /^draw\s+(a|an|the)\s+picture\s+in\s+this\b/i.test(s) ||
+    /^write\s+your\s+(answer|ideas|response)\s+here\b/i.test(s)
+  );
+}
+
+function hoistFromStringCell(cell: string, bucket: string[]): string {
+  const t = String(cell ?? "").trim();
+  if (!t) return "";
+  const lines = t.split(/\r?\n/);
+  if (lines.length > 1) {
+    const first = lines[0].trim();
+    if (cellLooksLikeInstructionOnly(first)) {
+      bucket.push(first);
+      return lines.slice(1).join("\n").trim();
+    }
+    return t;
+  }
+  if (cellLooksLikeInstructionOnly(t)) {
+    bucket.push(t);
+    return "";
+  }
+  return t;
+}
+
+/** Narrow: only hoists common sorting/setup lines mistakenly pasted into question stems (not science/math "Draw…" tasks). */
+function hoistLeadInstructionFromQuestionStem(text: string, bucket: string[]): string {
+  const t = String(text ?? "").trim();
+  if (!t) return "";
+  const firstLine = t.split(/\r?\n/)[0]?.trim() ?? "";
+  if (
+    /^(sort\s+these\s+(as|into)|write\s+in\s+the\s+center|cut\s+out\s+and\s+sort|put\s+each\s+card)/i.test(
+      firstLine,
+    )
+  ) {
+    bucket.push(firstLine);
+    return t.split(/\r?\n/).slice(1).join("\n").trim();
+  }
+  return t;
+}
+
+/**
+ * Post-process AI JSON: move instructional copy out of student fields into section.instructions.
+ * Does not change layout; only reassigns strings.
+ */
+function hoistInstructionalLanguageToSectionInstructions(worksheet: any): void {
+  if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return;
+
+  for (const s of worksheet.sections) {
+    if (!s || typeof s !== "object") continue;
+    const bucket: string[] = [];
+    let ins = typeof s.instructions === "string" ? s.instructions.trim() : "";
+
+    const mapStrArray = (arr: unknown): unknown => {
+      if (!Array.isArray(arr)) return arr;
+      return arr.map((x) => (typeof x === "string" ? hoistFromStringCell(x, bucket) : x));
+    };
+
+    if (Array.isArray(s.items)) s.items = mapStrArray(s.items) as string[];
+    if (Array.isArray(s.cards)) s.cards = mapStrArray(s.cards) as string[];
+    if (Array.isArray(s.leftItems)) s.leftItems = mapStrArray(s.leftItems) as string[];
+    if (Array.isArray(s.rightItems)) s.rightItems = mapStrArray(s.rightItems) as string[];
+    if (Array.isArray(s.centerItems)) s.centerItems = mapStrArray(s.centerItems) as string[];
+
+    for (const key of ["q1Content", "q2Content", "q3Content", "q4Content"] as const) {
+      if (typeof s[key] === "string") {
+        s[key] = hoistFromStringCell(s[key], bucket);
+      }
+    }
+
+    if (s.type === "story_map" && Array.isArray(s.fields)) {
+      s.fields = s.fields.map((f: any) => ({
+        ...f,
+        content: typeof f?.content === "string" ? hoistFromStringCell(f.content, bucket) : f?.content,
+      }));
+    }
+
+    if (Array.isArray(s.steps)) {
+      s.steps = s.steps.map((st: any) => ({
+        ...st,
+        content: typeof st?.content === "string" ? hoistFromStringCell(st.content, bucket) : st?.content,
+      }));
+    }
+
+    if (Array.isArray(s.events)) {
+      s.events = s.events.map((ev: any) => ({
+        ...ev,
+        content: typeof ev?.content === "string" ? hoistFromStringCell(ev.content, bucket) : ev?.content,
+      }));
+    }
+
+    if (Array.isArray(s.branches)) {
+      s.branches = mapStrArray(s.branches) as string[];
+    }
+
+    if (Array.isArray(s.sections) && s.type === "observation_sheet") {
+      s.sections = mapStrArray(s.sections);
+    }
+
+    if (Array.isArray(s.questions)) {
+      s.questions = s.questions.map((q: any) => {
+        const raw = String(q?.text ?? q?.prompt ?? "");
+        let next = stripQuestionDuplicateOfInstructions(raw, ins);
+        next = hoistLeadInstructionFromQuestionStem(next, bucket);
+        const merged = { ...q, text: next, prompt: next };
+        return merged;
+      });
+    }
+
+    const merged = mergeInstructionStrings(s.instructions, bucket);
+    if (merged !== undefined) s.instructions = merged;
+  }
+}
+
 /** Quick Gen slots A/B/C map to fixed page layouts returned to clients. */
 function pageLayoutForSlot(slot: string | undefined): "standard" | "boxed" | "two_column" {
   const s = (slot || "A").toUpperCase();
@@ -935,6 +1096,165 @@ function buildOptionMetadata(input: {
   };
 }
 
+/** Readable names for worksheet JSON section.type values (factual preview copy). */
+const SECTION_TYPE_DISPLAY: Record<string, string> = {
+  passage: "Reading passage",
+  vocabulary: "Vocabulary list",
+  questions: "Questions",
+  directions: "Directions",
+  math_practice: "Math practice",
+  math_word_problems: "Word problems",
+  science_short_response: "Short response",
+  word_bank: "Word bank",
+  label_diagram: "Label diagram",
+  mind_map: "Mind map",
+  venn_diagram: "Venn diagram",
+  kwl_chart: "K-W-L chart",
+  sequence_chart: "Sequence / process chart",
+  story_map: "Story map",
+  frayer_model: "Frayer model",
+  line_matching: "Line matching",
+  cut_and_sort: "Cut and sort",
+  picture_sort: "Picture sort",
+  word_search: "Word search",
+  word_search_full: "Word search",
+  writing_prompt: "Writing prompt",
+  writing_prompt_header: "Writing prompt",
+  sentence_frames: "Sentence frames",
+  mini_book: "Mini book",
+  acrostic: "Acrostic",
+  timeline: "Timeline",
+  observation_sheet: "Observation sheet",
+  map_activity: "Map activity",
+  coloring_page: "Coloring page",
+  color_by_code: "Color by code",
+  tracing: "Tracing",
+  word_practice: "Word practice",
+  word_sight_row: "Sight word row",
+  fill_blanks: "Fill in blanks",
+  sentence_practice: "Sentence practice",
+  coloring_activity: "Coloring activity",
+  number_bond: "Number bonds",
+  ten_frame: "Ten frames",
+  graph_page: "Graph",
+  measurement: "Measurement",
+  clock_practice: "Clock practice",
+  dice_activity: "Dice activity",
+  spinner: "Spinner",
+  bingo_card: "Bingo",
+  crossword: "Crossword",
+};
+
+function displaySectionType(type: string | undefined): string {
+  const t = String(type ?? "").trim();
+  if (!t) return "Section";
+  return SECTION_TYPE_DISPLAY[t] ?? t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Summarize one section for preview "Includes" — counts and structure only, no marketing.
+ */
+function describeSectionStructure(s: any, index: number): string {
+  const label = displaySectionType(s?.type);
+  const bits: string[] = [`${index + 1}. ${label}`];
+
+  const nq = Array.isArray(s?.questions) ? s.questions.length : 0;
+  if (nq > 0) bits.push(`${nq} question${nq === 1 ? "" : "s"}`);
+
+  const nw = Array.isArray(s?.words) ? s.words.length : 0;
+  if (nw > 0) bits.push(`${nw} word-bank term${nw === 1 ? "" : "s"}`);
+
+  const nv = Array.isArray(s?.vocabulary) ? s.vocabulary.length : 0;
+  if (nv > 0) bits.push(`${nv} vocabulary item${nv === 1 ? "" : "s"}`);
+
+  const ni = Array.isArray(s?.items) ? s.items.length : 0;
+  if (ni > 0) bits.push(`${ni} sort item${ni === 1 ? "" : "s"}`);
+
+  const nc = Array.isArray(s?.cards) ? s.cards.length : 0;
+  if (nc > 0) bits.push(`${nc} card${nc === 1 ? "" : "s"}`);
+
+  const np = Array.isArray(s?.pairs) ? s.pairs.length : 0;
+  if (np > 0) bits.push(`${np} match pair${np === 1 ? "" : "s"}`);
+
+  const nb = Array.isArray(s?.bonds) ? s.bonds.length : 0;
+  if (nb > 0) bits.push(`${nb} bond${nb === 1 ? "" : "s"}`);
+
+  const nf = Array.isArray(s?.frames) ? s.frames.length : 0;
+  if (nf > 0) bits.push(`${nf} frame${nf === 1 ? "" : "s"}`);
+
+  const ncl = Array.isArray(s?.clues) ? s.clues.length : 0;
+  if (ncl > 0) bits.push(`${ncl} clue${ncl === 1 ? "" : "s"}`);
+
+  const nbr = Array.isArray(s?.branches) ? s.branches.length : 0;
+  if (nbr > 0) bits.push(`${nbr} branch${nbr === 1 ? "" : "es"}`);
+
+  const nst = Array.isArray(s?.steps) ? s.steps.length : 0;
+  if (nst > 0) bits.push(`${nst} step${nst === 1 ? "" : "s"}`);
+
+  const nev = Array.isArray(s?.events) ? s.events.length : 0;
+  if (nev > 0) bits.push(`${nev} event${nev === 1 ? "" : "s"}`);
+
+  const nwl = Array.isArray(s?.wordList) ? s.wordList.length : 0;
+  if (nwl > 0) bits.push(`${nwl} list word${nwl === 1 ? "" : "s"}`);
+
+  if (typeof s?.passage === "string" && s.passage.trim().length > 0) {
+    bits.push("passage text");
+  }
+
+  return bits.join(" — ");
+}
+
+type DerivedWorksheetPreview = {
+  title: string;
+  shortDescription: string;
+  includedComponents: string[];
+};
+
+/**
+ * Build Quick Gen card copy from the actual worksheet.sections array (post-repair).
+ */
+function deriveOptionMetadataFromWorksheet(
+  worksheet: any,
+  topicFallback: string,
+): DerivedWorksheetPreview {
+  const sections = Array.isArray(worksheet?.sections)
+    ? worksheet.sections.filter((x: any) => x && typeof x === "object")
+    : [];
+  const wt = typeof worksheet?.title === "string" ? worksheet.title.trim() : "";
+  const tf = (topicFallback || "this topic").trim();
+
+  if (sections.length === 0) {
+    return {
+      title: wt || "Worksheet (empty)",
+      shortDescription: "No sections in the generated worksheet JSON.",
+      includedComponents: ["No sections"],
+    };
+  }
+
+  const includedComponents = sections.map((s: any, i: number) => describeSectionStructure(s, i));
+
+  const typeNames = sections.map((s: any) => displaySectionType(s?.type));
+  const uniqueTypes = [...new Set(typeNames)];
+  const structurePhrase =
+    uniqueTypes.length === 1
+      ? `one ${uniqueTypes[0].toLowerCase()} section`
+      : `${sections.length} sections (${uniqueTypes.join(", ")})`;
+
+  const shortDescription = `Generated worksheet: ${structurePhrase} for ${tf}.`;
+
+  const title =
+    wt ||
+    (sections.length === 1
+      ? `${displaySectionType(sections[0]?.type)}`
+      : `${sections.length} sections: ${typeNames.join(" · ")}`);
+
+  return {
+    title,
+    shortDescription,
+    includedComponents,
+  };
+}
+
 router.post("/", async (req: Request, res: Response) => {
   try {
     const {
@@ -1199,6 +1519,7 @@ Options: ${JSON.stringify(options || {})}
 ${subjectBlock}${differentiationBlock}
 ${mixedQuestionTypesInstruction}${questionTypesClientInstruction}
 SECTION GENERATION RULES BY TYPE:
+${INSTRUCTIONS_VS_STUDENT_CONTENT}
 ${templateCopyWarning}
 ${quickGenInstructionPrefixRules}
 
@@ -1471,6 +1792,7 @@ Return ONLY raw JSON (no markdown).`
         (options || {}) as Record<string, unknown>,
         optionSlot
       );
+      hoistInstructionalLanguageToSectionInstructions(result.worksheet);
       if (useCustomTypes) {
         filterWorksheetQuestionsByTypes(result.worksheet, questionTypesFromClient);
       }
@@ -1500,7 +1822,7 @@ Return ONLY raw JSON (no markdown).`
       };
     }
 
-    const optionMetadata = buildOptionMetadata({
+    const baseOptionMetadata = buildOptionMetadata({
       activityType,
       topic,
       subject,
@@ -1508,6 +1830,13 @@ Return ONLY raw JSON (no markdown).`
       familyLabel: variantFamilyLabel,
       layoutVariant: optionSlot,
     });
+    const optionMetadata =
+      result.worksheet
+        ? {
+            ...baseOptionMetadata,
+            ...deriveOptionMetadataFromWorksheet(result.worksheet, String(topic)),
+          }
+        : baseOptionMetadata;
     if (result.worksheet) {
       const layoutType = ACTIVITY_TO_LAYOUT[activityType] || "default";
       const pg = pageLayoutForSlot(optionSlot);
