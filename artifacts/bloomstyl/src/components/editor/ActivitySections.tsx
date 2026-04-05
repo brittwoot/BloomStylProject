@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { EditableTextBlock } from "./EditableTextBlock";
-import { useBloomStore } from "../../store";
 
 // ── Word Search Grid Generator ────────────────────────────────────────────────
 
@@ -43,7 +42,7 @@ function generateFillBlanks(word: string): string[] {
 }
 
 // ── WordPracticeSection ───────────────────────────────────────────────────────
-// 3-column: Read the word | Color the word (outline) | Write the word (trace)
+// Column labels only; task directions live in section.instructions (Directions block).
 
 export function WordPracticeSection({ section, onUpdate }: { section: any; onUpdate: (updates: any) => void }) {
   const word = section.targetWord || "";
@@ -58,14 +57,12 @@ export function WordPracticeSection({ section, onUpdate }: { section: any; onUpd
     <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
       {/* Column headers */}
       <div className="grid grid-cols-3 border-b-2 border-gray-300 bg-gray-50 text-sm font-bold">
-        <div className="p-2 text-center border-r border-gray-300">
-          Read the word.
-        </div>
+        <div className="p-2 text-center border-r border-gray-300">Read</div>
         <div className="p-2 text-center border-r border-gray-300 flex items-center justify-center gap-1">
-          <span>🖍️</span> Color the word.
+          <span>🖍️</span> Color
         </div>
         <div className="p-2 text-center flex items-center justify-center gap-1">
-          Write the word. <span>✏️</span>
+          Write <span>✏️</span>
         </div>
       </div>
 
@@ -128,7 +125,6 @@ export function WordSearchSection({ section, onUpdate }: { section: any; onUpdat
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-bold">🔍 Find the word.</p>
       <div className="inline-block border border-gray-300 rounded overflow-hidden">
         {grid.map((row, ri) => (
           <div key={ri} className="flex">
@@ -166,7 +162,6 @@ export function LetterConnectSection({ section }: { section: any }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-bold">Connect the letters.</p>
       <div className="space-y-2">
         {[row1, row2].map((row, ri) => (
           <div key={ri} className="flex gap-2 flex-wrap">
@@ -193,9 +188,6 @@ export function FillBlanksSection({ section, onUpdate }: { section: any; onUpdat
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-bold text-center text-gray-700">
-        Fill in each pattern below.
-      </p>
       <div className="grid grid-cols-3 gap-4">
         {patterns.map((pattern, i) => (
           <div
@@ -225,13 +217,13 @@ export function FillBlanksSection({ section, onUpdate }: { section: any; onUpdat
 // ── SentencePracticeSection ───────────────────────────────────────────────────
 
 export function SentencePracticeSection({ section, onUpdate }: { section: any; onUpdate: (updates: any) => void }) {
-  const { updateSection } = useBloomStore();
+  const title = typeof section.title === "string" ? section.title.trim() : "";
 
   return (
     <div className="space-y-2 border-t-2 border-gray-200 pt-4">
-      <p className="text-sm font-bold text-center underline">
-        {section.title || "Write the word in a sentence."}
-      </p>
+      {title ? (
+        <p className="text-sm font-bold text-center underline">{section.title}</p>
+      ) : null}
       <div className="flex items-end gap-2">
         <span className="text-2xl font-bold whitespace-nowrap" style={{ fontFamily: "Comic Sans MS, cursive" }}>
           <EditableTextBlock
