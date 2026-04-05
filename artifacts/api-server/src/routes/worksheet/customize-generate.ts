@@ -61,22 +61,22 @@ function safeParseJSON(str: string): any | null {
 const INSTRUCTIONS_VS_STUDENT_CONTENT = `
 INSTRUCTIONS vs STUDENT-FACING FIELDS (CRITICAL — EVERY ACTIVITY TYPE):
 - Put ALL task directions and "how to complete this" language ONLY in each section's "instructions" string (one clear directions block per section that needs it).
-- Student-facing fields must contain ONLY content students interact with: sortable words/cards, category names, question stems, vocabulary, numbers, labels for organizers (short titles), clues, etc.
-- NEVER put meta-directions inside: questions[].text / prompt, cut_and_sort "items", picture_sort "cards", venn leftItems/rightItems/centerItems, Frayer q1Content–q4Content (leave empty or topic notes only), story_map fields[].content, sequence_chart steps[].content, or observation_sheet sections[] when those should be blank for students.
+- Student-facing fields must contain ONLY content students interact with (question stems, vocabulary, sortable items for cut/sort activities, etc.). Do NOT pre-fill organizer student-response JSON (see BLANK ORGANIZER WORKSHEET MODE below).
+- NEVER put meta-directions inside: questions[].text / prompt, cut_and_sort "items", picture_sort "cards", Frayer q1Content–q4Content (leave empty), story_map fields[].content, sequence_chart steps[].content, or observation_sheet sections[] when those should be blank for students.
 - Forbidden inside student data arrays and organizer cells: phrases like "Sort these as…", "Sort these into…", "Write in the center…", "Label each part…", "Put each card…", "Draw a picture in this box" (those belong in "instructions" only).
 - Do NOT duplicate the same direction sentence in both "instructions" and a question stem or item string.
 - For cut_and_sort / picture_sort: "categories" are SHORT category names only (e.g. "Clues", "Not clues"). "items" / "cards" are ONLY the movable words or phrases — never a full sentence of directions.
 
-STUDENT RESPONSE CELLS (ORGANIZERS — CRITICAL):
-- Fields where students will write answers must stay EMPTY in JSON: use "" (empty string) or omit. Do NOT pre-fill with definitions, explanations, example answers, or teaching paragraphs.
-- Frayer model: q1Content, q2Content, q3Content, q4Content MUST all be "" (students fill quadrants). Put teaching language in section.instructions only.
-- Story map: every fields[].content MUST be "" (labels only in "label").
-- Sequence chart: steps[].content MUST be "" (you may set steps[].title to short stage names like "Evaporation"). Student detail lines appear below in the UI.
-- Timeline: events[].content MUST be "" (short event labels in "label" only).
-- Venn diagram: leftItems, rightItems, centerItems MUST be [] OR short sortable terms (single words or 2–4 word phrases). No sentences, no definitions in those arrays.
-- Mind map: branches MUST be [] or only short subtopic labels (a few words each), not paragraphs. centerTerm is the topic only.
-- KWL: prefer empty knowItems / wantItems / learnedItems arrays; the printable uses blank rows. Do not paste explanations into those arrays.
-- Mini book: panels[].prompt MUST be "" (page labels in "label" only if needed).
+BLANK ORGANIZER WORKSHEET MODE (CRITICAL):
+- Do NOT populate organizer fields with example answers, sample ideas, topic-specific stage names in sequence/timeline JSON, or sortable terms in Venn arrays. Put teaching context, science process names, and task wording in section "instructions" only.
+- Venn diagram: leftItems, rightItems, centerItems MUST each be [] (empty arrays). Never add strings to these arrays.
+- Mind map: centerTerm MUST be the neutral label "Topic" only (not the worksheet topic string). branches MUST be only empty strings "" (one per branch slot). Do not add subtopic words.
+- Sequence chart: steps[].content MUST be "". steps[].title MUST be generic only: "Step 1", "Step 2", … (no real stage names like "Evaporation" in JSON).
+- Timeline: events[].content MUST be "". events[].label MUST be generic only: "Event 1", "Event 2", … (no topic-specific event text in JSON).
+- KWL: knowItems, wantItems, learnedItems MUST each be [] (empty arrays). Do not add entries.
+- Frayer model: q1Content, q2Content, q3Content, q4Content MUST all be "".
+- Story map: every fields[].content MUST be "" (structural labels only in "label").
+- Mini book: panels[].prompt MUST be "".
 
 SENTENCE FRAMES & WRITTEN RESPONSES:
 - sentence_frames: each frames[].stem MUST be a scaffold with blanks (____ or …) or a short stem ending in an obvious fill-in — NOT a completed paragraph, model answer, or "because…" full explanation. Put rubrics or examples in section.instructions only.
@@ -264,14 +264,6 @@ function stripExampleBlocksFromQuestionText(text: string): string {
 function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
   if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return;
 
-  const trimVennItem = (x: unknown): string => {
-    if (typeof x !== "string") return "";
-    const t = x.trim();
-    if (!t) return "";
-    if (looksLikeTeachingParagraph(t) || t.length > 72) return "";
-    return t;
-  };
-
   for (const s of worksheet.sections) {
     if (!s || typeof s !== "object") continue;
 
@@ -286,41 +278,42 @@ function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
     }
 
     if (s.type === "sequence_chart" && Array.isArray(s.steps)) {
-      s.steps = s.steps.map((st: any) => ({ ...st, content: "" }));
+      s.steps = s.steps.map((st: any, i: number) => ({
+        ...st,
+        content: "",
+        title: `Step ${i + 1}`,
+      }));
     }
 
     if (s.type === "timeline" && Array.isArray(s.events)) {
-      s.events = s.events.map((ev: any) => ({ ...ev, content: "" }));
+      s.events = s.events.map((ev: any, i: number) => ({
+        ...ev,
+        content: "",
+        label: `Event ${i + 1}`,
+      }));
     }
 
     if (s.type === "mini_book" && Array.isArray(s.panels)) {
       s.panels = s.panels.map((p: any) => ({ ...p, prompt: "" }));
     }
 
-    if (s.type === "mind_map" && Array.isArray(s.branches)) {
-      s.branches = s.branches.map((b: unknown) =>
-        typeof b === "string" && (looksLikeTeachingParagraph(b) || b.trim().length > 72) ? "" : b,
-      );
+    if (s.type === "mind_map") {
+      s.centerTerm = "Topic";
+      if (Array.isArray(s.branches)) {
+        s.branches = s.branches.map(() => "");
+      }
     }
 
     if (s.type === "venn_diagram") {
-      if (Array.isArray(s.leftItems)) s.leftItems = s.leftItems.map(trimVennItem);
-      if (Array.isArray(s.rightItems)) s.rightItems = s.rightItems.map(trimVennItem);
-      if (Array.isArray(s.centerItems)) s.centerItems = s.centerItems.map(trimVennItem);
+      s.leftItems = [];
+      s.rightItems = [];
+      s.centerItems = [];
     }
 
-    const clearKwlCell = (arr: unknown): void => {
-      if (!Array.isArray(arr)) return;
-      for (let i = 0; i < arr.length; i++) {
-        if (typeof arr[i] === "string" && (looksLikeTeachingParagraph(arr[i]) || String(arr[i]).length > 80)) {
-          arr[i] = "";
-        }
-      }
-    };
     if (s.type === "kwl_chart") {
-      clearKwlCell(s.knowItems);
-      clearKwlCell(s.wantItems);
-      clearKwlCell(s.learnedItems);
+      s.knowItems = [];
+      s.wantItems = [];
+      s.learnedItems = [];
     }
 
     if (s.type === "sentence_frames" && Array.isArray(s.frames)) {
@@ -1625,7 +1618,7 @@ Given an activity type and options, generate the specific content for a workshee
 
 OUTPUT CONTRACT (STRICT):
 - Return ONLY one JSON object. No markdown fences (no \`\`\`json), no commentary before or after the JSON.
-- Fill all required content (titles, stems, word banks, matching pairs, diagram parts, math problems, etc.) with real, grade-appropriate material. Exception: student writing cells in organizers (see STUDENT RESPONSE CELLS) must remain "" — do not pre-fill those with explanations. No empty "sections" array. No empty "questions" arrays for math_practice or math_word_problems.
+- Generate real, grade-appropriate material for non-organizer content (titles, word banks, matching pairs, math problems, questions, etc.). Do NOT populate organizer student fields: follow BLANK ORGANIZER WORKSHEET MODE in SECTION GENERATION RULES (empty Venn arrays; mind map "Topic" + blank branches; generic Step N / Event N; empty KWL arrays; empty organizer writing cells). No empty "sections" array. No empty "questions" arrays for math_practice or math_word_problems.
 ${quickGenDistinctBlock}
 ${quickGenContentTypeFlag}
 Return ONLY valid JSON with this structure:
@@ -1655,17 +1648,19 @@ ${templateCopyWarning}
 ${quickGenInstructionPrefixRules}
 
 For mind_map:
-Generate sections: [{ "id":"s1", "type":"mind_map", "title": "${title}", "centerTerm": "${topic}", "branches": [${Array.from({ length: options?.branchCount ?? 4 }).map(() => '""').join(",")}], "branchCount": ${options?.branchCount || 4} }]
+Generate sections: [{ "id":"s1", "type":"mind_map", "title": "${title}", "centerTerm": "Topic", "branches": [${Array.from({ length: options?.branchCount ?? 4 }).map(() => '""').join(",")}], "branchCount": ${options?.branchCount || 4} }]
 
 For venn_diagram:
 Generate sections: [{ "id":"s1", "type":"venn_diagram", "title":"${title}", "leftLabel": "${options?.leftLabel || 'Topic A'}", "rightLabel": "${options?.rightLabel || 'Topic B'}", "centerLabel": "${options?.centerLabel || 'Both'}", "leftItems": [], "rightItems": [], "centerItems": [] }]
+Never add strings to leftItems, rightItems, or centerItems; keep all three as [].
 
 For kwl_chart:
 Generate sections: [{ "id":"s1", "type":"kwl_chart", "title":"${title}", "variant": "${options?.variant || 'KWL (3 columns)'}", "knowItems": [], "wantItems": [], "learnedItems": [], "rowCount": ${options?.rowCount || 8} }]
+knowItems, wantItems, and learnedItems MUST remain [] — do not add strings.
 
 For sequence_chart:
-Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${title}", "steps": [{"id":"step1","number":1,"title":"${generateContentPlaceholder}","content":""},{"id":"step2","number":2,"title":"${generateContentPlaceholder}","content":""},{"id":"step3","number":3,"title":"${generateContentPlaceholder}","content":""},{"id":"step4","number":4,"title":"${generateContentPlaceholder}","content":""}] }]
-If the subject is Science, steps must describe a real process or cycle (e.g., water moving through stages), not a fictional plot or story sequence. Use short stage names in "title" only; keep "content" as "".
+Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${title}", "steps": [{"id":"step1","number":1,"title":"Step 1","content":""},{"id":"step2","number":2,"title":"Step 2","content":""},{"id":"step3","number":3,"title":"Step 3","content":""},{"id":"step4","number":4,"title":"Step 4","content":""}] }]
+If the subject is Science, describe the process in section "instructions" only — not in steps[].title. steps[].title must stay generic ("Step 1", …). steps[].content must be "".
 
 For frayer_model:
 Generate sections: [{ "id":"s1", "type":"frayer_model", "title":"${title}", "centerTerm":"${targetWord || topic}", "q1Label":"${options?.q1Label || 'Definition'}", "q2Label":"${options?.q2Label || 'Example'}", "q3Label":"${options?.q3Label || 'Non-Example'}", "q4Label":"${options?.q4Label || 'Draw It'}", "q1Content":"", "q2Content":"", "q3Content":"", "q4Content":"" }]
@@ -1730,8 +1725,8 @@ For observation_sheet:
 Generate sections: [{ "id":"s1", "type":"observation_sheet", "title":"${title}", "sections":["Hypothesis","Observation","What I learned"], "includeDrawing":${options?.includeDrawing !== false} }]
 
 For timeline:
-Generate 5 events for the topic.
-Generate sections: [{ "id":"s1", "type":"timeline", "title":"${title}", "orientation":"${options?.orientation || 'Horizontal'}", "events":[{"id":"e1","label":"${generateContentPlaceholder}","content":""},{"id":"e2","label":"${generateContentPlaceholder}","content":""},{"id":"e3","label":"${generateContentPlaceholder}","content":""},{"id":"e4","label":"${generateContentPlaceholder}","content":""},{"id":"e5","label":"${generateContentPlaceholder}","content":""}] }]
+Generate sections: [{ "id":"s1", "type":"timeline", "title":"${title}", "orientation":"${options?.orientation || 'Horizontal'}", "events":[{"id":"e1","label":"Event 1","content":""},{"id":"e2","label":"Event 2","content":""},{"id":"e3","label":"Event 3","content":""},{"id":"e4","label":"Event 4","content":""},{"id":"e5","label":"Event 5","content":""}] }]
+Topic-specific timeline wording belongs in section "instructions" only — not in events[].label.
 
 For story_map:
 Generate sections: [{ "id":"s1", "type":"story_map", "title":"${title}", "layout":"Linear", "fields":[{"label":"Characters","content":""},{"label":"Setting","content":""},{"label":"Problem","content":""},{"label":"Event 1","content":""},{"label":"Event 2","content":""},{"label":"Event 3","content":""},{"label":"Solution","content":""},{"label":"Theme","content":""}] }]
