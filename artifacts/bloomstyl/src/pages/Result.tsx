@@ -1827,7 +1827,7 @@ export function Result() {
         {/* ── Worksheet paper ── */}
         <div
           id="worksheet-paper"
-          className={`max-w-[860px] mx-auto sm:my-5 bg-white sm:rounded-2xl sm:shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] overflow-hidden print:shadow-none print:rounded-none print:my-0 ${worksheetPaperShell(worksheet.quickGenMeta?.layoutType)}`}
+          className={`max-w-[860px] mx-auto sm:my-5 bg-white sm:rounded-2xl sm:shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] print:shadow-none print:rounded-none print:my-0 ${worksheetPaperShell(worksheet.quickGenMeta?.layoutType)}`}
           style={{ backgroundColor: worksheetPageStyle.bgColor }}
           onClick={() => setActiveSection(null)}
         >
