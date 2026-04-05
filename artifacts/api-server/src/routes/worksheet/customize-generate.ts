@@ -66,6 +66,21 @@ INSTRUCTIONS vs STUDENT-FACING FIELDS (CRITICAL — EVERY ACTIVITY TYPE):
 - Forbidden inside student data arrays and organizer cells: phrases like "Sort these as…", "Sort these into…", "Write in the center…", "Label each part…", "Put each card…", "Draw a picture in this box" (those belong in "instructions" only).
 - Do NOT duplicate the same direction sentence in both "instructions" and a question stem or item string.
 - For cut_and_sort / picture_sort: "categories" are SHORT category names only (e.g. "Clues", "Not clues"). "items" / "cards" are ONLY the movable words or phrases — never a full sentence of directions.
+
+STUDENT RESPONSE CELLS (ORGANIZERS — CRITICAL):
+- Fields where students will write answers must stay EMPTY in JSON: use "" (empty string) or omit. Do NOT pre-fill with definitions, explanations, example answers, or teaching paragraphs.
+- Frayer model: q1Content, q2Content, q3Content, q4Content MUST all be "" (students fill quadrants). Put teaching language in section.instructions only.
+- Story map: every fields[].content MUST be "" (labels only in "label").
+- Sequence chart: steps[].content MUST be "" (you may set steps[].title to short stage names like "Evaporation"). Student detail lines appear below in the UI.
+- Timeline: events[].content MUST be "" (short event labels in "label" only).
+- Venn diagram: leftItems, rightItems, centerItems MUST be [] OR short sortable terms (single words or 2–4 word phrases). No sentences, no definitions in those arrays.
+- Mind map: branches MUST be [] or only short subtopic labels (a few words each), not paragraphs. centerTerm is the topic only.
+- KWL: prefer empty knowItems / wantItems / learnedItems arrays; the printable uses blank rows. Do not paste explanations into those arrays.
+- Mini book: panels[].prompt MUST be "" (page labels in "label" only if needed).
+
+SENTENCE FRAMES & WRITTEN RESPONSES:
+- sentence_frames: each frames[].stem MUST be a scaffold with blanks (____ or …) or a short stem ending in an obvious fill-in — NOT a completed paragraph, model answer, or "because…" full explanation. Put rubrics or examples in section.instructions only.
+- questions (short_answer, essay, fill_in_blank): "text" / "prompt" MUST be the task only. Do NOT append "Example answer:", "Sample response:", "Model answer:", or full worked examples after the question — those belong in section.instructions for teachers only.
 `;
 
 function stripQuestionDuplicateOfInstructions(
@@ -215,6 +230,122 @@ function hoistInstructionalLanguageToSectionInstructions(worksheet: any): void {
 
     const merged = mergeInstructionStrings(s.instructions, bucket);
     if (merged !== undefined) s.instructions = merged;
+  }
+}
+
+/** True if string looks like a definition / explanation, not a short label. */
+function looksLikeTeachingParagraph(s: string): boolean {
+  const t = s.trim();
+  if (t.length < 36) return false;
+  if (/\.\s+[A-Z]/.test(t)) return true;
+  if (t.split(/\s+/).length > 16) return true;
+  return false;
+}
+
+/** Stems meant for students to complete should include a blank or ellipsis scaffold. */
+function sentenceFrameHasStudentBlank(stem: string): boolean {
+  return /_{2,}|\.{3,}|(\[[\s_]{1,12}\])|(\s+___+\s?)/.test(stem);
+}
+
+/** Remove teacher-only example blocks often appended to question stems. */
+function stripExampleBlocksFromQuestionText(text: string): string {
+  const t = String(text ?? "");
+  const cut = t.search(
+    /\n\n\s*(Example\s+(answer|response)|Sample\s+(answer|response)|Model\s+(answer|response)|Answer\s*:|Teacher\s+note|Possible\s+response)\s*[:\-]/i,
+  );
+  if (cut === -1) return t;
+  return t.slice(0, cut).trimEnd();
+}
+
+/**
+ * Clear pre-filled explanatory content from student writing areas (post-AI).
+ * Does not change layout; only empties or trims strings in student fields.
+ */
+function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
+  if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return;
+
+  const trimVennItem = (x: unknown): string => {
+    if (typeof x !== "string") return "";
+    const t = x.trim();
+    if (!t) return "";
+    if (looksLikeTeachingParagraph(t) || t.length > 72) return "";
+    return t;
+  };
+
+  for (const s of worksheet.sections) {
+    if (!s || typeof s !== "object") continue;
+
+    if (s.type === "frayer_model") {
+      for (const k of ["q1Content", "q2Content", "q3Content", "q4Content"] as const) {
+        s[k] = "";
+      }
+    }
+
+    if (s.type === "story_map" && Array.isArray(s.fields)) {
+      s.fields = s.fields.map((f: any) => ({ ...f, content: "" }));
+    }
+
+    if (s.type === "sequence_chart" && Array.isArray(s.steps)) {
+      s.steps = s.steps.map((st: any) => ({ ...st, content: "" }));
+    }
+
+    if (s.type === "timeline" && Array.isArray(s.events)) {
+      s.events = s.events.map((ev: any) => ({ ...ev, content: "" }));
+    }
+
+    if (s.type === "mini_book" && Array.isArray(s.panels)) {
+      s.panels = s.panels.map((p: any) => ({ ...p, prompt: "" }));
+    }
+
+    if (s.type === "mind_map" && Array.isArray(s.branches)) {
+      s.branches = s.branches.map((b: unknown) =>
+        typeof b === "string" && (looksLikeTeachingParagraph(b) || b.trim().length > 72) ? "" : b,
+      );
+    }
+
+    if (s.type === "venn_diagram") {
+      if (Array.isArray(s.leftItems)) s.leftItems = s.leftItems.map(trimVennItem);
+      if (Array.isArray(s.rightItems)) s.rightItems = s.rightItems.map(trimVennItem);
+      if (Array.isArray(s.centerItems)) s.centerItems = s.centerItems.map(trimVennItem);
+    }
+
+    const clearKwlCell = (arr: unknown): void => {
+      if (!Array.isArray(arr)) return;
+      for (let i = 0; i < arr.length; i++) {
+        if (typeof arr[i] === "string" && (looksLikeTeachingParagraph(arr[i]) || String(arr[i]).length > 80)) {
+          arr[i] = "";
+        }
+      }
+    };
+    if (s.type === "kwl_chart") {
+      clearKwlCell(s.knowItems);
+      clearKwlCell(s.wantItems);
+      clearKwlCell(s.learnedItems);
+    }
+
+    if (s.type === "sentence_frames" && Array.isArray(s.frames)) {
+      s.frames = s.frames.map((f: any) => {
+        const stem = typeof f?.stem === "string" ? f.stem : "";
+        const trimmed = stem.trim();
+        if (
+          trimmed &&
+          looksLikeTeachingParagraph(trimmed) &&
+          !sentenceFrameHasStudentBlank(trimmed)
+        ) {
+          return { ...f, stem: "" };
+        }
+        return f;
+      });
+    }
+
+    if (Array.isArray(s.questions)) {
+      s.questions = s.questions.map((q: any) => {
+        const raw = String(q?.text ?? q?.prompt ?? "");
+        const stripped = stripExampleBlocksFromQuestionText(raw);
+        if (stripped === raw) return q;
+        return { ...q, text: stripped, prompt: stripped };
+      });
+    }
   }
 }
 
@@ -1494,7 +1625,7 @@ Given an activity type and options, generate the specific content for a workshee
 
 OUTPUT CONTRACT (STRICT):
 - Return ONLY one JSON object. No markdown fences (no \`\`\`json), no commentary before or after the JSON.
-- Fill ALL placeholder fields with real, grade-appropriate content for the topic. No empty "sections" arrays. No empty "questions" arrays for math_practice or math_word_problems.
+- Fill all required content (titles, stems, word banks, matching pairs, diagram parts, math problems, etc.) with real, grade-appropriate material. Exception: student writing cells in organizers (see STUDENT RESPONSE CELLS) must remain "" — do not pre-fill those with explanations. No empty "sections" array. No empty "questions" arrays for math_practice or math_word_problems.
 ${quickGenDistinctBlock}
 ${quickGenContentTypeFlag}
 Return ONLY valid JSON with this structure:
@@ -1524,20 +1655,20 @@ ${templateCopyWarning}
 ${quickGenInstructionPrefixRules}
 
 For mind_map:
-Generate sections: [{ "id":"s1", "type":"mind_map", "title": "${title}", "centerTerm": "${topic}", "branches": [${jsonPlaceholderList(4)}], "branchCount": ${options?.branchCount || 4} }]
+Generate sections: [{ "id":"s1", "type":"mind_map", "title": "${title}", "centerTerm": "${topic}", "branches": [${Array.from({ length: options?.branchCount ?? 4 }).map(() => '""').join(",")}], "branchCount": ${options?.branchCount || 4} }]
 
 For venn_diagram:
-Generate sections: [{ "id":"s1", "type":"venn_diagram", "title":"${title}", "leftLabel": "${options?.leftLabel || 'Topic A'}", "rightLabel": "${options?.rightLabel || 'Topic B'}", "centerLabel": "${options?.centerLabel || 'Both'}", "leftItems": [${jsonPlaceholderList(3)}], "rightItems": [${jsonPlaceholderList(3)}], "centerItems": [${jsonPlaceholderList(2)}] }]
+Generate sections: [{ "id":"s1", "type":"venn_diagram", "title":"${title}", "leftLabel": "${options?.leftLabel || 'Topic A'}", "rightLabel": "${options?.rightLabel || 'Topic B'}", "centerLabel": "${options?.centerLabel || 'Both'}", "leftItems": [], "rightItems": [], "centerItems": [] }]
 
 For kwl_chart:
-Generate sections: [{ "id":"s1", "type":"kwl_chart", "title":"${title}", "variant": "${options?.variant || 'KWL (3 columns)'}", "knowItems": [${jsonPlaceholderList(2)}], "wantItems": [${jsonPlaceholderList(2)}], "learnedItems": [], "rowCount": ${options?.rowCount || 8} }]
+Generate sections: [{ "id":"s1", "type":"kwl_chart", "title":"${title}", "variant": "${options?.variant || 'KWL (3 columns)'}", "knowItems": [], "wantItems": [], "learnedItems": [], "rowCount": ${options?.rowCount || 8} }]
 
 For sequence_chart:
-Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${title}", "steps": [{"id":"step1","number":1,"title":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"step2","number":2,"title":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"step3","number":3,"title":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"step4","number":4,"title":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"}] }]
-If the subject is Science, steps must describe a real process or cycle (e.g., water moving through stages), not a fictional plot or story sequence.
+Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${title}", "steps": [{"id":"step1","number":1,"title":"${generateContentPlaceholder}","content":""},{"id":"step2","number":2,"title":"${generateContentPlaceholder}","content":""},{"id":"step3","number":3,"title":"${generateContentPlaceholder}","content":""},{"id":"step4","number":4,"title":"${generateContentPlaceholder}","content":""}] }]
+If the subject is Science, steps must describe a real process or cycle (e.g., water moving through stages), not a fictional plot or story sequence. Use short stage names in "title" only; keep "content" as "".
 
 For frayer_model:
-Generate sections: [{ "id":"s1", "type":"frayer_model", "title":"${title}", "centerTerm":"${targetWord || topic}", "q1Label":"${options?.q1Label || 'Definition'}", "q2Label":"${options?.q2Label || 'Example'}", "q3Label":"${options?.q3Label || 'Non-Example'}", "q4Label":"${options?.q4Label || 'Draw It'}", "q1Content":"${generateContentPlaceholder}", "q2Content":"${generateContentPlaceholder}", "q3Content":"${generateContentPlaceholder}", "q4Content":"${generateContentPlaceholder}" }]
+Generate sections: [{ "id":"s1", "type":"frayer_model", "title":"${title}", "centerTerm":"${targetWord || topic}", "q1Label":"${options?.q1Label || 'Definition'}", "q2Label":"${options?.q2Label || 'Example'}", "q3Label":"${options?.q3Label || 'Non-Example'}", "q4Label":"${options?.q4Label || 'Draw It'}", "q1Content":"", "q2Content":"", "q3Content":"", "q4Content":"" }]
 
 For writing_prompt:
 Generate sections: [
@@ -1596,11 +1727,11 @@ sections: [
 ]
 
 For observation_sheet:
-Generate sections: [{ "id":"s1", "type":"observation_sheet", "title":"${title}", "sections":["${generateContentPlaceholder}","${generateContentPlaceholder}","${generateContentPlaceholder}"], "includeDrawing":${options?.includeDrawing !== false} }]
+Generate sections: [{ "id":"s1", "type":"observation_sheet", "title":"${title}", "sections":["Hypothesis","Observation","What I learned"], "includeDrawing":${options?.includeDrawing !== false} }]
 
 For timeline:
 Generate 5 events for the topic.
-Generate sections: [{ "id":"s1", "type":"timeline", "title":"${title}", "orientation":"${options?.orientation || 'Horizontal'}", "events":[{"id":"e1","label":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"e2","label":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"e3","label":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"e4","label":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"},{"id":"e5","label":"${generateContentPlaceholder}","content":"${generateContentPlaceholder}"}] }]
+Generate sections: [{ "id":"s1", "type":"timeline", "title":"${title}", "orientation":"${options?.orientation || 'Horizontal'}", "events":[{"id":"e1","label":"${generateContentPlaceholder}","content":""},{"id":"e2","label":"${generateContentPlaceholder}","content":""},{"id":"e3","label":"${generateContentPlaceholder}","content":""},{"id":"e4","label":"${generateContentPlaceholder}","content":""},{"id":"e5","label":"${generateContentPlaceholder}","content":""}] }]
 
 For story_map:
 Generate sections: [{ "id":"s1", "type":"story_map", "title":"${title}", "layout":"Linear", "fields":[{"label":"Characters","content":""},{"label":"Setting","content":""},{"label":"Problem","content":""},{"label":"Event 1","content":""},{"label":"Event 2","content":""},{"label":"Event 3","content":""},{"label":"Solution","content":""},{"label":"Theme","content":""}] }]
@@ -1614,11 +1745,11 @@ Generate items for each category.
 Generate sections: [{ "id":"s1", "type":"cut_and_sort", "title":"${title}", "categories":["${options?.categories?.split(',')[0]?.trim() || 'Category A'}","${options?.categories?.split(',')[1]?.trim() || 'Category B'}"], "items":[${jsonPlaceholderList(8)}] }]
 
 For sentence_frames:
-Generate ${options?.frameCount || 4} sentence frames for the topic.
+Generate ${options?.frameCount || 4} sentence frames for the topic. Each "stem" MUST include blanks (____) or dotted omissions for students — never a finished paragraph or model answer.
 Generate sections: [{ "id":"s1", "type":"sentence_frames", "title":"${title}", "frames":[{"id":"f1","stem":"${generateContentPlaceholder}"},{"id":"f2","stem":"${generateContentPlaceholder}"},{"id":"f3","stem":"${generateContentPlaceholder}"},{"id":"f4","stem":"${generateContentPlaceholder}"}], "writingLines":${options?.writingLines || 2} }]
 
 For mini_book:
-Generate sections: [{ "id":"s1", "type":"mini_book", "title":"${title}", "panelCount":${options?.panelCount || 4}, "panels":[{"id":"p1","number":1,"label":"${generateContentPlaceholder}","prompt":"${generateContentPlaceholder}"},{"id":"p2","number":2,"label":"${generateContentPlaceholder}","prompt":"${generateContentPlaceholder}"},{"id":"p3","number":3,"label":"${generateContentPlaceholder}","prompt":"${generateContentPlaceholder}"},{"id":"p4","number":4,"label":"${generateContentPlaceholder}","prompt":"${generateContentPlaceholder}"}] }]
+Generate sections: [{ "id":"s1", "type":"mini_book", "title":"${title}", "panelCount":${options?.panelCount || 4}, "panels":[{"id":"p1","number":1,"label":"${generateContentPlaceholder}","prompt":""},{"id":"p2","number":2,"label":"${generateContentPlaceholder}","prompt":""},{"id":"p3","number":3,"label":"${generateContentPlaceholder}","prompt":""},{"id":"p4","number":4,"label":"${generateContentPlaceholder}","prompt":""}] }]
 
 For clock_practice:
 Generate sections: [{ "id":"s1", "type":"clock_practice", "title":"${title}", "clockCount":${options?.clockCount || 6}, "precision":"${options?.precision || 'Half hour'}", "direction":"${generateContentPlaceholder}", "times":[${jsonPlaceholderList(6)}] }]
@@ -1793,6 +1924,7 @@ Return ONLY raw JSON (no markdown).`
         optionSlot
       );
       hoistInstructionalLanguageToSectionInstructions(result.worksheet);
+      clearStudentWritingCellsFromWorksheet(result.worksheet);
       if (useCustomTypes) {
         filterWorksheetQuestionsByTypes(result.worksheet, questionTypesFromClient);
       }
