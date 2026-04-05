@@ -910,6 +910,40 @@ function repairMathQuestions(
   }));
 }
 
+/** Selected problem count from options, bounded to math section limits (matches repairMathQuestions). */
+function clampMathProblemCount(problemCount: number): number {
+  return Math.max(MIN_MATH_QUESTIONS, Math.min(12, problemCount));
+}
+
+/**
+ * After initial math repair/normalize: exact length = target; ids q1..qN.
+ */
+function enforceMathQuestionCountToTarget(section: any, target: number): void {
+  if (!Array.isArray(section.questions)) return;
+  let qs = section.questions;
+  if (qs.length > target) {
+    qs = qs.slice(0, target);
+  } else if (qs.length < target) {
+    const start = qs.length;
+    const need = target - start;
+    qs = [
+      ...qs,
+      ...Array.from({ length: need }, (_, i) => ({
+        id: `q${start + i + 1}`,
+        question_type: "short_answer",
+        text: MISSING_QUESTION_TEXT,
+        lines: 3,
+      })),
+    ];
+  }
+  section.questions = qs.map((q: any, i: number) => ({
+    id: `q${i + 1}`,
+    question_type: q?.question_type || "short_answer",
+    text: typeof q?.text === "string" && q.text.trim() ? q.text : MISSING_QUESTION_TEXT,
+    lines: typeof q?.lines === "number" ? q.lines : 3,
+  }));
+}
+
 function repairScienceShortResponse(section: any, _topic: string, count: number): void {
   const n = Math.min(Math.max(count, MIN_MATH_QUESTIONS), 8);
   section.questions = Array.from({ length: n }, (_, i) => ({
@@ -973,6 +1007,8 @@ function validateAndRepairWorksheet(
           lines: typeof q?.lines === "number" ? q.lines : 3,
         }));
       }
+      const mathTarget = clampMathProblemCount(probCount);
+      enforceMathQuestionCountToTarget(s, mathTarget);
       if (isMathSubject && s.instructions && typeof s.instructions === "string" && !s.instructions.trim()) {
         s.instructions = REGEN_INSTRUCTION_PLACEHOLDER;
       }
