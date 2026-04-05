@@ -913,7 +913,8 @@ function worksheetSectionsLayoutClass(
       if (lv === "B")
         return "grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start";
     }
-    return "grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 items-start";
+    // Reading / general: full-width stack — avoids squeezing organizers side-by-side
+    return "flex flex-col gap-10 md:gap-12";
   }
   if (lt === "diagram_label") {
     if (lv === "B") return "max-w-4xl mx-auto space-y-10";
@@ -921,9 +922,9 @@ function worksheetSectionsLayoutClass(
     return "space-y-12 max-w-3xl mx-auto";
   }
   if (lt === "sequence_organizer") {
-    if (lv === "C") return "space-y-4 max-w-4xl mx-auto";
-    if (lv === "B") return "space-y-6 max-w-3xl mx-auto";
-    return "space-y-8";
+    if (lv === "C") return "space-y-4 max-w-5xl mx-auto w-full";
+    if (lv === "B") return "space-y-6 max-w-4xl mx-auto w-full";
+    return "space-y-8 w-full";
   }
   if (lt === "matching") {
     if (lv === "C") return "max-w-5xl mx-auto space-y-4";
@@ -931,9 +932,9 @@ function worksheetSectionsLayoutClass(
     return "max-w-4xl mx-auto space-y-8";
   }
   if (lt === "default") {
-    if (lv === "C") return "space-y-6 max-w-4xl mx-auto";
-    if (lv === "B") return "space-y-9 max-w-3xl mx-auto";
-    return "space-y-12 max-w-3xl mx-auto";
+    if (lv === "C") return "space-y-6 max-w-5xl mx-auto w-full";
+    if (lv === "B") return "space-y-9 max-w-4xl mx-auto w-full";
+    return "space-y-12 max-w-3xl mx-auto w-full";
   }
   return "space-y-12";
 }
@@ -947,10 +948,10 @@ function quickGenVariantPresentation(
 ): string {
   const lv = (layoutVariant || "A").toUpperCase();
   if (lv === "B") {
-    return "relative rounded-2xl border-2 border-dashed border-slate-300/80 bg-slate-50/35 px-4 sm:px-6 py-5 sm:py-8 print:border-slate-400 print:bg-white";
+    return "relative rounded-2xl border-2 border-dashed border-slate-300/80 bg-slate-50/35 px-2 sm:px-4 py-5 sm:py-8 print:border-slate-400 print:bg-white";
   }
   if (lv === "C") {
-    return "relative rounded-xl border border-slate-300/90 bg-white px-3 sm:px-5 py-4 sm:py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92)] ring-1 ring-slate-200/55 print:shadow-none";
+    return "relative rounded-xl border border-slate-300/90 bg-white px-2 sm:px-4 py-4 sm:py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.92)] ring-1 ring-slate-200/55 print:shadow-none";
   }
   return "relative rounded-[1.25rem] px-1.5 sm:px-3 py-2 sm:py-4 bg-gradient-to-b from-slate-50/45 via-white/30 to-transparent print:bg-transparent print:py-1";
 }

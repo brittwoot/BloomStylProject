@@ -93,8 +93,8 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
 
   return (
     <div className="space-y-2">
-      {/* Labels row */}
-      <div className="grid grid-cols-3 text-center gap-2">
+      {/* Labels row — single column on narrow viewports to avoid 3-up squeeze */}
+      <div className="grid grid-cols-1 md:grid-cols-3 text-center gap-2 md:gap-3">
         <EditableTextBlock
           value={leftLabel}
           onChange={(v) => onUpdate({ leftLabel: v })}
@@ -115,9 +115,9 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
         />
       </div>
 
-      {/* Three columns representing Venn areas */}
-      <div className="grid grid-cols-3 gap-0 border-2 border-gray-300 rounded-xl overflow-hidden min-h-48">
-        <div className="p-3 border-r border-gray-200 space-y-2">
+      {/* Three columns representing Venn areas — md+ only so cells get usable width */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-gray-300 rounded-xl overflow-hidden min-h-48 divide-y md:divide-y-0 md:divide-x divide-gray-300">
+        <div className="p-3 space-y-2">
           {leftItems.map((item, i) => (
             <EditableTextBlock
               key={i}
@@ -135,7 +135,7 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
             <div key={`empty-l-${i}`} className="h-5 border-b border-gray-100" />
           ))}
         </div>
-        <div className="p-3 bg-gray-50 border-r border-gray-200 space-y-2">
+        <div className="p-3 bg-gray-50 space-y-2">
           {centerItems.map((item, i) => (
             <EditableTextBlock
               key={i}
@@ -333,8 +333,8 @@ export function StoryMapSection({ section, onUpdate }: { section: any; onUpdate:
 
   return (
     <div className="space-y-2">
-      {/* First row: Characters + Setting + Problem */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* First row: Characters + Setting + Problem — stack on small screens */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {fields.slice(0, 3).map((f, i) => (
           <SectionBox key={i} label={f.label}>
             <EditableTextBlock
