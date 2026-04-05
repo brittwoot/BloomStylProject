@@ -827,6 +827,17 @@ export function defaultThreeOptionPlan(
 
 const SLOT_ORDER: VariantId[] = ["A", "B", "C"];
 
+/**
+ * Which Quick Gen layout slots to run (and show). Reading graphic organizer uses template work-in-progress
+ * for B/C — only A is enabled until templates exist.
+ */
+export function getEnabledQuickGenVariants(subjectId: SubjectId | "", familyId: string): VariantId[] {
+  if (subjectId === "reading" && familyId === "graphic_organizer") {
+    return ["A"];
+  }
+  return ["A", "B", "C"];
+}
+
 const PLAN_FALLBACK_GENERAL: ThreeOptionPlan =
   PLANS[key("general", "open_response")] ?? PLANS[key("custom", "mixed")]!;
 

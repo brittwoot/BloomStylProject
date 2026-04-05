@@ -67,13 +67,13 @@ INSTRUCTIONS vs STUDENT-FACING FIELDS (CRITICAL — EVERY ACTIVITY TYPE):
 - Do NOT duplicate the same direction sentence in both "instructions" and a question stem or item string.
 - For cut_and_sort / picture_sort: "categories" are SHORT category names only (e.g. "Clues", "Not clues"). "items" / "cards" are ONLY the movable words or phrases — never a full sentence of directions.
 
-BLANK ORGANIZER WORKSHEET MODE (CRITICAL):
-- Do NOT populate organizer fields with example answers, sample ideas, topic-specific stage names in sequence/timeline JSON, or sortable terms in Venn arrays. Put teaching context, science process names, and task wording in section "instructions" only.
-- Venn diagram: leftItems, rightItems, centerItems MUST each be [] (empty arrays). Never add strings to these arrays.
-- Mind map: centerTerm MUST be the neutral label "Topic" only (not the worksheet topic string). branches MUST be only empty strings "" (one per branch slot). Do not add subtopic words.
-- Sequence chart: steps[].content MUST be "". steps[].title MUST be generic only: "Step 1", "Step 2", … (no real stage names like "Evaporation" in JSON).
-- Timeline: events[].content MUST be "". events[].label MUST be generic only: "Event 1", "Event 2", … (no topic-specific event text in JSON).
-- KWL: knowItems, wantItems, learnedItems MUST each be [] (empty arrays). Do not add entries.
+BLANK ORGANIZER WORKSHEET MODE (STIMULUS vs STUDENT RESPONSE — CRITICAL):
+- STIMULUS (AI-generated; keep filled): sequence steps[].title (stage/short labels), timeline events[].label (event captions), mind map centerTerm (main topic or title for the map), Venn leftItems/rightItems/centerItems (short sortable terms OR leave empty and add a word_bank section OR list words in section.instructions), passages, word banks, matching pairs, question stems, section titles.
+- STUDENT RESPONSE (must stay blank in JSON): sequence steps[].content, timeline events[].content, story_map fields[].content, Frayer q1Content–q4Content, mind map branches ("" per slot), mini book panels[].prompt.
+- Do NOT put model answers, completed paragraphs, or "example student writing" in response fields. Long explanations belong in section.instructions for teachers or in stimulus fields, not in steps[].content / events[].content.
+- Venn: use short terms/phrases in item arrays as sort stimulus, OR include a separate word_bank section with 6–8 words, OR list words in instructions — students must have something to work from.
+- Mind map: centerTerm = the worksheet topic or concise map title (stimulus). branches = "" only (students add ideas).
+- KWL: knowItems, wantItems, learnedItems MUST each be [] (empty arrays); ruled columns are for writing.
 - Frayer model: q1Content, q2Content, q3Content, q4Content MUST all be "".
 - Story map: every fields[].content MUST be "" (structural labels only in "label").
 - Mini book: panels[].prompt MUST be "".
@@ -257,12 +257,156 @@ function stripExampleBlocksFromQuestionText(text: string): string {
   return t.slice(0, cut).trimEnd();
 }
 
+/** Remove trailing blocks that look like solved answers or teacher keys (conservative). */
+function stripAnswerLeakSuffixes(text: string): string {
+  let t = String(text ?? "");
+  t = t.replace(
+    /\n\n\s*(One possible answer|A possible answer|Sample solution|Correct answer|Answer key)\s*[:\-][\s\S]*$/i,
+    "",
+  );
+  t = t.replace(/\n\n\s*(Example\s*:\s*)[^\n]+$/i, "");
+  return t.trimEnd();
+}
+
 /**
- * Clear pre-filled explanatory content from student writing areas (post-AI).
- * Does not change layout; only empties or trims strings in student fields.
+ * If the last paragraph looks like a standalone declarative "model answer" (no question), drop it.
  */
-function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
+function stripTrailingDeclarativeAnswerLeak(text: string): string {
+  const parts = text.split(/\n\n+/);
+  if (parts.length < 2) return text;
+  const last = parts[parts.length - 1].trim();
+  if (
+    last.length >= 12 &&
+    last.length < 220 &&
+    !/\?/.test(last) &&
+    /^[A-Z][^.!?]*\.\s*$/.test(last) &&
+    /^(It|They|This|That|She|He|We|Because|Since|Therefore)\b/.test(last)
+  ) {
+    return parts.slice(0, -1).join("\n\n").trimEnd();
+  }
+  return text;
+}
+
+/** Full sanitization for student-facing question stems (no model answers in the stem). */
+function sanitizeStudentFacingQuestionText(text: string): string {
+  let t = stripExampleBlocksFromQuestionText(text);
+  t = stripAnswerLeakSuffixes(t);
+  t = stripTrailingDeclarativeAnswerLeak(t);
+  return t.trim();
+}
+
+function worksheetHasNonEmptyPassage(worksheet: any): boolean {
+  if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return false;
+  return worksheet.sections.some(
+    (s: any) =>
+      s &&
+      s.type === "passage" &&
+      typeof s.passage === "string" &&
+      s.passage.trim().length > 0,
+  );
+}
+
+function passageReferenceDetected(text: string): boolean {
+  const t = String(text ?? "");
+  if (!t.trim()) return false;
+  const lower = t.toLowerCase();
+  return (
+    /\bpassage\b/.test(lower) ||
+    /\baccording to\b/.test(lower) ||
+    /\bthe story\b/.test(lower) ||
+    /\bin the story\b/.test(lower) ||
+    /\bfrom the story\b/.test(lower) ||
+    /\bthe text\b/.test(lower) ||
+    /\bin the text\b/.test(lower) ||
+    /\bfrom the text\b/.test(lower) ||
+    /\bread the (passage|story)\b/i.test(t) ||
+    /\bwhat the (passage|story)\s+says\b/i.test(lower) ||
+    /\bwhat the text\s+says\b/i.test(lower)
+  );
+}
+
+/** Rewrite passage-dependent wording so questions do not assume unseen source material. */
+function rewritePassageDependencyPhrases(text: string): string {
+  let s = String(text ?? "");
+  const pairs: [RegExp, string][] = [
+    [/\baccording to the passage\b/gi, "Based on what you know about the topic"],
+    [/\baccording to this passage\b/gi, "Based on what you know about the topic"],
+    [/\baccording to the text\b/gi, "Based on what you know about the topic"],
+    [/\baccording to the story\b/gi, "Based on what you know about the topic"],
+    [/\bin the passage\b/gi, "in your response"],
+    [/\bread the passage\.?\s*/gi, ""],
+    [/\bread the story\.?\s*/gi, ""],
+    [/\bthe passage says\b/gi, "Explain"],
+    [/\bthe text says\b/gi, "Explain"],
+    [/\bthe story says\b/gi, "Explain"],
+    [/\bfrom the passage\b/gi, "from your learning"],
+    [/\bfrom the text\b/gi, "from your learning"],
+    [/\bfrom the story\b/gi, "from your learning"],
+    [/\buse (details|evidence) from the passage\b/gi, "use details and examples"],
+    [/\buse (details|evidence) from the text\b/gi, "use details and examples"],
+    [/\buse (details|evidence) from the story\b/gi, "use details and examples"],
+    [/\brefer to the passage\b/gi, "explain"],
+    [/\brefer to the text\b/gi, "explain"],
+    [/\bground your answer in the passage\b/gi, "support your answer with reasons"],
+    [/\bground your answer in the text\b/gi, "support your answer with reasons"],
+  ];
+  for (const [re, repl] of pairs) {
+    s = s.replace(re, repl);
+  }
+  return s.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim();
+}
+
+/**
+ * If any instructions or questions reference a passage/story/text but no passage section exists,
+ * rewrite those strings to standalone prompts (does not generate passage content).
+ */
+function ensurePassageIntegrityOrRewriteQuestions(worksheet: any): void {
   if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return;
+  if (worksheetHasNonEmptyPassage(worksheet)) return;
+
+  for (const s of worksheet.sections) {
+    if (!s || typeof s !== "object") continue;
+    if (typeof s.instructions === "string" && passageReferenceDetected(s.instructions)) {
+      s.instructions = rewritePassageDependencyPhrases(s.instructions);
+    }
+    if (Array.isArray(s.questions)) {
+      s.questions = s.questions.map((q: any) => {
+        const raw = String(q?.text ?? q?.prompt ?? "");
+        if (!passageReferenceDetected(raw)) return q;
+        const next = rewritePassageDependencyPhrases(raw);
+        return { ...q, text: next, prompt: next };
+      });
+    }
+  }
+}
+
+function sanitizeWorksheetQuestionTexts(worksheet: any): void {
+  if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return;
+  for (const s of worksheet.sections) {
+    if (!Array.isArray(s.questions)) continue;
+    s.questions = s.questions.map((q: any) => {
+      const raw = String(q?.text ?? q?.prompt ?? "");
+      const sanitized = sanitizeStudentFacingQuestionText(raw);
+      if (sanitized === raw) return q;
+      return { ...q, text: sanitized, prompt: sanitized };
+    });
+  }
+}
+
+/**
+ * Clear pre-filled content from true student-response fields only (post-AI).
+ * Preserves stimulus: steps[].title, events[].label, mind map centerTerm, Venn sort terms (trimmed).
+ */
+function clearStudentWritingCellsFromWorksheet(worksheet: any, topic?: string): void {
+  if (!worksheet?.sections || !Array.isArray(worksheet.sections)) return;
+
+  const trimVennItem = (x: unknown): string => {
+    if (typeof x !== "string") return "";
+    const t = x.trim();
+    if (!t) return "";
+    if (looksLikeTeachingParagraph(t) || t.length > 72) return "";
+    return t;
+  };
 
   for (const s of worksheet.sections) {
     if (!s || typeof s !== "object") continue;
@@ -278,18 +422,16 @@ function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
     }
 
     if (s.type === "sequence_chart" && Array.isArray(s.steps)) {
-      s.steps = s.steps.map((st: any, i: number) => ({
+      s.steps = s.steps.map((st: any) => ({
         ...st,
         content: "",
-        title: `Step ${i + 1}`,
       }));
     }
 
     if (s.type === "timeline" && Array.isArray(s.events)) {
-      s.events = s.events.map((ev: any, i: number) => ({
+      s.events = s.events.map((ev: any) => ({
         ...ev,
         content: "",
-        label: `Event ${i + 1}`,
       }));
     }
 
@@ -298,16 +440,32 @@ function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
     }
 
     if (s.type === "mind_map") {
-      s.centerTerm = "Topic";
       if (Array.isArray(s.branches)) {
         s.branches = s.branches.map(() => "");
       }
     }
 
     if (s.type === "venn_diagram") {
-      s.leftItems = [];
-      s.rightItems = [];
-      s.centerItems = [];
+      if (Array.isArray(s.leftItems)) s.leftItems = s.leftItems.map(trimVennItem);
+      if (Array.isArray(s.rightItems)) s.rightItems = s.rightItems.map(trimVennItem);
+      if (Array.isArray(s.centerItems)) s.centerItems = s.centerItems.map(trimVennItem);
+      const hasItems =
+        [...(s.leftItems || []), ...(s.rightItems || []), ...(s.centerItems || [])].some(
+          (x) => typeof x === "string" && x.trim(),
+        );
+      const hasWordBankElsewhere = worksheet.sections.some(
+        (sec: any) => sec && sec.type === "word_bank" && Array.isArray(sec.words) && sec.words.length > 0,
+      );
+      if (!hasItems && !hasWordBankElsewhere && topic && String(topic).trim()) {
+        const t = String(topic).trim();
+        const words = t.split(/\s+/).filter((w) => w.length > 1).slice(0, 8);
+        const line =
+          words.length > 0
+            ? `Word bank: ${words.join(", ")} — sort these into the diagram.`
+            : `Word bank: add 6–8 topic-related terms for students to sort into the diagram.`;
+        const merged = mergeInstructionStrings(s.instructions, [line]);
+        if (merged !== undefined) s.instructions = merged;
+      }
     }
 
     if (s.type === "kwl_chart") {
@@ -328,15 +486,6 @@ function clearStudentWritingCellsFromWorksheet(worksheet: any): void {
           return { ...f, stem: "" };
         }
         return f;
-      });
-    }
-
-    if (Array.isArray(s.questions)) {
-      s.questions = s.questions.map((q: any) => {
-        const raw = String(q?.text ?? q?.prompt ?? "");
-        const stripped = stripExampleBlocksFromQuestionText(raw);
-        if (stripped === raw) return q;
-        return { ...q, text: stripped, prompt: stripped };
       });
     }
   }
@@ -1379,6 +1528,291 @@ function deriveOptionMetadataFromWorksheet(
   };
 }
 
+/** Fields for the large worksheet system prompt template (generic vs reading differ only in selected parts). */
+interface WorksheetSystemPromptParts {
+  criticalAntiExampleBlock: string;
+  quickGenDistinctBlock: string;
+  quickGenContentTypeFlag: string;
+  grade: string;
+  activityType: string;
+  title: string;
+  topic: string;
+  /** Request body subject (e.g. math_word_problems context line). */
+  subject: string | undefined;
+  targetWord: string | undefined;
+  options: Record<string, unknown> | undefined;
+  subjectBlock: string;
+  differentiationBlock: string;
+  mixedQuestionTypesInstruction: string;
+  questionTypesClientInstruction: string;
+  templateCopyWarning: string;
+  quickGenInstructionPrefixRules: string;
+  variantInstruction: string;
+  generateContentPlaceholder: string;
+  jsonPlaceholderList: (n: number) => string;
+  scienceConceptSlotRuleLine: string;
+  scienceConceptSectionRules: string;
+  mathSlotRuleLine: string;
+  mathPracticeThisSlotLine: string;
+  mathSlotSectionRules: string;
+  mathWordThisSlotLine: string;
+  detailsNote: string;
+  quickGenFailsafeRule: string;
+  criticalSectionUniqueness: string;
+  finalSelfCheckBlock: string;
+  mandatoryContentDiversity: string;
+}
+
+function assembleWorksheetSystemPrompt(p: WorksheetSystemPromptParts): string {
+  const o = p.options;
+  return `${p.criticalAntiExampleBlock}
+You are an expert elementary school worksheet content generator.
+Given an activity type and options, generate the specific content for a worksheet.
+
+OUTPUT CONTRACT (STRICT):
+- Return ONLY one JSON object. No markdown fences (no \`\`\`json), no commentary before or after the JSON.
+- Generate real, grade-appropriate stimulus (titles, passages, word banks, step titles, event labels, Venn sort terms or word banks, questions, math problems, etc.). Only STUDENT RESPONSE fields in SECTION GENERATION RULES stay blank (e.g. steps[].content, mind map branches). No empty "sections" array. No empty "questions" arrays for math_practice or math_word_problems.
+${p.quickGenDistinctBlock}
+${p.quickGenContentTypeFlag}
+Return ONLY valid JSON with this structure:
+{
+  "worksheet": {
+    "worksheet_id": "${randomUUID()}",
+    "title": "Worksheet title",
+    "subject": "subject area",
+    "gradeLevel": "${p.grade}",
+    "language": "English",
+    "template_type": "${p.activityType}",
+    "sections": [ ... ]
+  }
+}
+
+Activity type: ${p.activityType}
+Title: ${p.title}
+Grade: ${p.grade}
+Topic: ${p.topic}
+${p.targetWord ? `Target word: ${p.targetWord}` : ""}
+Options: ${JSON.stringify(o || {})}
+${p.subjectBlock}${p.differentiationBlock}
+${p.mixedQuestionTypesInstruction}${p.questionTypesClientInstruction}
+SECTION GENERATION RULES BY TYPE:
+${INSTRUCTIONS_VS_STUDENT_CONTENT}
+${p.templateCopyWarning}
+${p.quickGenInstructionPrefixRules}
+
+For mind_map:
+Generate sections: [{ "id":"s1", "type":"mind_map", "title": "${p.title}", "centerTerm": "${p.topic}", "branches": [${Array.from({ length: (o as { branchCount?: number })?.branchCount ?? 4 }).map(() => '""').join(",")}], "branchCount": ${(o as { branchCount?: number })?.branchCount || 4} }]
+centerTerm is the topic/stimulus for the map; branches must be "" only.
+
+For venn_diagram:
+Generate sections: [{ "id":"s1", "type":"venn_diagram", "title":"${p.title}", "leftLabel": "${(o as { leftLabel?: string })?.leftLabel || 'Topic A'}", "rightLabel": "${(o as { rightLabel?: string })?.rightLabel || 'Topic B'}", "centerLabel": "${(o as { centerLabel?: string })?.centerLabel || 'Both'}", "leftItems": [], "rightItems": [], "centerItems": [] }]
+Put short sortable terms (words or 2–4 word phrases) in leftItems/rightItems/centerItems as stimulus, OR add a second section { "type":"word_bank", "words":[...] } with 6–8 words, OR list words in section.instructions.
+
+For kwl_chart:
+Generate sections: [{ "id":"s1", "type":"kwl_chart", "title":"${p.title}", "variant": "${(o as { variant?: string })?.variant || 'KWL (3 columns)'}", "knowItems": [], "wantItems": [], "learnedItems": [], "rowCount": ${(o as { rowCount?: number })?.rowCount || 8} }]
+knowItems, wantItems, and learnedItems MUST remain [] — do not add strings.
+
+For sequence_chart:
+Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${p.title}", "steps": [{"id":"step1","number":1,"title":"${p.generateContentPlaceholder}","content":""},{"id":"step2","number":2,"title":"${p.generateContentPlaceholder}","content":""},{"id":"step3","number":3,"title":"${p.generateContentPlaceholder}","content":""},{"id":"step4","number":4,"title":"${p.generateContentPlaceholder}","content":""}] }]
+Use real stage or step names in steps[].title (stimulus). steps[].content must be "". For Science, stage names may appear in title; longer context in section.instructions.
+
+For frayer_model:
+Generate sections: [{ "id":"s1", "type":"frayer_model", "title":"${p.title}", "centerTerm":"${p.targetWord || p.topic}", "q1Label":"${(o as { q1Label?: string })?.q1Label || 'Definition'}", "q2Label":"${(o as { q2Label?: string })?.q2Label || 'Example'}", "q3Label":"${(o as { q3Label?: string })?.q3Label || 'Non-Example'}", "q4Label":"${(o as { q4Label?: string })?.q4Label || 'Draw It'}", "q1Content":"", "q2Content":"", "q3Content":"", "q4Content":"" }]
+
+For writing_prompt:
+Generate sections: [
+  { "id":"s1", "type":"writing_prompt_header", "title":"${p.title}", "prompt":"${(o as { prompt?: string })?.prompt || 'Generate an engaging ' + ((o as { promptStyle?: string })?.promptStyle || 'creative') + ' writing prompt about ' + p.topic + ' for grade ' + p.grade}", "lineCount":${(o as { lineCount?: number })?.lineCount || 15}, "lineStyle":"${(o as { lineStyle?: string })?.lineStyle || 'wide ruled'}", "illustrationBox":"${(o as { illustrationBox?: string })?.illustrationBox || 'None'}" },
+  ${(o as { wordBank?: boolean })?.wordBank ? `{ "id":"s2", "type":"word_bank", "title":"Word Bank", "words":[${p.jsonPlaceholderList(6)}] }` : ''}
+]
+
+For acrostic:
+Generate sections: [{ "id":"s1", "type":"acrostic", "title":"${p.title}", "acrosticWord":"${(o as { acrosticWord?: string })?.acrosticWord || p.targetWord || p.topic.split(' ')[0] || 'WORD'}", "linesPerLetter":${(o as { linesPerLetter?: number })?.linesPerLetter || 1}, "styleHint":"${(o as { styleHint?: string })?.styleHint || 'Phrase'}" }]
+
+For word_search:
+Generate a word list of 10-15 words related to the topic.
+Generate sections: [{ "id":"s1", "type":"word_search_full", "title":"${p.title}", "wordList":[${p.jsonPlaceholderList(10)}], "gridSize":"${(o as { gridSize?: string })?.gridSize || '10×10'}", "directions":"${(o as { directions?: string })?.directions || 'Horiz + Vertical'}", "showWordList":${(o as { showWordList?: boolean })?.showWordList !== false} }]
+
+For bingo_card:
+Generate sections: [{ "id":"s1", "type":"bingo_card", "title":"${p.title}", "gridSize":"${(o as { gridSize?: string })?.gridSize || '5×5'}", "freeSpace":${(o as { freeSpace?: boolean })?.freeSpace !== false}, "wordList":[${p.jsonPlaceholderList(24)}] }]
+
+For number_bond:
+Generate sections: [{ "id":"s1", "type":"number_bond", "title":"${p.title}", "bondCount":${(o as { bondCount?: number })?.bondCount || 6}, "focus":"${(o as { focus?: string })?.focus || 'Addition'}", "bonds":[{"whole":null,"part1":null,"part2":null}] }]
+(Generate bondCount distinct bond objects with grade-appropriate whole numbers from the topic—do not copy sample numbers from any example.)
+
+For ten_frame:
+Generate sections: [{ "id":"s1", "type":"ten_frame", "title":"${p.title}", "frameCount":${(o as { frameCount?: number })?.frameCount || 4}, "activity":"${p.generateContentPlaceholder}", "problems":[{"number":null},{"number":null},{"number":null},{"number":null}] }]
+(Replace nulls with topic-appropriate values; one object per frame in problems.)
+
+For coloring_page:
+Generate sections: [{ "id":"s1", "type":"coloring_page", "title":"${p.title}", "theme":"${(o as { theme?: string })?.theme || p.topic}", "size":"${(o as { size?: string })?.size || 'Full page'}", "addWritingLines":${(o as { addWritingLines?: boolean })?.addWritingLines || false}, "lineCount":${(o as { lineCount?: number })?.lineCount || 3}, "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>" }]
+
+For color_by_code:
+Generate the color key from the topic.
+Generate sections: [{ "id":"s1", "type":"color_by_code", "title":"${p.title}", "codeType":"${(o as { codeType?: string })?.codeType || 'Sight words'}", "theme":"${(o as { theme?: string })?.theme || p.topic}", "colorKey":[{"code":"${p.generateContentPlaceholder}","color":"${p.generateContentPlaceholder}"},{"code":"${p.generateContentPlaceholder}","color":"${p.generateContentPlaceholder}"},{"code":"${p.generateContentPlaceholder}","color":"${p.generateContentPlaceholder}"},{"code":"${p.generateContentPlaceholder}","color":"${p.generateContentPlaceholder}"}] }]
+
+For label_diagram:
+Generate EXACTLY one section of type label_diagram with:
+- "diagramLayout": one of "centered_bank_below" | "diagram_left_labels_right" | "diagram_top_callouts" — MUST match the Quick Gen layout letter for this request (see user message for the required value).
+- "title", "subject", "diagramSubject" (same string as the topic shown on the diagram — usually the topic or diagramSubject from options), "parts" (6–8 real part names for the topic), "wordBank": boolean
+Example shape:
+{ "id":"s1", "type":"label_diagram", "diagramLayout":"centered_bank_below", "title":"${p.title}", "diagramSubject":"${(o as { diagramSubject?: string })?.diagramSubject || p.topic}", "subject":"${(o as { diagramSubject?: string })?.diagramSubject || p.topic}", "parts":[${p.jsonPlaceholderList(6)}], "wordBank":${(o as { wordBank?: boolean })?.wordBank !== false} }
+If the subject is Science, parts must be real structures or stages for the topic (e.g., water cycle: evaporation, condensation, precipitation, collection, runoff, groundwater, energy from the sun) — not story elements.
+
+For science_concept_practice:
+Generate EXACTLY two sections (no other section types):
+1) word_bank: 8-12 real science vocabulary words for the topic (strings only in "words").
+2) science_short_response: short_answer questions asking students to explain processes, compare stages, or use vocabulary — NOT creative writing, NOT a story, NOT "imagine you are...".
+${p.scienceConceptSlotRuleLine}
+${p.scienceConceptSectionRules}
+Include on the science_short_response object: "layoutRhythm": one of "spacious" | "scaffolded_work_boxes" | "compact_grid" — MUST match the Quick Gen layout letter (see user message). Vary question count and "lines" per question according to the LAYOUT STYLE block for this request (clean vs scaffolded vs compact).
+sections: [
+  { "id":"s1", "type":"word_bank", "title":"Key vocabulary: ${p.topic}", "words":[${p.jsonPlaceholderList(8)}] },
+  { "id":"s2", "type":"science_short_response", "title":"Show what you know", "layoutRhythm":"spacious", "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>", "questions":[
+    { "id":"q1","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":4 },
+    { "id":"q2","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":4 },
+    { "id":"q3","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":4 },
+    { "id":"q4","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":4 }
+  ]}
+]
+
+For observation_sheet:
+Generate sections: [{ "id":"s1", "type":"observation_sheet", "title":"${p.title}", "sections":["Hypothesis","Observation","What I learned"], "includeDrawing":${(o as { includeDrawing?: boolean })?.includeDrawing !== false} }]
+
+For timeline:
+Generate sections: [{ "id":"s1", "type":"timeline", "title":"${p.title}", "orientation":"${(o as { orientation?: string })?.orientation || 'Horizontal'}", "events":[{"id":"e1","label":"${p.generateContentPlaceholder}","content":""},{"id":"e2","label":"${p.generateContentPlaceholder}","content":""},{"id":"e3","label":"${p.generateContentPlaceholder}","content":""},{"id":"e4","label":"${p.generateContentPlaceholder}","content":""},{"id":"e5","label":"${p.generateContentPlaceholder}","content":""}] }]
+Use short topic-appropriate labels in events[].label (stimulus). events[].content must be "".
+
+For story_map:
+Generate sections: [{ "id":"s1", "type":"story_map", "title":"${p.title}", "layout":"Linear", "fields":[{"label":"Characters","content":""},{"label":"Setting","content":""},{"label":"Problem","content":""},{"label":"Event 1","content":""},{"label":"Event 2","content":""},{"label":"Event 3","content":""},{"label":"Solution","content":""},{"label":"Theme","content":""}] }]
+
+For line_matching:
+Generate ${(o as { pairCount?: number })?.pairCount || 6} matching pairs for the topic.
+Generate sections: [{ "id":"s1", "type":"line_matching", "title":"${p.title}", "matchType":"${(o as { matchType?: string })?.matchType || 'Word → Definition'}", "pairs":[{"left":"${p.generateContentPlaceholder}","right":"${p.generateContentPlaceholder}"},{"left":"${p.generateContentPlaceholder}","right":"${p.generateContentPlaceholder}"},{"left":"${p.generateContentPlaceholder}","right":"${p.generateContentPlaceholder}"},{"left":"${p.generateContentPlaceholder}","right":"${p.generateContentPlaceholder}"},{"left":"${p.generateContentPlaceholder}","right":"${p.generateContentPlaceholder}"},{"left":"${p.generateContentPlaceholder}","right":"${p.generateContentPlaceholder}"}] }]
+
+For cut_and_sort:
+Generate items for each category.
+Generate sections: [{ "id":"s1", "type":"cut_and_sort", "title":"${p.title}", "categories":["${(o as { categories?: string })?.categories?.split(',')[0]?.trim() || 'Category A'}","${(o as { categories?: string })?.categories?.split(',')[1]?.trim() || 'Category B'}"], "items":[${p.jsonPlaceholderList(8)}] }]
+
+For sentence_frames:
+Generate ${(o as { frameCount?: number })?.frameCount || 4} sentence frames for the topic. Each "stem" MUST include blanks (____) or dotted omissions for students — never a finished paragraph or model answer.
+Generate sections: [{ "id":"s1", "type":"sentence_frames", "title":"${p.title}", "frames":[{"id":"f1","stem":"${p.generateContentPlaceholder}"},{"id":"f2","stem":"${p.generateContentPlaceholder}"},{"id":"f3","stem":"${p.generateContentPlaceholder}"},{"id":"f4","stem":"${p.generateContentPlaceholder}"}], "writingLines":${(o as { writingLines?: number })?.writingLines || 2} }]
+
+For mini_book:
+Generate sections: [{ "id":"s1", "type":"mini_book", "title":"${p.title}", "panelCount":${(o as { panelCount?: number })?.panelCount || 4}, "panels":[{"id":"p1","number":1,"label":"${p.generateContentPlaceholder}","prompt":""},{"id":"p2","number":2,"label":"${p.generateContentPlaceholder}","prompt":""},{"id":"p3","number":3,"label":"${p.generateContentPlaceholder}","prompt":""},{"id":"p4","number":4,"label":"${p.generateContentPlaceholder}","prompt":""}] }]
+
+For clock_practice:
+Generate sections: [{ "id":"s1", "type":"clock_practice", "title":"${p.title}", "clockCount":${(o as { clockCount?: number })?.clockCount || 6}, "precision":"${(o as { precision?: string })?.precision || 'Half hour'}", "direction":"${p.generateContentPlaceholder}", "times":[${p.jsonPlaceholderList(6)}] }]
+
+For spinner:
+Generate sections: [{ "id":"s1", "type":"spinner", "title":"${p.title}", "sections":${(o as { sections?: number })?.sections || 6}, "sectionLabels":${(o as { sectionLabels?: string })?.sectionLabels ? JSON.stringify((o as { sectionLabels: string }).sectionLabels.split(',').map((s: string) => s.trim())) : `[${p.jsonPlaceholderList(6)}]`}, "recordSheet":${(o as { recordSheet?: boolean })?.recordSheet !== false} }]
+
+For dice_activity:
+Generate sections: [{ "id":"s1", "type":"dice_activity", "title":"${p.title}", "activityTitle":"${(o as { activityTitle?: string })?.activityTitle || p.generateContentPlaceholder}", "faces":["⚀","⚁","⚂","⚃","⚄","⚅"], "instructions":["<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>","<GENERATE>","<GENERATE>","<GENERATE>","<GENERATE>","<GENERATE>"] }]
+
+For graph_page:
+Generate sections: [{ "id":"s1", "type":"graph_page", "title":"${p.title}", "graphType":"${(o as { graphType?: string })?.graphType || 'Bar graph'}", "xLabel":"${p.generateContentPlaceholder}", "yLabel":"${p.generateContentPlaceholder}", "categories":[${p.jsonPlaceholderList(4)}], "maxValue":${(o as { maxValue?: number })?.maxValue || 10} }]
+
+For measurement:
+Generate sections: [{ "id":"s1", "type":"measurement", "title":"${p.title}", "unit":"${(o as { unit?: string })?.unit || 'Inches'}", "itemCount":${(o as { itemCount?: number })?.itemCount || 6}, "items":[${p.jsonPlaceholderList(6)}] }]
+
+For math_practice:
+${p.mathSlotRuleLine}
+${p.mathPracticeThisSlotLine}
+${p.mathSlotSectionRules}
+Include "mathPracticeLayout": one of "spacious" | "scaffolded_work_boxes" | "compact_grid" — MUST match the Quick Gen layout letter (see user message for required value).
+Generate EXACTLY ${(o as { problemCount?: number })?.problemCount || 6} question objects in the questions array with ids q1..qN.
+Each question must have:
+{"id":"q#","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3}
+Equations must be solvable and reflect the operation implied by "${p.topic}". Use grade ${p.grade} for number size.
+When "${p.topic}" is addition, use addition equations; when subtraction, use subtraction; when multiplication, use multiplication; when division, use division.
+
+Generate sections: [{
+  "id":"s1",
+  "type":"math_practice",
+  "title":"${p.title}",
+  "mathPracticeLayout":"spacious",
+  "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>",
+  "questions":[
+    { "id":"q1","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q2","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q3","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q4","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q5","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q6","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 }
+  ]
+}]
+
+For math_word_problems:
+${p.mathSlotRuleLine}
+${p.mathWordThisSlotLine}
+${p.mathSlotSectionRules}
+Include "mathPracticeLayout": one of "spacious" | "scaffolded_work_boxes" | "compact_grid" — MUST match the Quick Gen layout letter (see user message).
+Generate EXACTLY ${(o as { problemCount?: number })?.problemCount || 6} question objects in the questions array with ids q1..qN.
+Each question must have:
+{"id":"q#","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3}
+Use scenario-based word problems based on "${p.topic}" (addition/subtraction/multiplication/division) and tune phrasing/number size to grade ${p.grade}.
+Use subject "${p.subject ?? ""}" to pick a context flavor when appropriate (e.g., classroom/real-life framing).
+
+Generate sections: [{
+  "id":"s1",
+  "type":"math_word_problems",
+  "title":"${p.title}",
+  "mathPracticeLayout":"spacious",
+  "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>",
+  "questions":[
+    { "id":"q1","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q2","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q3","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q4","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q5","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 },
+    { "id":"q6","question_type":"short_answer","text":"${p.generateContentPlaceholder}","lines":3 }
+  ]
+}]
+
+For map_activity:
+Generate sections: [{ "id":"s1", "type":"map_activity", "title":"${p.title}", "mapType":"${(o as { mapType?: string })?.mapType || 'Community'}", "includeCompass":${(o as { includeCompass?: boolean })?.includeCompass !== false}, "includeKey":${(o as { includeKey?: boolean })?.includeKey !== false} }]
+
+For crossword:
+Generate ${(o as { clueCount?: number })?.clueCount || 8} words with clues.
+Generate sections: [{ "id":"s1", "type":"crossword", "title":"${p.title}", "clues":[{"number":1,"direction":"Across","clue":"${p.generateContentPlaceholder}","answer":"${p.generateContentPlaceholder}"},{"number":2,"direction":"Down","clue":"${p.generateContentPlaceholder}","answer":"${p.generateContentPlaceholder}"},{"number":3,"direction":"Across","clue":"${p.generateContentPlaceholder}","answer":"${p.generateContentPlaceholder}"}] }]
+
+For picture_sort:
+Generate sections: [{ "id":"s1", "type":"picture_sort", "title":"${p.title}", "categories":${JSON.stringify(((o as { categories?: string })?.categories || 'Category A, Category B').split(',').map((c: string) => c.trim()))}, "cards":[${p.jsonPlaceholderList(8)}] }]
+
+For trace_and_color:
+Generate sections: [{ "id":"s1", "type":"tracing", "targetWord":"${(o as { theme?: string })?.theme || p.targetWord || p.topic}", "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>", "lineCount":4 }]
+
+For word_practice (sight word):
+Generate sections for a complete sight word worksheet.
+Ensure targetWord is "${p.targetWord || p.topic}".
+Generate: word_practice, word_sight_row, fill_blanks, sentence_practice sections.
+
+DEFAULT for any other type:
+Generate appropriate sections based on the activity type and topic.
+Include 2-4 sections with real content for the topic.
+
+Fill in ALL placeholder content with real, grade-appropriate content for "${p.topic}" at grade ${p.grade}.
+${p.variantInstruction}${p.detailsNote}
+${p.quickGenFailsafeRule}
+${p.criticalSectionUniqueness}
+${p.finalSelfCheckBlock}
+${p.mandatoryContentDiversity}
+Return ONLY the JSON object — no markdown, no prose.`;
+}
+
+/** Non-reading: full Quick Gen / organizer-variant scaffolding (existing behavior). */
+function buildGenericWorksheetSystemPrompt(parts: WorksheetSystemPromptParts): string {
+  return assembleWorksheetSystemPrompt(parts);
+}
+
+/**
+ * Reading subject: same JSON contract and section rules as generic, but without Quick Gen STEM blocks,
+ * organizer layout improvisation (buildLayoutVariantInstruction), or option-prefix rules that target math/science.
+ */
+function buildReadingWorksheetSystemPrompt(parts: WorksheetSystemPromptParts): string {
+  return assembleWorksheetSystemPrompt(parts);
+}
+
 router.post("/", async (req: Request, res: Response) => {
   try {
     const {
@@ -1432,13 +1866,28 @@ router.post("/", async (req: Request, res: Response) => {
     const useCustomTypes = questionTypesFromClient.length > 0;
     const scienceMode = subjectId === "science" || String(subject || "").toLowerCase().includes("science");
     const sid = String(subjectId || "").toLowerCase();
+    const isReading = sid === "reading";
     /** Same activity type, different pedagogical option: Quick Gen sends layoutVariant A/B/C → Standard Practice / Interactive Exploration / Visual Application. */
-    const variantInstruction = layoutVariant
+    const variantInstructionGeneric = layoutVariant
       ? [
           structuralVariants
             ? `This is option ${layoutVariant} of THREE DISTINCT WORKSHEET OPTIONS (A=Standard Practice, B=Interactive Exploration, C=Visual Application). Follow ONLY activity type "${activityType}". Produce complete, topic-specific content; do not substitute a different activity type.`
             : `OPTION ${layoutVariant} of three: A=Standard Practice (layout "standard"), B=Interactive Exploration (layout "boxed"), C=Visual Application (layout "two_column"). Same activity type "${activityType}"; instructional style MUST match this letter and MUST differ from the other two in task wording and scaffolding.`,
           buildLayoutVariantInstruction(activityType, layoutVariant),
+          activityType === "math_practice" || activityType === "math_word_problems"
+            ? mathContentRulesForSlot(optionSlot)
+            : "",
+          activityType === "science_concept_practice" ? scienceConceptContentRulesForSlot(optionSlot) : "",
+        ]
+          .filter((s) => String(s).trim().length > 0)
+          .join("\n\n")
+      : "";
+    /** Reading: same A/B/C intro + math/science slot rules when applicable, but no buildLayoutVariantInstruction (organizer/matching/diagram improvisation). */
+    const variantInstructionReading = layoutVariant
+      ? [
+          structuralVariants
+            ? `This is option ${layoutVariant} of THREE DISTINCT WORKSHEET OPTIONS (A=Standard Practice, B=Interactive Exploration, C=Visual Application). Follow ONLY activity type "${activityType}". Produce complete, topic-specific content; do not substitute a different activity type.`
+            : `OPTION ${layoutVariant} of three: A=Standard Practice (layout "standard"), B=Interactive Exploration (layout "boxed"), C=Visual Application (layout "two_column"). Same activity type "${activityType}"; instructional style MUST match this letter and MUST differ from the other two in task wording and scaffolding.`,
           activityType === "math_practice" || activityType === "math_word_problems"
             ? mathContentRulesForSlot(optionSlot)
             : "",
@@ -1611,239 +2060,65 @@ Use only "question_type" values that fit these selections (standard values: mult
 `
       : "";
 
-    // Build sections based on activity type
-    const systemPrompt = `${criticalAntiExampleBlock}
-You are an expert elementary school worksheet content generator.
-Given an activity type and options, generate the specific content for a worksheet.
+    const optRecordForPrompt = (options || {}) as Record<string, unknown>;
+    const sharedPromptParts: Omit<
+      WorksheetSystemPromptParts,
+      | "quickGenDistinctBlock"
+      | "quickGenInstructionPrefixRules"
+      | "variantInstruction"
+      | "quickGenFailsafeRule"
+      | "criticalSectionUniqueness"
+      | "finalSelfCheckBlock"
+    > = {
+      criticalAntiExampleBlock,
+      quickGenContentTypeFlag,
+      grade,
+      activityType,
+      title,
+      topic,
+      subject: typeof subject === "string" ? subject : undefined,
+      targetWord,
+      options: optRecordForPrompt,
+      subjectBlock,
+      differentiationBlock,
+      mixedQuestionTypesInstruction,
+      questionTypesClientInstruction,
+      templateCopyWarning,
+      generateContentPlaceholder,
+      jsonPlaceholderList,
+      scienceConceptSlotRuleLine,
+      scienceConceptSectionRules,
+      mathSlotRuleLine,
+      mathPracticeThisSlotLine,
+      mathSlotSectionRules,
+      mathWordThisSlotLine,
+      detailsNote,
+      mandatoryContentDiversity,
+    };
 
-OUTPUT CONTRACT (STRICT):
-- Return ONLY one JSON object. No markdown fences (no \`\`\`json), no commentary before or after the JSON.
-- Generate real, grade-appropriate material for non-organizer content (titles, word banks, matching pairs, math problems, questions, etc.). Do NOT populate organizer student fields: follow BLANK ORGANIZER WORKSHEET MODE in SECTION GENERATION RULES (empty Venn arrays; mind map "Topic" + blank branches; generic Step N / Event N; empty KWL arrays; empty organizer writing cells). No empty "sections" array. No empty "questions" arrays for math_practice or math_word_problems.
-${quickGenDistinctBlock}
-${quickGenContentTypeFlag}
-Return ONLY valid JSON with this structure:
-{
-  "worksheet": {
-    "worksheet_id": "${randomUUID()}",
-    "title": "Worksheet title",
-    "subject": "subject area",
-    "gradeLevel": "${grade}",
-    "language": "English",
-    "template_type": "${activityType}",
-    "sections": [ ... ]
-  }
-}
+    const genericParts: WorksheetSystemPromptParts = {
+      ...sharedPromptParts,
+      quickGenDistinctBlock,
+      quickGenInstructionPrefixRules,
+      variantInstruction: variantInstructionGeneric,
+      quickGenFailsafeRule,
+      criticalSectionUniqueness,
+      finalSelfCheckBlock,
+    };
 
-Activity type: ${activityType}
-Title: ${title}
-Grade: ${grade}
-Topic: ${topic}
-${targetWord ? `Target word: ${targetWord}` : ""}
-Options: ${JSON.stringify(options || {})}
-${subjectBlock}${differentiationBlock}
-${mixedQuestionTypesInstruction}${questionTypesClientInstruction}
-SECTION GENERATION RULES BY TYPE:
-${INSTRUCTIONS_VS_STUDENT_CONTENT}
-${templateCopyWarning}
-${quickGenInstructionPrefixRules}
+    const readingParts: WorksheetSystemPromptParts = {
+      ...sharedPromptParts,
+      quickGenDistinctBlock: "",
+      quickGenInstructionPrefixRules: "",
+      variantInstruction: variantInstructionReading,
+      quickGenFailsafeRule: "",
+      criticalSectionUniqueness: "",
+      finalSelfCheckBlock: "",
+    };
 
-For mind_map:
-Generate sections: [{ "id":"s1", "type":"mind_map", "title": "${title}", "centerTerm": "Topic", "branches": [${Array.from({ length: options?.branchCount ?? 4 }).map(() => '""').join(",")}], "branchCount": ${options?.branchCount || 4} }]
-
-For venn_diagram:
-Generate sections: [{ "id":"s1", "type":"venn_diagram", "title":"${title}", "leftLabel": "${options?.leftLabel || 'Topic A'}", "rightLabel": "${options?.rightLabel || 'Topic B'}", "centerLabel": "${options?.centerLabel || 'Both'}", "leftItems": [], "rightItems": [], "centerItems": [] }]
-Never add strings to leftItems, rightItems, or centerItems; keep all three as [].
-
-For kwl_chart:
-Generate sections: [{ "id":"s1", "type":"kwl_chart", "title":"${title}", "variant": "${options?.variant || 'KWL (3 columns)'}", "knowItems": [], "wantItems": [], "learnedItems": [], "rowCount": ${options?.rowCount || 8} }]
-knowItems, wantItems, and learnedItems MUST remain [] — do not add strings.
-
-For sequence_chart:
-Generate sections: [{ "id":"s1", "type":"sequence_chart", "title":"${title}", "steps": [{"id":"step1","number":1,"title":"Step 1","content":""},{"id":"step2","number":2,"title":"Step 2","content":""},{"id":"step3","number":3,"title":"Step 3","content":""},{"id":"step4","number":4,"title":"Step 4","content":""}] }]
-If the subject is Science, describe the process in section "instructions" only — not in steps[].title. steps[].title must stay generic ("Step 1", …). steps[].content must be "".
-
-For frayer_model:
-Generate sections: [{ "id":"s1", "type":"frayer_model", "title":"${title}", "centerTerm":"${targetWord || topic}", "q1Label":"${options?.q1Label || 'Definition'}", "q2Label":"${options?.q2Label || 'Example'}", "q3Label":"${options?.q3Label || 'Non-Example'}", "q4Label":"${options?.q4Label || 'Draw It'}", "q1Content":"", "q2Content":"", "q3Content":"", "q4Content":"" }]
-
-For writing_prompt:
-Generate sections: [
-  { "id":"s1", "type":"writing_prompt_header", "title":"${title}", "prompt":"${options?.prompt || 'Generate an engaging ' + (options?.promptStyle || 'creative') + ' writing prompt about ' + topic + ' for grade ' + grade}", "lineCount":${options?.lineCount || 15}, "lineStyle":"${options?.lineStyle || 'wide ruled'}", "illustrationBox":"${options?.illustrationBox || 'None'}" },
-  ${options?.wordBank ? `{ "id":"s2", "type":"word_bank", "title":"Word Bank", "words":[${jsonPlaceholderList(6)}] }` : ''}
-]
-
-For acrostic:
-Generate sections: [{ "id":"s1", "type":"acrostic", "title":"${title}", "acrosticWord":"${options?.acrosticWord || targetWord || topic.split(' ')[0] || 'WORD'}", "linesPerLetter":${options?.linesPerLetter || 1}, "styleHint":"${options?.styleHint || 'Phrase'}" }]
-
-For word_search:
-Generate a word list of 10-15 words related to the topic.
-Generate sections: [{ "id":"s1", "type":"word_search_full", "title":"${title}", "wordList":[${jsonPlaceholderList(10)}], "gridSize":"${options?.gridSize || '10×10'}", "directions":"${options?.directions || 'Horiz + Vertical'}", "showWordList":${options?.showWordList !== false} }]
-
-For bingo_card:
-Generate sections: [{ "id":"s1", "type":"bingo_card", "title":"${title}", "gridSize":"${options?.gridSize || '5×5'}", "freeSpace":${options?.freeSpace !== false}, "wordList":[${jsonPlaceholderList(24)}] }]
-
-For number_bond:
-Generate sections: [{ "id":"s1", "type":"number_bond", "title":"${title}", "bondCount":${options?.bondCount || 6}, "focus":"${options?.focus || 'Addition'}", "bonds":[{"whole":null,"part1":null,"part2":null}] }]
-(Generate bondCount distinct bond objects with grade-appropriate whole numbers from the topic—do not copy sample numbers from any example.)
-
-For ten_frame:
-Generate sections: [{ "id":"s1", "type":"ten_frame", "title":"${title}", "frameCount":${options?.frameCount || 4}, "activity":"${generateContentPlaceholder}", "problems":[{"number":null},{"number":null},{"number":null},{"number":null}] }]
-(Replace nulls with topic-appropriate values; one object per frame in problems.)
-
-For coloring_page:
-Generate sections: [{ "id":"s1", "type":"coloring_page", "title":"${title}", "theme":"${options?.theme || topic}", "size":"${options?.size || 'Full page'}", "addWritingLines":${options?.addWritingLines || false}, "lineCount":${options?.lineCount || 3}, "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>" }]
-
-For color_by_code:
-Generate the color key from the topic.
-Generate sections: [{ "id":"s1", "type":"color_by_code", "title":"${title}", "codeType":"${options?.codeType || 'Sight words'}", "theme":"${options?.theme || topic}", "colorKey":[{"code":"${generateContentPlaceholder}","color":"${generateContentPlaceholder}"},{"code":"${generateContentPlaceholder}","color":"${generateContentPlaceholder}"},{"code":"${generateContentPlaceholder}","color":"${generateContentPlaceholder}"},{"code":"${generateContentPlaceholder}","color":"${generateContentPlaceholder}"}] }]
-
-For label_diagram:
-Generate EXACTLY one section of type label_diagram with:
-- "diagramLayout": one of "centered_bank_below" | "diagram_left_labels_right" | "diagram_top_callouts" — MUST match the Quick Gen layout letter for this request (see user message for the required value).
-- "title", "subject", "diagramSubject" (same string as the topic shown on the diagram — usually the topic or diagramSubject from options), "parts" (6–8 real part names for the topic), "wordBank": boolean
-Example shape:
-{ "id":"s1", "type":"label_diagram", "diagramLayout":"centered_bank_below", "title":"${title}", "diagramSubject":"${options?.diagramSubject || topic}", "subject":"${options?.diagramSubject || topic}", "parts":[${jsonPlaceholderList(6)}], "wordBank":${options?.wordBank !== false} }
-If the subject is Science, parts must be real structures or stages for the topic (e.g., water cycle: evaporation, condensation, precipitation, collection, runoff, groundwater, energy from the sun) — not story elements.
-
-For science_concept_practice:
-Generate EXACTLY two sections (no other section types):
-1) word_bank: 8-12 real science vocabulary words for the topic (strings only in "words").
-2) science_short_response: short_answer questions asking students to explain processes, compare stages, or use vocabulary — NOT creative writing, NOT a story, NOT "imagine you are...".
-${scienceConceptSlotRuleLine}
-${scienceConceptSectionRules}
-Include on the science_short_response object: "layoutRhythm": one of "spacious" | "scaffolded_work_boxes" | "compact_grid" — MUST match the Quick Gen layout letter (see user message). Vary question count and "lines" per question according to the LAYOUT STYLE block for this request (clean vs scaffolded vs compact).
-sections: [
-  { "id":"s1", "type":"word_bank", "title":"Key vocabulary: ${topic}", "words":[${jsonPlaceholderList(8)}] },
-  { "id":"s2", "type":"science_short_response", "title":"Show what you know", "layoutRhythm":"spacious", "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>", "questions":[
-    { "id":"q1","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":4 },
-    { "id":"q2","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":4 },
-    { "id":"q3","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":4 },
-    { "id":"q4","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":4 }
-  ]}
-]
-
-For observation_sheet:
-Generate sections: [{ "id":"s1", "type":"observation_sheet", "title":"${title}", "sections":["Hypothesis","Observation","What I learned"], "includeDrawing":${options?.includeDrawing !== false} }]
-
-For timeline:
-Generate sections: [{ "id":"s1", "type":"timeline", "title":"${title}", "orientation":"${options?.orientation || 'Horizontal'}", "events":[{"id":"e1","label":"Event 1","content":""},{"id":"e2","label":"Event 2","content":""},{"id":"e3","label":"Event 3","content":""},{"id":"e4","label":"Event 4","content":""},{"id":"e5","label":"Event 5","content":""}] }]
-Topic-specific timeline wording belongs in section "instructions" only — not in events[].label.
-
-For story_map:
-Generate sections: [{ "id":"s1", "type":"story_map", "title":"${title}", "layout":"Linear", "fields":[{"label":"Characters","content":""},{"label":"Setting","content":""},{"label":"Problem","content":""},{"label":"Event 1","content":""},{"label":"Event 2","content":""},{"label":"Event 3","content":""},{"label":"Solution","content":""},{"label":"Theme","content":""}] }]
-
-For line_matching:
-Generate ${options?.pairCount || 6} matching pairs for the topic.
-Generate sections: [{ "id":"s1", "type":"line_matching", "title":"${title}", "matchType":"${options?.matchType || 'Word → Definition'}", "pairs":[{"left":"${generateContentPlaceholder}","right":"${generateContentPlaceholder}"},{"left":"${generateContentPlaceholder}","right":"${generateContentPlaceholder}"},{"left":"${generateContentPlaceholder}","right":"${generateContentPlaceholder}"},{"left":"${generateContentPlaceholder}","right":"${generateContentPlaceholder}"},{"left":"${generateContentPlaceholder}","right":"${generateContentPlaceholder}"},{"left":"${generateContentPlaceholder}","right":"${generateContentPlaceholder}"}] }]
-
-For cut_and_sort:
-Generate items for each category.
-Generate sections: [{ "id":"s1", "type":"cut_and_sort", "title":"${title}", "categories":["${options?.categories?.split(',')[0]?.trim() || 'Category A'}","${options?.categories?.split(',')[1]?.trim() || 'Category B'}"], "items":[${jsonPlaceholderList(8)}] }]
-
-For sentence_frames:
-Generate ${options?.frameCount || 4} sentence frames for the topic. Each "stem" MUST include blanks (____) or dotted omissions for students — never a finished paragraph or model answer.
-Generate sections: [{ "id":"s1", "type":"sentence_frames", "title":"${title}", "frames":[{"id":"f1","stem":"${generateContentPlaceholder}"},{"id":"f2","stem":"${generateContentPlaceholder}"},{"id":"f3","stem":"${generateContentPlaceholder}"},{"id":"f4","stem":"${generateContentPlaceholder}"}], "writingLines":${options?.writingLines || 2} }]
-
-For mini_book:
-Generate sections: [{ "id":"s1", "type":"mini_book", "title":"${title}", "panelCount":${options?.panelCount || 4}, "panels":[{"id":"p1","number":1,"label":"${generateContentPlaceholder}","prompt":""},{"id":"p2","number":2,"label":"${generateContentPlaceholder}","prompt":""},{"id":"p3","number":3,"label":"${generateContentPlaceholder}","prompt":""},{"id":"p4","number":4,"label":"${generateContentPlaceholder}","prompt":""}] }]
-
-For clock_practice:
-Generate sections: [{ "id":"s1", "type":"clock_practice", "title":"${title}", "clockCount":${options?.clockCount || 6}, "precision":"${options?.precision || 'Half hour'}", "direction":"${generateContentPlaceholder}", "times":[${jsonPlaceholderList(6)}] }]
-
-For spinner:
-Generate sections: [{ "id":"s1", "type":"spinner", "title":"${title}", "sections":${options?.sections || 6}, "sectionLabels":${options?.sectionLabels ? JSON.stringify(options.sectionLabels.split(',').map((s:string)=>s.trim())) : `[${jsonPlaceholderList(6)}]`}, "recordSheet":${options?.recordSheet !== false} }]
-
-For dice_activity:
-Generate sections: [{ "id":"s1", "type":"dice_activity", "title":"${title}", "activityTitle":"${options?.activityTitle || generateContentPlaceholder}", "faces":["⚀","⚁","⚂","⚃","⚄","⚅"], "instructions":["<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>","<GENERATE>","<GENERATE>","<GENERATE>","<GENERATE>","<GENERATE>"] }]
-
-For graph_page:
-Generate sections: [{ "id":"s1", "type":"graph_page", "title":"${title}", "graphType":"${options?.graphType || 'Bar graph'}", "xLabel":"${generateContentPlaceholder}", "yLabel":"${generateContentPlaceholder}", "categories":[${jsonPlaceholderList(4)}], "maxValue":${options?.maxValue || 10} }]
-
-For measurement:
-Generate sections: [{ "id":"s1", "type":"measurement", "title":"${title}", "unit":"${options?.unit || 'Inches'}", "itemCount":${options?.itemCount || 6}, "items":[${jsonPlaceholderList(6)}] }]
-
-For math_practice:
-${mathSlotRuleLine}
-${mathPracticeThisSlotLine}
-${mathSlotSectionRules}
-Include "mathPracticeLayout": one of "spacious" | "scaffolded_work_boxes" | "compact_grid" — MUST match the Quick Gen layout letter (see user message for required value).
-Generate EXACTLY ${options?.problemCount || 6} question objects in the questions array with ids q1..qN.
-Each question must have:
-{"id":"q#","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3}
-Equations must be solvable and reflect the operation implied by "${topic}". Use grade ${grade} for number size.
-When "${topic}" is addition, use addition equations; when subtraction, use subtraction; when multiplication, use multiplication; when division, use division.
-
-Generate sections: [{
-  "id":"s1",
-  "type":"math_practice",
-  "title":"${title}",
-  "mathPracticeLayout":"spacious",
-  "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>",
-  "questions":[
-    { "id":"q1","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q2","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q3","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q4","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q5","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q6","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 }
-  ]
-}]
-
-For math_word_problems:
-${mathSlotRuleLine}
-${mathWordThisSlotLine}
-${mathSlotSectionRules}
-Include "mathPracticeLayout": one of "spacious" | "scaffolded_work_boxes" | "compact_grid" — MUST match the Quick Gen layout letter (see user message).
-Generate EXACTLY ${options?.problemCount || 6} question objects in the questions array with ids q1..qN.
-Each question must have:
-{"id":"q#","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3}
-Use scenario-based word problems based on "${topic}" (addition/subtraction/multiplication/division) and tune phrasing/number size to grade ${grade}.
-Use subject "${subject}" to pick a context flavor when appropriate (e.g., classroom/real-life framing).
-
-Generate sections: [{
-  "id":"s1",
-  "type":"math_word_problems",
-  "title":"${title}",
-  "mathPracticeLayout":"spacious",
-  "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>",
-  "questions":[
-    { "id":"q1","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q2","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q3","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q4","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q5","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 },
-    { "id":"q6","question_type":"short_answer","text":"${generateContentPlaceholder}","lines":3 }
-  ]
-}]
-
-For map_activity:
-Generate sections: [{ "id":"s1", "type":"map_activity", "title":"${title}", "mapType":"${options?.mapType || 'Community'}", "includeCompass":${options?.includeCompass !== false}, "includeKey":${options?.includeKey !== false} }]
-
-For crossword:
-Generate ${options?.clueCount || 8} words with clues.
-Generate sections: [{ "id":"s1", "type":"crossword", "title":"${title}", "clues":[{"number":1,"direction":"Across","clue":"${generateContentPlaceholder}","answer":"${generateContentPlaceholder}"},{"number":2,"direction":"Down","clue":"${generateContentPlaceholder}","answer":"${generateContentPlaceholder}"},{"number":3,"direction":"Across","clue":"${generateContentPlaceholder}","answer":"${generateContentPlaceholder}"}] }]
-
-For picture_sort:
-Generate sections: [{ "id":"s1", "type":"picture_sort", "title":"${title}", "categories":${JSON.stringify((options?.categories || 'Category A, Category B').split(',').map((c:string)=>c.trim()))}, "cards":[${jsonPlaceholderList(8)}] }]
-
-For trace_and_color:
-Generate sections: [{ "id":"s1", "type":"tracing", "targetWord":"${options?.theme || targetWord || topic}", "instructions":"<GENERATE BASED ON QUICK GEN RULES — DO NOT DEFAULT>", "lineCount":4 }]
-
-For word_practice (sight word):
-Generate sections for a complete sight word worksheet.
-Ensure targetWord is "${targetWord || topic}".
-Generate: word_practice, word_sight_row, fill_blanks, sentence_practice sections.
-
-DEFAULT for any other type:
-Generate appropriate sections based on the activity type and topic.
-Include 2-4 sections with real content for the topic.
-
-Fill in ALL placeholder content with real, grade-appropriate content for "${topic}" at grade ${grade}.
-${variantInstruction}${detailsNote}
-${quickGenFailsafeRule}
-${criticalSectionUniqueness}
-${finalSelfCheckBlock}
-${mandatoryContentDiversity}
-Return ONLY the JSON object — no markdown, no prose.`;
+    const systemPrompt = isReading
+      ? buildReadingWorksheetSystemPrompt(readingParts)
+      : buildGenericWorksheetSystemPrompt(genericParts);
 
     const topicExtra =
       scienceMode && /water\s*cycle/i.test(String(topic))
@@ -1919,7 +2194,9 @@ Return ONLY raw JSON (no markdown).`
         optionSlot
       );
       hoistInstructionalLanguageToSectionInstructions(result.worksheet);
-      clearStudentWritingCellsFromWorksheet(result.worksheet);
+      ensurePassageIntegrityOrRewriteQuestions(result.worksheet);
+      sanitizeWorksheetQuestionTexts(result.worksheet);
+      clearStudentWritingCellsFromWorksheet(result.worksheet, String(topic));
       if (useCustomTypes) {
         filterWorksheetQuestionsByTypes(result.worksheet, questionTypesFromClient);
       }

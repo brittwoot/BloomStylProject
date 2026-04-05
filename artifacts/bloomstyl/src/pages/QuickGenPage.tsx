@@ -14,6 +14,7 @@ import {
   getResolvedThreeOptionPlan,
   getFamiliesForSubject,
   getDefaultFamilyId,
+  getEnabledQuickGenVariants,
   resolveFamilyIdForSubject,
   type SubjectId as QGSubjectId,
 } from "../lib/quickGenFamilies";
@@ -152,6 +153,16 @@ const DEFAULT_LAYOUTS: Layout[] = [
   { id: "B", status: "pending", data: null, error: null, layoutVariant: "B" },
   { id: "C", status: "pending", data: null, error: null, layoutVariant: "C" },
 ];
+
+function buildInitialLayouts(enabled: ("A" | "B" | "C")[]): Layout[] {
+  return enabled.map((id) => ({
+    id,
+    status: "pending" as const,
+    data: null,
+    error: null,
+    layoutVariant: id,
+  }));
+}
 
 // ── safeParseJSON ──────────────────────────────────────────────────────────────
 
@@ -485,6 +496,11 @@ export function QuickGenPage() {
 
   const resolvedPlannerFamily =
     familyId || (subject ? getDefaultFamilyId(subject as QGSubjectId) : "");
+  /** Slots to generate for the current subject + family (reading graphic organizer → A only). */
+  const enabledVariants = useMemo((): ("A" | "B" | "C")[] => {
+    if (!subject || !resolvedPlannerFamily) return ["A", "B", "C"];
+    return getEnabledQuickGenVariants(subject as QGSubjectId, resolvedPlannerFamily);
+  }, [subject, resolvedPlannerFamily]);
   /** Per-slot activity types from the family planner (A/B/C = different worksheet structures). */
   const previewPlansBySlot = useMemo(() => {
     if (!subject || !resolvedPlannerFamily) return null;
@@ -507,6 +523,13 @@ export function QuickGenPage() {
     if (detected && detected.length >= 2) return detected;
     return topic.trim();
   }, [topic, contentAnalysis?.detectedTopic]);
+
+  /** Single-slot families: keep selection aligned with the only generated version. */
+  useEffect(() => {
+    if (enabledVariants.length === 1) {
+      setSelectedLayout(enabledVariants[0]);
+    }
+  }, [enabledVariants]);
 
   const topicLabelDisplay = useMemo(
     () => normalizeFormalLabel(topicDisplaySource),
@@ -738,6 +761,7 @@ export function QuickGenPage() {
     console.log("[GEN] === Starting parallel generation ===");
     console.log("[GEN] Subject:", subject, "| Topic:", topic, "| Grade:", grade);
     const fam = familyId || getDefaultFamilyId(subject as QGSubjectId);
+    const variants = getEnabledQuickGenVariants(subject as QGSubjectId, fam);
     const three = getResolvedThreeOptionPlan(
       subject as QGSubjectId,
       fam,
@@ -751,19 +775,23 @@ export function QuickGenPage() {
       three.B.activityType,
       "/",
       three.C.activityType,
+      "| enabled variants:",
+      variants.join(","),
       "| layoutVariant still drives presentation mode per slot"
     );
 
     sessionIdRef.current = nanoid();
     setQuickGenSessionId(sessionIdRef.current);
-    setLayouts([...DEFAULT_LAYOUTS]);
+    setLayouts(buildInitialLayouts(variants));
+    if (variants.length === 1) {
+      setSelectedLayout(variants[0]);
+    }
     setError("");
     setPhase("generating");
 
-    // Fire all 3 in parallel
-    fetchLayout("A", key);
-    fetchLayout("B", key);
-    fetchLayout("C", key);
+    for (const id of variants) {
+      fetchLayout(id, key);
+    }
   }, [canGenerate, subject, topic, grade, familyId, activityTypeId, fetchLayout]);
 
   // Watch for all done → switch to done phase
@@ -1246,7 +1274,13 @@ export function QuickGenPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div
+                  className={`grid gap-4 ${
+                    layouts.length === 1
+                      ? "grid-cols-1 max-w-xl mx-auto w-full"
+                      : "grid-cols-1 md:grid-cols-3"
+                  }`}
+                >
                   {layouts.map((layout, i) => (
                     <div key={layout.id}>
                       {(layout.status === "pending" || layout.status === "loading") ? (
