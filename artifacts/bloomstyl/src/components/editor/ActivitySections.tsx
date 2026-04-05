@@ -272,7 +272,7 @@ export function ColoringActivitySection({ section, onUpdate }: { section: any; o
       {/* Drawing/coloring area */}
       <div className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center"
         style={{ minHeight: "200px" }}>
-        <p className="text-gray-300 text-sm italic select-none">[ Illustration / Coloring Area ]</p>
+        <p className="text-gray-300 text-sm italic select-none">Illustration</p>
       </div>
     </div>
   );

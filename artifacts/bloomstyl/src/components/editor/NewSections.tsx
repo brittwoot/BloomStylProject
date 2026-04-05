@@ -35,7 +35,6 @@ export function MindMapSection({ section, onUpdate }: { section: any; onUpdate: 
   const center = section.centerTerm || "Main Idea";
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-400 text-center italic">Fill in the mind map</p>
       <div className="relative flex items-center justify-center min-h-64">
         {/* Center bubble */}
         <div className="z-10 relative bg-primary/10 border-2 border-primary rounded-full px-6 py-4 text-center">
@@ -173,10 +172,6 @@ export function VennDiagramSection({ section, onUpdate }: { section: any; onUpda
           ))}
         </div>
       </div>
-
-      <p className="text-[10px] text-gray-400 text-center">
-        Draw a circle around each section to complete the Venn diagram.
-      </p>
     </div>
   );
 }
@@ -411,7 +406,6 @@ export function MiniBookSection({ section, onUpdate }: { section: any; onUpdate:
 
   return (
     <div>
-      <p className="text-[11px] text-gray-400 text-center mb-2">Cut and fold to make a mini book</p>
       <div className={`grid grid-cols-${cols} gap-2 border-2 border-dashed border-gray-300 rounded-xl p-3`}>
         {panels.map((panel, i) => (
           <div key={panel.id || i} className="border border-gray-300 rounded-lg p-3 min-h-28 space-y-2">
@@ -449,7 +443,7 @@ export function WritingPromptHeader({ section, onUpdate }: { section: any; onUpd
           value={section.prompt || ""}
           onChange={(v) => onUpdate({ prompt: v })}
           className="text-sm font-medium text-foreground leading-relaxed"
-          placeholder="Your writing prompt will appear here…"
+          placeholder=""
         />
       </div>
 
@@ -489,9 +483,6 @@ export function WordBankSection({ section, onUpdate }: { section: any; onUpdate:
             {w}
           </span>
         ))}
-        {words.length === 0 && (
-          <span className="text-xs text-gray-400 italic">Word bank words will appear here</span>
-        )}
       </div>
     </div>
   );
@@ -647,7 +638,6 @@ export function LabelDiagramSection({ section, onUpdate }: { section: any; onUpd
       <div className="border-2 border-dashed border-gray-300 rounded-xl min-h-48 bg-gray-50 flex items-center justify-center relative">
         <div className="text-center">
           <p className="text-sm text-gray-400 font-medium">Diagram: {subject || "Illustration"}</p>
-          <p className="text-[11px] text-gray-300">Label the numbered parts</p>
         </div>
         {/* Numbered callout indicators */}
         {parts.map((_, i) => {
@@ -829,7 +819,6 @@ export function LineMatchingSection({ section, onUpdate }: { section: any; onUpd
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-400 text-center italic mb-3">Draw a line to match each pair.</p>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-3">
           {pairs.map((pair, i) => (
@@ -877,7 +866,6 @@ export function CutAndSortSection({ section, onUpdate }: { section: any; onUpdat
 
       {/* Cut-out items */}
       <div className="border-2 border-dashed border-gray-400 rounded-xl p-3 bg-gray-50">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2 text-center">✂️ Cut these out and sort them above</p>
         <div className="grid grid-cols-4 gap-2">
           {items.map((item, i) => (
             <div key={i} className="border border-gray-400 rounded px-2 py-1.5 text-xs text-center font-medium text-gray-700 bg-white">
@@ -1005,7 +993,6 @@ export function FullWordSearchSection({ section, onUpdate }: { section: any; onU
       {/* Word list */}
       {section.showWordList !== false && words.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Find these words:</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {words.map((w, i) => (
               <div key={i} className="flex items-center gap-1.5 text-sm text-gray-700">
@@ -1071,7 +1058,6 @@ export function SpinnerSection({ section, onUpdate }: { section: any; onUpdate: 
           })}
           <circle cx={cx} cy={cy} r={8} fill="white" stroke="#666" strokeWidth="2" />
         </svg>
-        <p className="text-[10px] text-center text-gray-400 mt-1">Use a pencil + paper clip as a spinner</p>
       </div>
 
       {/* Record sheet */}
@@ -1113,13 +1099,11 @@ function diceFaceLinesFromSection(instructions: unknown): string[] {
 }
 
 export function DiceActivitySection({ section, onUpdate }: { section: any; onUpdate: (u: any) => void }) {
-  const activityTitle = section.activityTitle || "Write";
   const faces = section.faces || ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
   const faceLines = diceFaceLinesFromSection(section.instructions);
 
   return (
     <div className="space-y-4">
-      <p className="text-base font-bold text-center text-gray-700">Roll and {activityTitle}!</p>
       <div className="grid grid-cols-2 gap-3">
         {faces.map((face, i) => (
           <div key={i} className="flex items-center gap-3 border border-gray-300 rounded-xl p-3">
@@ -1186,7 +1170,6 @@ export function GraphPageSection({ section, onUpdate }: { section: any; onUpdate
 export function ColoringPageSection({ section, onUpdate }: { section: any; onUpdate: (u: any) => void }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-400 text-center">Color the picture below.</p>
       {/* Big illustration placeholder */}
       <div
         className="border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50 flex items-center justify-center"
@@ -1199,7 +1182,7 @@ export function ColoringPageSection({ section, onUpdate }: { section: any; onUpd
         </div>
       </div>
       {section.addWritingLines && (
-        <WritingLines count={section.lineCount || 3} label="Write about your picture:" />
+        <WritingLines count={section.lineCount || 3} />
       )}
     </div>
   );
@@ -1219,9 +1202,6 @@ export function ColorByCodeSection({ section, onUpdate }: { section: any; onUpda
               <span className="text-sm font-semibold text-gray-700">= {ck.code}</span>
             </div>
           ))}
-          {colorKey.length === 0 && (
-            <p className="text-xs text-gray-400 italic">Color key will appear here</p>
-          )}
         </div>
       </div>
       {/* Illustration placeholder */}
@@ -1229,7 +1209,7 @@ export function ColorByCodeSection({ section, onUpdate }: { section: any; onUpda
         <div className="text-center space-y-2">
           <p className="text-3xl">🎨</p>
           <p className="text-sm text-gray-400 font-medium">Color-by-Code Illustration</p>
-          <p className="text-xs text-gray-300">{section.theme || "Theme"} — regions labeled with color codes</p>
+          <p className="text-xs text-gray-300">{section.theme || "Theme"}</p>
         </div>
       </div>
     </div>
@@ -1255,7 +1235,6 @@ export function PictureSortSection({ section, onUpdate }: { section: any; onUpda
         ))}
       </div>
       <div className="border-2 border-dashed border-gray-400 rounded-xl p-3 bg-gray-50">
-        <p className="text-[10px] font-bold text-gray-400 uppercase text-center mb-2">✂️ Picture Cards — Cut and sort above</p>
         <div className="grid grid-cols-4 gap-2">
           {cards.map((card, i) => (
             <div key={i} className="border border-gray-400 rounded-lg p-2 text-xs text-center font-medium bg-white">
